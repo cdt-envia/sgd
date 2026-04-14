@@ -1,0 +1,2053 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Sistema de Evaluación de Desempeño</title>
+<link href="https://fonts.googleapis.com/css2?family=Asap:ital,wght@0,400;0,500;0,600;0,700;1,400&display=swap" rel="stylesheet">
+<script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+<style>
+  :root {
+    --red: #ba0020;
+    --red-dark: #8a0018;
+    --red-light: #f5e6e8;
+    --gray: #4e4e4e;
+    --gray-light: #f0f0f0;
+    --gray-mid: #d0d0d0;
+    --white: #ffffff;
+    --success: #2e7d32;
+    --warning: #f57c00;
+    --info: #1565c0;
+    --shadow: 0 2px 12px rgba(0,0,0,0.10);
+    --shadow-lg: 0 6px 32px rgba(0,0,0,0.14);
+    --radius: 10px;
+    --transition: 0.22s cubic-bezier(.4,0,.2,1);
+  }
+  * { box-sizing: border-box; margin: 0; padding: 0; }
+  body { font-family: 'Asap', sans-serif; background: var(--gray-light); color: var(--gray); min-height: 100vh; }
+
+  /* ─── LOGIN ─── */
+  #loginScreen {
+    display: flex; align-items: center; justify-content: center;
+    min-height: 100vh;
+    background: linear-gradient(135deg, #ba0020 0%, #4e4e4e 100%);
+  }
+  .login-card {
+    background: white; border-radius: 18px; padding: 48px 40px 40px;
+    width: 100%; max-width: 420px; box-shadow: var(--shadow-lg);
+    animation: fadeUp .5s ease;
+  }
+  .login-logo {
+    text-align: center; margin-bottom: 28px;
+  }
+  .login-logo .brand-icon {
+    width: 64px; height: 64px; background: var(--red);
+    border-radius: 50%; display: inline-flex; align-items: center; justify-content: center;
+    margin-bottom: 12px;
+  }
+  .login-logo .brand-icon svg { width: 32px; height: 32px; fill: white; }
+  .login-logo h1 { font-size: 1.3rem; font-weight: 700; color: var(--gray); line-height: 1.3; }
+  .login-logo p { font-size: .85rem; color: #888; margin-top: 4px; }
+  .form-group { margin-bottom: 18px; }
+  .form-group label { display: block; font-size: .85rem; font-weight: 600; color: var(--gray); margin-bottom: 6px; }
+  .form-group input {
+    width: 100%; padding: 11px 14px; border: 1.5px solid var(--gray-mid);
+    border-radius: 8px; font-family: 'Asap', sans-serif; font-size: .95rem;
+    outline: none; transition: border-color var(--transition);
+  }
+  .form-group input:focus { border-color: var(--red); }
+  .btn-login {
+    width: 100%; padding: 13px; background: var(--red); color: white;
+    border: none; border-radius: 8px; font-family: 'Asap', sans-serif;
+    font-size: 1rem; font-weight: 600; cursor: pointer;
+    transition: background var(--transition), transform .1s;
+  }
+  .btn-login:hover { background: var(--red-dark); }
+  .btn-login:active { transform: scale(.98); }
+  .login-error { color: var(--red); font-size: .85rem; margin-top: 10px; text-align: center; display: none; }
+
+  /* ─── APP SHELL ─── */
+  #appShell { display: none; min-height: 100vh; }
+  .topbar {
+    background: white; border-bottom: 2px solid var(--red);
+    padding: 0 28px; height: 62px; display: flex; align-items: center;
+    justify-content: space-between; position: sticky; top: 0; z-index: 100;
+    box-shadow: 0 2px 8px rgba(0,0,0,.07);
+  }
+  .topbar-left { display: flex; align-items: center; gap: 14px; }
+  .topbar-logo { width: 34px; height: 34px; background: var(--red); border-radius: 8px;
+    display: flex; align-items: center; justify-content: center; }
+  .topbar-logo svg { width: 18px; height: 18px; fill: white; }
+  .topbar h1 { font-size: 1.05rem; font-weight: 700; color: var(--gray); }
+  .topbar-right { display: flex; align-items: center; gap: 14px; }
+  .user-badge {
+    display: flex; align-items: center; gap: 8px;
+    background: var(--red-light); border-radius: 20px; padding: 6px 14px 6px 8px;
+  }
+  .user-avatar {
+    width: 28px; height: 28px; background: var(--red); border-radius: 50%;
+    display: flex; align-items: center; justify-content: center;
+    color: white; font-weight: 700; font-size: .8rem;
+  }
+  .user-badge span { font-size: .85rem; font-weight: 600; color: var(--red-dark); }
+  .user-role-tag {
+    font-size: .72rem; background: var(--red); color: white;
+    border-radius: 10px; padding: 2px 8px; font-weight: 600;
+  }
+  .btn-logout {
+    background: none; border: 1.5px solid var(--gray-mid); border-radius: 8px;
+    padding: 6px 14px; font-family: 'Asap', sans-serif; font-size: .85rem;
+    cursor: pointer; color: var(--gray); transition: all var(--transition);
+  }
+  .btn-logout:hover { border-color: var(--red); color: var(--red); }
+
+  /* ─── SIDEBAR + CONTENT ─── */
+  .app-body { display: flex; min-height: calc(100vh - 62px); }
+  .sidebar {
+    width: 240px; background: white; border-right: 1px solid var(--gray-mid);
+    padding: 20px 12px; flex-shrink: 0;
+    position: sticky; top: 62px; height: calc(100vh - 62px); overflow-y: auto;
+  }
+  .sidebar-section { margin-bottom: 8px; }
+  .sidebar-label { font-size: .72rem; font-weight: 700; color: #aaa;
+    text-transform: uppercase; letter-spacing: .08em; padding: 8px 10px 4px; }
+  .nav-item {
+    display: flex; align-items: center; gap: 10px; padding: 9px 12px;
+    border-radius: 8px; cursor: pointer; font-size: .9rem; font-weight: 500;
+    color: var(--gray); transition: all var(--transition); position: relative;
+    border: none; background: none; width: 100%; text-align: left;
+  }
+  .nav-item:hover { background: var(--red-light); color: var(--red); }
+  .nav-item.active { background: var(--red); color: white; font-weight: 600; }
+  .nav-item svg { width: 18px; height: 18px; flex-shrink: 0; }
+  .nav-badge {
+    margin-left: auto; background: var(--red); color: white;
+    font-size: .7rem; border-radius: 10px; padding: 1px 7px; font-weight: 700;
+  }
+  .nav-item.active .nav-badge { background: rgba(255,255,255,.3); }
+
+  /* ─── MAIN ─── */
+  .main-content { flex: 1; padding: 28px; overflow-x: hidden; }
+  .page { display: none; animation: fadeUp .3s ease; }
+  .page.active { display: block; }
+  @keyframes fadeUp { from { opacity:0; transform:translateY(12px); } to { opacity:1; transform:translateY(0); } }
+
+  /* ─── CARDS ─── */
+  .page-header { margin-bottom: 24px; }
+  .page-header h2 { font-size: 1.5rem; font-weight: 700; color: var(--gray); }
+  .page-header p { color: #888; font-size: .9rem; margin-top: 4px; }
+  .breadcrumb { font-size: .8rem; color: #aaa; margin-bottom: 8px; }
+  .breadcrumb span { color: var(--red); }
+
+  .card {
+    background: white; border-radius: var(--radius); padding: 24px;
+    box-shadow: var(--shadow); margin-bottom: 20px;
+  }
+  .card-header { display: flex; align-items: center; justify-content: space-between; margin-bottom: 18px; }
+  .card-title { font-size: 1.05rem; font-weight: 700; color: var(--gray); }
+  .card-subtitle { font-size: .82rem; color: #888; margin-top: 2px; }
+
+  /* ─── STAT CARDS ─── */
+  .stats-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(180px, 1fr)); gap: 16px; margin-bottom: 24px; }
+  .stat-card {
+    background: white; border-radius: var(--radius); padding: 20px;
+    box-shadow: var(--shadow); border-left: 4px solid var(--red);
+    display: flex; align-items: center; gap: 14px;
+  }
+  .stat-icon { width: 44px; height: 44px; border-radius: 10px;
+    display: flex; align-items: center; justify-content: center; flex-shrink: 0; }
+  .stat-icon svg { width: 22px; height: 22px; }
+  .stat-value { font-size: 1.6rem; font-weight: 700; color: var(--gray); line-height: 1; }
+  .stat-label { font-size: .78rem; color: #888; margin-top: 2px; }
+
+  /* ─── TABLES ─── */
+  .table-wrap { overflow-x: auto; }
+  table { width: 100%; border-collapse: collapse; font-size: .88rem; }
+  thead th { background: var(--gray-light); padding: 10px 14px; text-align: left;
+    font-weight: 600; color: var(--gray); border-bottom: 2px solid var(--gray-mid); }
+  tbody td { padding: 10px 14px; border-bottom: 1px solid var(--gray-light); vertical-align: middle; }
+  tbody tr:hover { background: #fafafa; }
+  .status-pill {
+    display: inline-block; padding: 3px 10px; border-radius: 20px;
+    font-size: .75rem; font-weight: 600;
+  }
+  .pill-pending { background: #fff3e0; color: #e65100; }
+  .pill-progress { background: #e3f2fd; color: #1565c0; }
+  .pill-done { background: #e8f5e9; color: #2e7d32; }
+  .pill-calibration { background: #f3e5f5; color: #6a1b9a; }
+
+  /* ─── BUTTONS ─── */
+  .btn { padding: 9px 18px; border-radius: 8px; font-family: 'Asap', sans-serif;
+    font-size: .88rem; font-weight: 600; cursor: pointer; transition: all var(--transition);
+    border: none; display: inline-flex; align-items: center; gap: 6px; }
+  .btn-primary { background: var(--red); color: white; }
+  .btn-primary:hover { background: var(--red-dark); }
+  .btn-secondary { background: var(--gray-light); color: var(--gray); border: 1.5px solid var(--gray-mid); }
+  .btn-secondary:hover { border-color: var(--red); color: var(--red); }
+  .btn-sm { padding: 6px 12px; font-size: .8rem; }
+  .btn-danger { background: #ffebee; color: var(--red); border: 1.5px solid var(--red); }
+  .btn-danger:hover { background: var(--red); color: white; }
+  .btn-success { background: #e8f5e9; color: var(--success); border: 1.5px solid var(--success); }
+  .btn-success:hover { background: var(--success); color: white; }
+
+  /* ─── COMPETENCIAS EVALUACIÓN ─── */
+  .eval-section { margin-bottom: 30px; }
+  .eval-section-title {
+    font-size: 1rem; font-weight: 700; color: white; background: var(--gray);
+    padding: 10px 18px; border-radius: 8px 8px 0 0; display: flex; align-items: center; gap: 8px;
+  }
+  .eval-section-title svg { width: 16px; height: 16px; }
+  .competencia-block {
+    border: 1.5px solid var(--gray-mid); border-radius: 0 0 10px 10px;
+    border-top: none; overflow: hidden; margin-bottom: 18px;
+  }
+  .competencia-row {
+    padding: 16px 20px; border-bottom: 1px solid var(--gray-light);
+    background: white;
+  }
+  .competencia-row:last-child { border-bottom: none; }
+  .competencia-header { display: flex; align-items: flex-start; gap: 12px; margin-bottom: 10px; }
+  .comp-num { width: 26px; height: 26px; background: var(--red-light); color: var(--red);
+    border-radius: 50%; display: flex; align-items: center; justify-content: center;
+    font-weight: 700; font-size: .8rem; flex-shrink: 0; margin-top: 2px; }
+  .comp-name { font-weight: 600; color: var(--gray); font-size: .95rem; }
+  .comp-desc { font-size: .82rem; color: #888; margin-top: 2px; }
+  .rating-scale {
+    display: flex; gap: 6px; flex-wrap: wrap; margin: 10px 0 6px;
+  }
+  .rating-btn {
+    padding: 6px 14px; border: 2px solid var(--gray-mid); border-radius: 20px;
+    cursor: pointer; font-family: 'Asap', sans-serif; font-size: .82rem; font-weight: 600;
+    transition: all var(--transition); background: white;
+  }
+  .rating-btn:hover { border-color: var(--red); color: var(--red); }
+  .rating-btn.selected-1 { background: #ffebee; border-color: #e53935; color: #e53935; }
+  .rating-btn.selected-2 { background: #fff3e0; border-color: #fb8c00; color: #fb8c00; }
+  .rating-btn.selected-3 { background: #e8f5e9; border-color: #43a047; color: #2e7d32; }
+  .rating-btn.selected-4 { background: #e3f2fd; border-color: #1e88e5; color: #1565c0; }
+  .behaviors-box {
+    background: var(--gray-light); border-radius: 8px; padding: 10px 14px;
+    font-size: .82rem; color: var(--gray); margin-top: 8px; display: none;
+  }
+  .behaviors-box.show { display: block; animation: fadeUp .2s ease; }
+  .behaviors-box strong { color: var(--red); display: block; margin-bottom: 4px; }
+  .behaviors-box ul { padding-left: 16px; }
+  .behaviors-box li { margin-bottom: 3px; }
+  .comp-comment { width: 100%; margin-top: 8px; padding: 8px 12px;
+    border: 1.5px solid var(--gray-mid); border-radius: 8px; font-family: 'Asap', sans-serif;
+    font-size: .85rem; resize: vertical; min-height: 50px; outline: none; }
+  .comp-comment:focus { border-color: var(--red); }
+
+  /* ─── METAS/KPI ─── */
+  .meta-row { display: grid; grid-template-columns: 2fr 1fr 1fr 1fr 120px; gap: 10px;
+    padding: 12px 16px; border-bottom: 1px solid var(--gray-light); align-items: center; }
+  .meta-row.header { background: var(--gray-light); font-weight: 600; font-size: .82rem;
+    color: var(--gray); border-radius: 8px 8px 0 0; }
+  .meta-input { padding: 7px 10px; border: 1.5px solid var(--gray-mid); border-radius: 6px;
+    font-family: 'Asap', sans-serif; font-size: .85rem; width: 100%; outline: none; }
+  .meta-input:focus { border-color: var(--red); }
+  .progress-bar-wrap { height: 8px; background: var(--gray-light); border-radius: 4px; overflow: hidden; }
+  .progress-bar { height: 100%; border-radius: 4px; transition: width .5s ease; }
+
+  /* ─── PDI ─── */
+  .pdi-item {
+    background: white; border: 1.5px solid var(--gray-mid); border-radius: var(--radius);
+    padding: 18px 20px; margin-bottom: 14px; transition: border-color var(--transition);
+  }
+  .pdi-item:hover { border-color: var(--red); }
+  .pdi-item-header { display: flex; align-items: center; justify-content: space-between; margin-bottom: 12px; }
+  .pdi-item-title { font-weight: 600; color: var(--gray); font-size: .95rem; }
+  .pdi-progress-ring { position: relative; display: inline-flex; align-items: center; justify-content: center; }
+  .pdi-progress-ring svg { transform: rotate(-90deg); }
+  .pdi-progress-ring .ring-text {
+    position: absolute; font-weight: 700; font-size: .72rem; color: var(--gray);
+  }
+  .pdi-fields { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; }
+  .pdi-field label { font-size: .78rem; font-weight: 600; color: #888; display: block; margin-bottom: 3px; }
+  .pdi-field input, .pdi-field select, .pdi-field textarea {
+    width: 100%; padding: 7px 10px; border: 1.5px solid var(--gray-mid); border-radius: 6px;
+    font-family: 'Asap', sans-serif; font-size: .85rem; outline: none;
+  }
+  .pdi-field input:focus, .pdi-field select:focus, .pdi-field textarea:focus { border-color: var(--red); }
+
+  /* ─── RESULTADOS ─── */
+  .results-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 20px; }
+  .score-big {
+    text-align: center; padding: 24px;
+    border-radius: var(--radius); background: linear-gradient(135deg, var(--red), #e53935);
+    color: white;
+  }
+  .score-big .val { font-size: 3.5rem; font-weight: 700; line-height: 1; }
+  .score-big .label { font-size: .9rem; opacity: .85; margin-top: 6px; }
+  .score-big .cat { font-size: 1rem; font-weight: 600; margin-top: 8px;
+    background: rgba(255,255,255,.2); border-radius: 20px; padding: 4px 16px; display: inline-block; }
+  .chart-container { position: relative; height: 260px; }
+  .radar-container { position: relative; height: 300px; }
+
+  /* ─── ADMIN ─── */
+  .admin-tabs { display: flex; gap: 6px; margin-bottom: 20px; flex-wrap: wrap; }
+  .admin-tab {
+    padding: 8px 18px; border-radius: 20px; font-family: 'Asap', sans-serif;
+    font-size: .85rem; font-weight: 600; cursor: pointer; border: 2px solid var(--gray-mid);
+    background: white; color: var(--gray); transition: all var(--transition);
+  }
+  .admin-tab.active { background: var(--red); border-color: var(--red); color: white; }
+  .admin-tab-content { display: none; }
+  .admin-tab-content.active { display: block; animation: fadeUp .25s ease; }
+
+  /* ─── MODAL ─── */
+  .modal-overlay {
+    position: fixed; inset: 0; background: rgba(0,0,0,.45); z-index: 200;
+    display: none; align-items: center; justify-content: center; padding: 20px;
+  }
+  .modal-overlay.open { display: flex; }
+  .modal-box {
+    background: white; border-radius: 14px; padding: 28px 28px 24px;
+    width: 100%; max-width: 560px; max-height: 90vh; overflow-y: auto;
+    animation: fadeUp .25s ease; box-shadow: var(--shadow-lg);
+  }
+  .modal-header { display: flex; align-items: center; justify-content: space-between; margin-bottom: 20px; }
+  .modal-title { font-size: 1.1rem; font-weight: 700; color: var(--gray); }
+  .modal-close { background: none; border: none; cursor: pointer; color: #aaa; font-size: 1.4rem; line-height: 1; }
+  .modal-close:hover { color: var(--red); }
+  .modal-footer { display: flex; justify-content: flex-end; gap: 10px; margin-top: 20px; padding-top: 16px; border-top: 1px solid var(--gray-light); }
+
+  /* ─── TOAST ─── */
+  #toast {
+    position: fixed; bottom: 28px; right: 28px; background: var(--gray);
+    color: white; padding: 12px 22px; border-radius: 10px; font-size: .88rem;
+    font-weight: 500; z-index: 300; opacity: 0; transform: translateY(20px);
+    transition: all .3s ease; pointer-events: none;
+  }
+  #toast.show { opacity: 1; transform: translateY(0); }
+  #toast.success { background: var(--success); }
+  #toast.error { background: var(--red); }
+
+  /* ─── MISC ─── */
+  .empty-state { text-align: center; padding: 48px 20px; color: #aaa; }
+  .empty-state svg { width: 48px; height: 48px; margin-bottom: 14px; opacity: .3; }
+  .empty-state p { font-size: .95rem; }
+  .divider { border: none; border-top: 1px solid var(--gray-light); margin: 20px 0; }
+  .info-banner {
+    background: var(--red-light); border-left: 4px solid var(--red);
+    border-radius: 0 8px 8px 0; padding: 12px 16px; font-size: .88rem;
+    color: var(--red-dark); margin-bottom: 18px; display: flex; align-items: flex-start; gap: 10px;
+  }
+  .form-row { display: grid; grid-template-columns: 1fr 1fr; gap: 14px; }
+  .form-field { margin-bottom: 14px; }
+  .form-field label { display: block; font-size: .82rem; font-weight: 600; color: var(--gray); margin-bottom: 5px; }
+  .form-field input, .form-field select, .form-field textarea {
+    width: 100%; padding: 9px 12px; border: 1.5px solid var(--gray-mid);
+    border-radius: 8px; font-family: 'Asap', sans-serif; font-size: .88rem; outline: none;
+  }
+  .form-field input:focus, .form-field select:focus, .form-field textarea:focus { border-color: var(--red); }
+  .loading-overlay {
+    position: fixed; inset: 0; background: rgba(255,255,255,.8); z-index: 400;
+    display: flex; align-items: center; justify-content: center; display: none;
+  }
+  .spinner {
+    width: 42px; height: 42px; border: 4px solid var(--gray-mid);
+    border-top-color: var(--red); border-radius: 50%; animation: spin .8s linear infinite;
+  }
+  @keyframes spin { to { transform: rotate(360deg); } }
+
+  @media (max-width: 900px) {
+    .sidebar { width: 200px; }
+    .results-grid { grid-template-columns: 1fr; }
+  }
+  @media (max-width: 700px) {
+    .sidebar { display: none; }
+    .main-content { padding: 16px; }
+    .stats-grid { grid-template-columns: 1fr 1fr; }
+    .form-row { grid-template-columns: 1fr; }
+  }
+</style>
+</head>
+<body>
+
+<!-- LOADING -->
+<div class="loading-overlay" id="loadingOverlay"><div class="spinner"></div></div>
+
+<!-- TOAST -->
+<div id="toast"></div>
+
+<!-- ═══════════════ LOGIN ═══════════════ -->
+<div id="loginScreen">
+  <div class="login-card">
+    <div class="login-logo">
+      <div class="brand-icon">
+        <svg viewBox="0 0 24 24"><path d="M12 2C6.48 2 2 6.48 2 12s4.48 10 10 10 10-4.48 10-10S17.52 2 12 2zm-2 15l-5-5 1.41-1.41L10 14.17l7.59-7.59L19 8l-9 9z"/></svg>
+      </div>
+      <h1>Evaluación de Desempeño</h1>
+      <p>Sistema de Gestión del Talento Humano</p>
+    </div>
+    <div class="form-group">
+      <label>Usuario</label>
+      <input type="text" id="loginUser" placeholder="Ingresa tu usuario" autocomplete="username">
+    </div>
+    <div class="form-group">
+      <label>Contraseña</label>
+      <input type="password" id="loginPass" placeholder="Ingresa tu contraseña" autocomplete="current-password">
+    </div>
+    <button class="btn-login" onclick="handleLogin()">Ingresar al sistema</button>
+    <p class="login-error" id="loginError">Usuario o contraseña incorrectos</p>
+  </div>
+</div>
+
+<!-- ═══════════════ APP ═══════════════ -->
+<div id="appShell">
+  <!-- TOPBAR -->
+  <div class="topbar">
+    <div class="topbar-left">
+      <div class="topbar-logo">
+        <svg viewBox="0 0 24 24"><path d="M12 2C6.48 2 2 6.48 2 12s4.48 10 10 10 10-4.48 10-10S17.52 2 12 2zm-2 15l-5-5 1.41-1.41L10 14.17l7.59-7.59L19 8l-9 9z"/></svg>
+      </div>
+      <h1>Sistema de Evaluación</h1>
+    </div>
+    <div class="topbar-right">
+      <div class="user-badge">
+        <div class="user-avatar" id="userAvatar">U</div>
+        <span id="userNameBadge">Usuario</span>
+        <span class="user-role-tag" id="userRoleTag">ROL</span>
+      </div>
+      <button class="btn-logout" onclick="handleLogout()">Salir</button>
+    </div>
+  </div>
+
+  <div class="app-body">
+    <!-- SIDEBAR -->
+    <nav class="sidebar" id="sidebar">
+      <!-- filled by JS based on role -->
+    </nav>
+
+    <!-- MAIN -->
+    <main class="main-content" id="mainContent">
+
+      <!-- ─── PÁGINA: DASHBOARD ─── -->
+      <div class="page active" id="page-dashboard">
+        <div class="page-header">
+          <h2 id="dashTitle">Panel Principal</h2>
+          <p id="dashSubtitle">Resumen del periodo de evaluación</p>
+        </div>
+        <div class="stats-grid" id="statsGrid"></div>
+        <div style="display:grid;grid-template-columns:1fr 1fr;gap:20px" id="dashCharts">
+          <div class="card">
+            <div class="card-header">
+              <div><div class="card-title">Estado de Evaluaciones</div><div class="card-subtitle">Progreso general del ciclo</div></div>
+            </div>
+            <div class="chart-container"><canvas id="chartStatus"></canvas></div>
+          </div>
+          <div class="card">
+            <div class="card-header">
+              <div><div class="card-title">Distribución de Resultados</div><div class="card-subtitle">Calificación promedio por categoría</div></div>
+            </div>
+            <div class="chart-container"><canvas id="chartDist"></canvas></div>
+          </div>
+        </div>
+      </div>
+
+      <!-- ─── PÁGINA: MIS EVALUACIONES (JEFE) ─── -->
+      <div class="page" id="page-mis-evaluaciones">
+        <div class="page-header">
+          <h2>Mis Evaluaciones</h2>
+          <p>Evalúa a los colaboradores de tu equipo</p>
+        </div>
+        <div class="card">
+          <div class="card-header">
+            <div class="card-title">Equipo a evaluar</div>
+            <button class="btn btn-primary btn-sm" onclick="refreshTeam()">
+              <svg viewBox="0 0 24 24" width="14" height="14" fill="currentColor"><path d="M17.65 6.35C16.2 4.9 14.21 4 12 4c-4.42 0-7.99 3.58-7.99 8s3.57 8 7.99 8c3.73 0 6.84-2.55 7.73-6h-2.08c-.82 2.33-3.04 4-5.65 4-3.31 0-6-2.69-6-6s2.69-6 6-6c1.66 0 3.14.69 4.22 1.78L13 11h7V4l-2.35 2.35z"/></svg>
+              Actualizar
+            </button>
+          </div>
+          <div class="table-wrap">
+            <table id="teamTable">
+              <thead>
+                <tr>
+                  <th>Colaborador</th><th>Cargo</th><th>Estado Autoevaluación</th>
+                  <th>Estado Evaluación Jefe</th><th>Calificación</th><th>Acciones</th>
+                </tr>
+              </thead>
+              <tbody id="teamTableBody"></tbody>
+            </table>
+          </div>
+        </div>
+      </div>
+
+      <!-- ─── PÁGINA: FORMULARIO EVALUACIÓN ─── -->
+      <div class="page" id="page-form-eval">
+        <div class="breadcrumb">Panel → <span id="evalBreadName">Evaluaciones</span></div>
+        <div class="page-header">
+          <h2 id="evalFormTitle">Evaluación de Desempeño</h2>
+          <p id="evalFormSubtitle">Complete todas las secciones antes de enviar</p>
+        </div>
+
+        <div class="info-banner" id="evalReadOnlyBanner" style="display:none">
+          <svg width="18" height="18" viewBox="0 0 24 24" fill="currentColor"><path d="M12 2C6.48 2 2 6.48 2 12s4.48 10 10 10 10-4.48 10-10S17.52 2 12 2zm1 15h-2v-6h2v6zm0-8h-2V7h2v2z"/></svg>
+          Esta evaluación ya fue enviada y se encuentra en modo solo lectura.
+        </div>
+
+        <!-- SECCIÓN COMPETENCIAS -->
+        <div class="card">
+          <div class="card-header">
+            <div>
+              <div class="card-title">🎯 Evaluación de Competencias</div>
+              <div class="card-subtitle">Califica cada competencia del 1 al 4 según los comportamientos observados</div>
+            </div>
+            <div style="text-align:right">
+              <div style="font-size:1.8rem;font-weight:700;color:var(--red)" id="evalScoreComp">—</div>
+              <div style="font-size:.75rem;color:#888">Promedio competencias</div>
+            </div>
+          </div>
+          <div class="info-banner" style="font-size:.82rem">
+            <svg width="16" height="16" viewBox="0 0 24 24" fill="currentColor"><path d="M12 2C6.48 2 2 6.48 2 12s4.48 10 10 10 10-4.48 10-10S17.52 2 12 2zm1 15h-2v-6h2v6zm0-8h-2V7h2v2z"/></svg>
+            <div><strong>Escala de calificación:</strong> 1 = No Cumple &nbsp;|&nbsp; 2 = En Desarrollo &nbsp;|&nbsp; 3 = Cumple &nbsp;|&nbsp; 4 = Supera / Excepcional</div>
+          </div>
+          <div id="competenciasContainer"></div>
+        </div>
+
+        <!-- SECCIÓN METAS -->
+        <div class="card">
+          <div class="card-header">
+            <div>
+              <div class="card-title">📊 Evaluación de Desempeño (Metas/KPIs)</div>
+              <div class="card-subtitle">Evalúa el cumplimiento de las metas acordadas para el periodo</div>
+            </div>
+            <div style="text-align:right">
+              <div style="font-size:1.8rem;font-weight:700;color:var(--red)" id="evalScoreMetas">—</div>
+              <div style="font-size:.75rem;color:#888">% Cumplimiento metas</div>
+            </div>
+          </div>
+          <div id="metasContainer">
+            <div class="meta-row header">
+              <span>Meta / KPI</span><span>Peso %</span><span>Resultado Real</span><span>% Cumplimiento</span><span>Acciones</span>
+            </div>
+            <div id="metasRows"></div>
+          </div>
+          <button class="btn btn-secondary btn-sm" style="margin-top:12px" onclick="addMetaRow()" id="btnAddMeta">
+            <svg width="14" height="14" viewBox="0 0 24 24" fill="currentColor"><path d="M19 13h-6v6h-2v-6H5v-2h6V5h2v6h6v2z"/></svg>
+            Agregar meta
+          </button>
+        </div>
+
+        <!-- SECCIÓN COMENTARIOS -->
+        <div class="card">
+          <div class="card-title" style="margin-bottom:14px">💬 Comentarios y Fortalezas</div>
+          <div class="form-row">
+            <div class="form-field">
+              <label>Fortalezas identificadas</label>
+              <textarea class="comp-comment" id="evalFortalezas" rows="3" placeholder="Describe las principales fortalezas..."></textarea>
+            </div>
+            <div class="form-field">
+              <label>Oportunidades de mejora</label>
+              <textarea class="comp-comment" id="evalMejoras" rows="3" placeholder="Describe las áreas de mejora..."></textarea>
+            </div>
+          </div>
+          <div class="form-field">
+            <label>Comentario general del evaluador</label>
+            <textarea class="comp-comment" id="evalComentario" rows="3" placeholder="Comentario general sobre el desempeño..."></textarea>
+          </div>
+        </div>
+
+        <div style="display:flex;gap:12px;justify-content:flex-end;margin-bottom:20px" id="evalButtons">
+          <button class="btn btn-secondary" onclick="saveEvalDraft()">Guardar borrador</button>
+          <button class="btn btn-primary" onclick="submitEval()">
+            <svg width="16" height="16" viewBox="0 0 24 24" fill="currentColor"><path d="M2.01 21L23 12 2.01 3 2 10l15 2-15 2z"/></svg>
+            Enviar evaluación
+          </button>
+        </div>
+      </div>
+
+      <!-- ─── PÁGINA: AUTOEVALUACIÓN ─── -->
+      <div class="page" id="page-autoevaluacion">
+        <div class="page-header">
+          <h2>Mi Autoevaluación</h2>
+          <p>Evalúa tu propio desempeño de manera reflexiva y honesta</p>
+        </div>
+        <div class="card" id="autoEvalCard">
+          <div class="card-header">
+            <div class="card-title">Estado de mi autoevaluación</div>
+            <span class="status-pill" id="autoEvalStatus">Pendiente</span>
+          </div>
+          <p style="color:#888;font-size:.9rem;margin-bottom:16px">
+            Tu autoevaluación es fundamental para el proceso. Responde con honestidad y objetividad.
+          </p>
+          <button class="btn btn-primary" onclick="openAutoEval()" id="btnOpenAutoEval">Iniciar autoevaluación</button>
+        </div>
+        <div id="autoEvalFormArea" style="display:none"></div>
+      </div>
+
+      <!-- ─── PÁGINA: MIS RESULTADOS ─── -->
+      <div class="page" id="page-resultados">
+        <div class="page-header">
+          <h2>Mis Resultados</h2>
+          <p>Visualiza los resultados de tu evaluación de desempeño</p>
+        </div>
+        <div id="resultadosContent">
+          <div class="empty-state">
+            <svg viewBox="0 0 24 24" fill="currentColor"><path d="M11.99 2C6.47 2 2 6.48 2 12s4.47 10 9.99 10C17.52 22 22 17.52 22 12S17.52 2 11.99 2zM12 20c-4.42 0-8-3.58-8-8s3.58-8 8-8 8 3.58 8 8-3.58 8-8 8zm.5-13H11v6l5.25 3.15.75-1.23-4.5-2.67V7z"/></svg>
+            <p>Tus resultados estarán disponibles cuando tu evaluador complete y publique tu evaluación.</p>
+          </div>
+        </div>
+      </div>
+
+      <!-- ─── PÁGINA: PDI ─── -->
+      <div class="page" id="page-pdi">
+        <div class="page-header">
+          <h2>Plan de Desarrollo Individual</h2>
+          <p>Gestiona y haz seguimiento a los planes de desarrollo del equipo</p>
+        </div>
+        <div id="pdiContent"></div>
+      </div>
+
+      <!-- ─── PÁGINA: ADMIN - USUARIOS ─── -->
+      <div class="page" id="page-admin">
+        <div class="page-header">
+          <h2>Administración</h2>
+          <p>Gestión de usuarios, competencias y periodos de evaluación</p>
+        </div>
+        <div class="admin-tabs">
+          <button class="admin-tab active" onclick="switchAdminTab('usuarios',this)">Usuarios</button>
+          <button class="admin-tab" onclick="switchAdminTab('competencias',this)">Competencias</button>
+          <button class="admin-tab" onclick="switchAdminTab('periodo',this)">Periodo</button>
+          <button class="admin-tab" onclick="switchAdminTab('reportes',this)">Reportes</button>
+        </div>
+        <div class="admin-tab-content active" id="adminTab-usuarios">
+          <div class="card">
+            <div class="card-header">
+              <div class="card-title">Gestión de Usuarios</div>
+              <button class="btn btn-primary btn-sm" onclick="openUserModal()">+ Nuevo usuario</button>
+            </div>
+            <div class="table-wrap">
+              <table>
+                <thead><tr><th>Nombre</th><th>Usuario</th><th>Cargo</th><th>Rol</th><th>Jefe</th><th>Estado</th><th>Acciones</th></tr></thead>
+                <tbody id="usersTableBody"></tbody>
+              </table>
+            </div>
+          </div>
+        </div>
+        <div class="admin-tab-content" id="adminTab-competencias">
+          <div class="card">
+            <div class="card-header">
+              <div class="card-title">Competencias por Cargo</div>
+              <button class="btn btn-primary btn-sm" onclick="openCompModal()">+ Nueva competencia</button>
+            </div>
+            <div class="table-wrap">
+              <table>
+                <thead><tr><th>Competencia</th><th>Descripción</th><th>Cargo(s)</th><th>Peso %</th><th>Acciones</th></tr></thead>
+                <tbody id="compTableBody"></tbody>
+              </table>
+            </div>
+          </div>
+        </div>
+        <div class="admin-tab-content" id="adminTab-periodo">
+          <div class="card">
+            <div class="card-title" style="margin-bottom:16px">Configuración del Periodo de Evaluación</div>
+            <div class="form-row">
+              <div class="form-field">
+                <label>Nombre del periodo</label>
+                <input type="text" id="periodName" placeholder="Ej: Evaluación Anual 2025">
+              </div>
+              <div class="form-field">
+                <label>Estado</label>
+                <select id="periodStatus">
+                  <option value="open">Abierto</option>
+                  <option value="calibration">En Calibración</option>
+                  <option value="closed">Cerrado</option>
+                </select>
+              </div>
+            </div>
+            <div class="form-row">
+              <div class="form-field">
+                <label>Fecha inicio</label>
+                <input type="date" id="periodStart">
+              </div>
+              <div class="form-field">
+                <label>Fecha cierre</label>
+                <input type="date" id="periodEnd">
+              </div>
+            </div>
+            <div class="form-row">
+              <div class="form-field">
+                <label>Peso Competencias (%)</label>
+                <input type="number" id="pesoComp" value="60" min="0" max="100">
+              </div>
+              <div class="form-field">
+                <label>Peso Desempeño/Metas (%)</label>
+                <input type="number" id="pesoMetas" value="40" min="0" max="100">
+              </div>
+            </div>
+            <button class="btn btn-primary" onclick="savePeriod()">Guardar configuración</button>
+          </div>
+        </div>
+        <div class="admin-tab-content" id="adminTab-reportes">
+          <div class="card">
+            <div class="card-title" style="margin-bottom:16px">Reportes Consolidados</div>
+            <div style="display:grid;grid-template-columns:1fr 1fr;gap:20px">
+              <div>
+                <div class="chart-container"><canvas id="chartAdminDist"></canvas></div>
+              </div>
+              <div>
+                <div class="radar-container"><canvas id="chartAdminRadar"></canvas></div>
+              </div>
+            </div>
+            <hr class="divider">
+            <div class="table-wrap">
+              <table id="reportTable">
+                <thead><tr><th>Colaborador</th><th>Cargo</th><th>Jefe</th><th>Comp.</th><th>Desempeño</th><th>Final</th><th>Categoría</th></tr></thead>
+                <tbody id="reportTableBody"></tbody>
+              </table>
+            </div>
+            <div style="margin-top:14px;display:flex;gap:10px">
+              <button class="btn btn-secondary btn-sm" onclick="exportReport()">📥 Exportar CSV</button>
+            </div>
+          </div>
+        </div>
+      </div>
+
+    </main>
+  </div>
+</div>
+
+<!-- MODAL GENÉRICO -->
+<div class="modal-overlay" id="modalOverlay">
+  <div class="modal-box" id="modalBox">
+    <div class="modal-header">
+      <div class="modal-title" id="modalTitle">Modal</div>
+      <button class="modal-close" onclick="closeModal()">✕</button>
+    </div>
+    <div id="modalBody"></div>
+    <div class="modal-footer" id="modalFooter"></div>
+  </div>
+</div>
+
+<script>
+// ═══════════════════════════════════════════
+//  CONFIG — Reemplaza con tu URL de Google Apps Script
+// ═══════════════════════════════════════════
+const SCRIPT_URL = 'https://script.google.com/macros/s/AKfycbwV2swkNPD6VaOiYW6B2TcMxyJSRliVCaOIf_Kk4fBJH1Xb1nJYbqrTHs1D_CETFhEm/exec';
+
+// ═══════════════════════════════════════════
+//  STATE
+// ═══════════════════════════════════════════
+let STATE = {
+  user: null,        // {id, nombre, usuario, cargo, rol, jefe_id}
+  users: [],
+  competencias: [],
+  evaluaciones: [],
+  pdi: [],
+  periodo: {},
+  currentEval: null,
+  charts: {}
+};
+
+// ═══════════════════════════════════════════
+//  BEHAVIORS POR CALIFICACIÓN
+// ═══════════════════════════════════════════
+const BEHAVIORS = {
+  1: { label: 'No Cumple', color: '#e53935',
+    desc: 'El colaborador no demuestra la competencia o su comportamiento está por debajo de lo mínimo esperado.',
+    items: [
+      'Requiere supervisión constante y no ejecuta la competencia de forma autónoma',
+      'Sus acciones en esta área generan errores frecuentes o impacto negativo en el equipo',
+      'No reconoce sus brechas ni muestra disposición activa de mejora',
+      'Los resultados asociados a esta competencia son consistentemente insatisfactorios'
+    ]
+  },
+  2: { label: 'En Desarrollo', color: '#fb8c00',
+    desc: 'Está desarrollando la competencia pero aún no alcanza el nivel esperado para su cargo.',
+    items: [
+      'Aplica la competencia de forma inconsistente: bien en situaciones simples, con dificultad en las complejas',
+      'Necesita orientación frecuente del líder para situaciones cotidianas relacionadas',
+      'Reconoce sus áreas de mejora pero no siempre actúa sobre ellas de forma autónoma',
+      'Muestra progreso gradual aunque aún hay brechas importantes que cerrar'
+    ]
+  },
+  3: { label: 'Cumple', color: '#43a047',
+    desc: 'Cumple con el nivel esperado para su cargo de manera consistente y autónoma.',
+    items: [
+      'Aplica la competencia de forma consistente y sin necesidad de orientación constante',
+      'Cumple con los estándares y expectativas definidas para su cargo en esta área',
+      'Gestiona con solvencia las situaciones habituales y algunas de alta complejidad',
+      'Sus resultados en esta competencia son confiables y generan reconocimiento'
+    ]
+  },
+  4: { label: 'Supera / Excepcional', color: '#1e88e5',
+    desc: 'Supera las expectativas del cargo y es referente positivo para el equipo y la organización.',
+    items: [
+      'Aplica la competencia a un nivel claramente superior al esperado para su cargo',
+      'Apoya activamente el desarrollo de esta competencia en sus compañeros o equipo',
+      'Propone mejoras, buenas prácticas e iniciativas relacionadas que otros adoptan',
+      'Sus resultados en esta área son consistentemente extraordinarios e impactan la organización'
+    ]
+  },
+};
+
+// ═══════════════════════════════════════════
+//  DEMO DATA (se reemplaza con llamadas al backend)
+// ═══════════════════════════════════════════
+const DEMO_USERS = [
+  { id:'U001', nombre:'Admin Sistema',  usuario:'admin',    contrasena:'admin123',   cargo:'Administrador',     rol:'admin',  jefe_id:'',    activo:true },
+  { id:'U002', nombre:'Carlos Gómez',   usuario:'cgomez',   contrasena:'jefe123',    cargo:'Gerente Comercial', rol:'jefe',   jefe_id:'',    activo:true },
+  { id:'U003', nombre:'Laura Martínez', usuario:'lmartinez',contrasena:'colab123',   cargo:'Ejecutiva Comercial',rol:'colaborador',jefe_id:'U002',activo:true },
+  { id:'U004', nombre:'Andrés Ruiz',    usuario:'aruiz',    contrasena:'colab456',   cargo:'Analista de Datos', rol:'colaborador',jefe_id:'U002',activo:true },
+  { id:'U005', nombre:'Sofía Herrera',  usuario:'sherrera', contrasena:'colab789',   cargo:'Coordinadora RRHH', rol:'colaborador',jefe_id:'U002',activo:true },
+];
+
+const DEMO_COMPETENCIAS = [
+  { id:'C001', nombre:'Orientación al Logro',   descripcion:'Capacidad para establecer y superar metas retadoras', cargos:'Todos',  peso:15 },
+  { id:'C002', nombre:'Trabajo en Equipo',       descripcion:'Habilidad para colaborar y construir relaciones positivas', cargos:'Todos', peso:15 },
+  { id:'C003', nombre:'Comunicación Efectiva',   descripcion:'Capacidad para transmitir ideas con claridad y escuchar activamente', cargos:'Todos', peso:15 },
+  { id:'C004', nombre:'Orientación al Cliente',  descripcion:'Enfoque en satisfacer y superar las expectativas del cliente', cargos:'Ejecutiva Comercial', peso:20 },
+  { id:'C005', nombre:'Liderazgo',               descripcion:'Capacidad para guiar, motivar y desarrollar a otros', cargos:'Gerente Comercial', peso:20 },
+  { id:'C006', nombre:'Pensamiento Analítico',   descripcion:'Habilidad para analizar información y tomar decisiones basadas en datos', cargos:'Analista de Datos', peso:20 },
+  { id:'C007', nombre:'Adaptabilidad',           descripcion:'Capacidad de ajustarse eficazmente ante cambios e incertidumbre', cargos:'Todos', peso:10 },
+  { id:'C008', nombre:'Innovación y Creatividad',descripcion:'Propone soluciones nuevas y mejoras continuas en su trabajo', cargos:'Todos', peso:10 },
+  { id:'C009', nombre:'Integridad y Ética',      descripcion:'Actúa con transparencia, honestidad y coherencia con los valores', cargos:'Todos', peso:15 },
+];
+
+const DEMO_EVALUACIONES = [
+  { id:'E001', evaluado_id:'U003', evaluador_id:'U002', tipo:'jefe', periodo:'2025', estado:'pendiente', score_comp:null, score_metas:null, score_final:null, comp_scores:{}, metas:[], fortalezas:'', mejoras:'', comentario:'', fecha_envio:null },
+  { id:'E002', evaluado_id:'U003', evaluador_id:'U003', tipo:'auto', periodo:'2025', estado:'pendiente', score_comp:null, score_metas:null, score_final:null, comp_scores:{}, metas:[], fortalezas:'', mejoras:'', comentario:'', fecha_envio:null },
+  { id:'E003', evaluado_id:'U004', evaluador_id:'U002', tipo:'jefe', periodo:'2025', estado:'pendiente', score_comp:null, score_metas:null, score_final:null, comp_scores:{}, metas:[], fortalezas:'', mejoras:'', comentario:'', fecha_envio:null },
+  { id:'E004', evaluado_id:'U004', evaluador_id:'U004', tipo:'auto', periodo:'2025', estado:'pendiente', score_comp:null, score_metas:null, score_final:null, comp_scores:{}, metas:[], fortalezas:'', mejoras:'', comentario:'', fecha_envio:null },
+  { id:'E005', evaluado_id:'U005', evaluador_id:'U002', tipo:'jefe', periodo:'2025', estado:'pendiente', score_comp:null, score_metas:null, score_final:null, comp_scores:{}, metas:[], fortalezas:'', mejoras:'', comentario:'', fecha_envio:null },
+  { id:'E006', evaluado_id:'U005', evaluador_id:'U005', tipo:'auto', periodo:'2025', estado:'enviado', score_comp:3.2, score_metas:85, score_final:3.0, comp_scores:{C001:3,C002:3,C003:4,C007:3,C008:3,C009:4}, metas:[{meta:'Reducir rotación 10%',peso:50,resultado:'8%',cumplimiento:80},{meta:'Implementar onboarding',peso:50,resultado:'Completado',cumplimiento:100}], fortalezas:'Excelente gestión del clima', mejoras:'Fortalecer análisis de datos', comentario:'Muy buen desempeño general', fecha_envio:'2025-11-15' },
+];
+
+const DEMO_PDI = [
+  { id:'P001', colaborador_id:'U003', jefe_id:'U002', competencia:'Comunicación Efectiva', accion:'Curso de comunicación asertiva', recursos:'Plataforma LMS interna', fecha_inicio:'2025-01-15', fecha_fin:'2025-06-30', estado:'en_progreso', progreso:45, observaciones:'' },
+  { id:'P002', colaborador_id:'U005', jefe_id:'U002', competencia:'Pensamiento Analítico', accion:'Certificación en Excel avanzado y Power BI', recursos:'Presupuesto capacitación', fecha_inicio:'2025-02-01', fecha_fin:'2025-07-31', estado:'en_progreso', progreso:70, observaciones:'Va muy bien' },
+];
+
+const DEMO_PERIODO = { nombre:'Evaluación Anual 2025', estado:'open', inicio:'2025-10-01', fin:'2025-12-31', peso_comp:60, peso_metas:40 };
+
+// ═══════════════════════════════════════════
+//  UTILS
+// ═══════════════════════════════════════════
+function showToast(msg, type='') {
+  const t = document.getElementById('toast');
+  t.textContent = msg; t.className = 'show ' + type;
+  setTimeout(() => { t.className = ''; }, 3200);
+}
+function showLoading(v) { document.getElementById('loadingOverlay').style.display = v ? 'flex' : 'none'; }
+function getCategory(score) {
+  if (score >= 3.5) return { label: 'Excepcional',     color: '#1e88e5' };
+  if (score >= 2.5) return { label: 'Cumple',          color: '#43a047' };
+  if (score >= 1.5) return { label: 'En Desarrollo',   color: '#fb8c00' };
+  return                   { label: 'No Cumple',       color: '#e53935' };
+}
+function getUserById(id) { return STATE.users.find(u => u.id === id); }
+function getCompsByRole(cargo) {
+  return STATE.competencias.filter(c => c.cargos === 'Todos' || c.cargos.includes(cargo));
+}
+
+// ═══════════════════════════════════════════
+//  BACKEND CALLS (con demo fallback)
+// ═══════════════════════════════════════════
+async function apiCall(action, data={}) {
+  try {
+    showLoading(true);
+    const url = SCRIPT_URL + '?action=' + action + '&data=' + encodeURIComponent(JSON.stringify(data));
+    const resp = await fetch(url);
+    const json = await resp.json();
+    showLoading(false);
+    return json;
+  } catch(e) {
+    showLoading(false);
+    // MODO DEMO: usar datos locales
+    return demoBridge(action, data);
+  }
+}
+
+function demoBridge(action, data) {
+  switch(action) {
+    case 'login':
+      const u = DEMO_USERS.find(x => x.usuario === data.usuario && x.contrasena === data.contrasena && x.activo);
+      return u ? { ok: true, user: u } : { ok: false, error: 'Credenciales incorrectas' };
+    case 'getUsers': return { ok:true, data: DEMO_USERS };
+    case 'getCompetencias': return { ok:true, data: DEMO_COMPETENCIAS };
+    case 'getEvaluaciones': return { ok:true, data: DEMO_EVALUACIONES };
+    case 'getPDI': return { ok:true, data: DEMO_PDI };
+    case 'getPeriodo': return { ok:true, data: DEMO_PERIODO };
+    case 'saveEval':
+      const idx = DEMO_EVALUACIONES.findIndex(e => e.id === data.id);
+      if (idx >= 0) Object.assign(DEMO_EVALUACIONES[idx], data);
+      return { ok:true };
+    case 'savePDI':
+      const pidx = DEMO_PDI.findIndex(p => p.id === data.id);
+      if (pidx >= 0) Object.assign(DEMO_PDI[pidx], data);
+      else DEMO_PDI.push(data);
+      return { ok:true };
+    case 'saveUser':
+      const uidx = DEMO_USERS.findIndex(u => u.id === data.id);
+      if (uidx >= 0) Object.assign(DEMO_USERS[uidx], data);
+      else DEMO_USERS.push(data);
+      return { ok:true };
+    default: return { ok:true };
+  }
+}
+
+// ═══════════════════════════════════════════
+//  AUTH
+// ═══════════════════════════════════════════
+async function handleLogin() {
+  const usuario = document.getElementById('loginUser').value.trim();
+  const contrasena = document.getElementById('loginPass').value;
+  if (!usuario || !contrasena) { showError('Ingresa usuario y contraseña'); return; }
+  const res = await apiCall('login', { usuario, contrasena });
+  if (res.ok) {
+    STATE.user = res.user;
+    await loadAllData();
+    initApp();
+  } else {
+    showError(res.error || 'Error de autenticación');
+  }
+}
+function showError(msg) {
+  const e = document.getElementById('loginError');
+  e.textContent = msg; e.style.display = 'block';
+  setTimeout(() => e.style.display = 'none', 3000);
+}
+function handleLogout() {
+  STATE = { user:null, users:[], competencias:[], evaluaciones:[], pdi:[], periodo:{}, currentEval:null, charts:{} };
+  document.getElementById('appShell').style.display = 'none';
+  document.getElementById('loginScreen').style.display = 'flex';
+  document.getElementById('loginUser').value = '';
+  document.getElementById('loginPass').value = '';
+}
+
+// ═══════════════════════════════════════════
+//  DATA LOAD
+// ═══════════════════════════════════════════
+async function loadAllData() {
+  const [ru, rc, re, rp, rper] = await Promise.all([
+    apiCall('getUsers'), apiCall('getCompetencias'),
+    apiCall('getEvaluaciones'), apiCall('getPDI'), apiCall('getPeriodo')
+  ]);
+  STATE.users = ru.data || [];
+  STATE.competencias = rc.data || [];
+  STATE.evaluaciones = re.data || [];
+  STATE.pdi = rp.data || [];
+  STATE.periodo = rper.data || {};
+}
+
+// ═══════════════════════════════════════════
+//  INIT APP
+// ═══════════════════════════════════════════
+function initApp() {
+  document.getElementById('loginScreen').style.display = 'none';
+  document.getElementById('appShell').style.display = 'block';
+  const u = STATE.user;
+  document.getElementById('userAvatar').textContent = u.nombre.charAt(0).toUpperCase();
+  document.getElementById('userNameBadge').textContent = u.nombre.split(' ')[0];
+  const roleLabels = { admin:'Admin', jefe:'Jefe', colaborador:'Colaborador' };
+  document.getElementById('userRoleTag').textContent = roleLabels[u.rol] || u.rol;
+  buildSidebar();
+  navigateTo('dashboard');
+}
+
+// ═══════════════════════════════════════════
+//  SIDEBAR
+// ═══════════════════════════════════════════
+function buildSidebar() {
+  const rol = STATE.user.rol;
+  const items = {
+    admin: [
+      { id:'dashboard', icon:'chart', label:'Dashboard' },
+      { id:'admin', icon:'settings', label:'Administración' },
+      { id:'mis-evaluaciones', icon:'eval', label:'Evaluaciones del equipo' },
+      { id:'pdi', icon:'pdi', label:'PDI Equipos' },
+    ],
+    jefe: [
+      { id:'dashboard', icon:'chart', label:'Dashboard' },
+      { id:'mis-evaluaciones', icon:'eval', label:'Evaluar equipo' },
+      { id:'pdi', icon:'pdi', label:'PDI del equipo' },
+    ],
+    colaborador: [
+      { id:'dashboard', icon:'chart', label:'Mi panel' },
+      { id:'autoevaluacion', icon:'self', label:'Mi Autoevaluación' },
+      { id:'resultados', icon:'results', label:'Mis Resultados' },
+      { id:'pdi', icon:'pdi', label:'Mi PDI' },
+    ]
+  };
+  const icons = {
+    chart: '<path d="M19 3H5c-1.1 0-2 .9-2 2v14c0 1.1.9 2 2 2h14c1.1 0 2-.9 2-2V5c0-1.1-.9-2-2-2zM9 17H7v-7h2v7zm4 0h-2V7h2v10zm4 0h-2v-4h2v4z"/>',
+    eval: '<path d="M9 11H7v2h2v-2zm4 0h-2v2h2v-2zm4 0h-2v2h2v-2zm2-7h-1V2h-2v2H8V2H6v2H5c-1.11 0-1.99.9-1.99 2L3 20c0 1.1.89 2 2 2h14c1.1 0 2-.9 2-2V6c0-1.1-.9-2-2-2zm0 16H5V9h14v11z"/>',
+    settings: '<path d="M19.14 12.94c.04-.3.06-.61.06-.94 0-.32-.02-.64-.07-.94l2.03-1.58c.18-.14.23-.41.12-.61l-1.92-3.32c-.12-.22-.37-.29-.59-.22l-2.39.96c-.5-.38-1.03-.7-1.62-.94l-.36-2.54c-.04-.24-.24-.41-.48-.41h-3.84c-.24 0-.43.17-.47.41l-.36 2.54c-.59.24-1.13.57-1.62.94l-2.39-.96c-.22-.08-.47 0-.59.22L2.74 8.87c-.12.21-.08.47.12.61l2.03 1.58c-.05.3-.09.63-.09.94s.02.64.07.94l-2.03 1.58c-.18.14-.23.41-.12.61l1.92 3.32c.12.22.37.29.59.22l2.39-.96c.5.38 1.03.7 1.62.94l.36 2.54c.05.24.24.41.48.41h3.84c.24 0 .44-.17.47-.41l.36-2.54c.59-.24 1.13-.56 1.62-.94l2.39.96c.22.08.47 0 .59-.22l1.92-3.32c.12-.22.07-.47-.12-.61l-2.01-1.58zM12 15.6c-1.98 0-3.6-1.62-3.6-3.6s1.62-3.6 3.6-3.6 3.6 1.62 3.6 3.6-1.62 3.6-3.6 3.6z"/>',
+    pdi: '<path d="M12 3L1 9l11 6 9-4.91V17h2V9M5 13.18v4L12 21l7-3.82v-4L12 17l-7-3.82z"/>',
+    self: '<path d="M12 12c2.21 0 4-1.79 4-4s-1.79-4-4-4-4 1.79-4 4 1.79 4 4 4zm0 2c-2.67 0-8 1.34-8 4v2h16v-2c0-2.66-5.33-4-8-4z"/>',
+    results: '<path d="M19 3H5c-1.1 0-2 .9-2 2v14c0 1.1.9 2 2 2h14c1.1 0 2-.9 2-2V5c0-1.1-.9-2-2-2zM9 17H7v-7h2v7zm4 0h-2V7h2v10zm4 0h-2v-4h2v4z"/>',
+  };
+  const list = items[rol] || items.colaborador;
+  let html = '<div class="sidebar-section"><div class="sidebar-label">Menú principal</div>';
+  list.forEach(item => {
+    html += `<button class="nav-item" id="nav-${item.id}" onclick="navigateTo('${item.id}')">
+      <svg viewBox="0 0 24 24" fill="currentColor">${icons[item.icon]||icons.chart}</svg>
+      ${item.label}
+    </button>`;
+  });
+  html += '</div>';
+  document.getElementById('sidebar').innerHTML = html;
+}
+
+// ═══════════════════════════════════════════
+//  NAVIGATION
+// ═══════════════════════════════════════════
+function navigateTo(pageId) {
+  document.querySelectorAll('.page').forEach(p => p.classList.remove('active'));
+  document.querySelectorAll('.nav-item').forEach(n => n.classList.remove('active'));
+  const pg = document.getElementById('page-' + pageId);
+  if (pg) pg.classList.add('active');
+  const nav = document.getElementById('nav-' + pageId);
+  if (nav) nav.classList.add('active');
+
+  // Render de cada página
+  switch(pageId) {
+    case 'dashboard': renderDashboard(); break;
+    case 'mis-evaluaciones': renderTeam(); break;
+    case 'autoevaluacion': renderAutoEval(); break;
+    case 'resultados': renderResultados(); break;
+    case 'pdi': renderPDI(); break;
+    case 'admin': renderAdmin(); break;
+  }
+}
+
+// ═══════════════════════════════════════════
+//  DASHBOARD
+// ═══════════════════════════════════════════
+function renderDashboard() {
+  const u = STATE.user;
+  const rol = u.rol;
+
+  // Stats según rol
+  let stats = [];
+  if (rol === 'admin' || rol === 'jefe') {
+    const teamIds = STATE.users.filter(x => x.jefe_id === u.id || rol === 'admin').map(x => x.id);
+    const evs = STATE.evaluaciones.filter(e => teamIds.includes(e.evaluado_id) && e.tipo === 'jefe');
+    const done = evs.filter(e => e.estado === 'enviado').length;
+    const total = evs.length;
+    stats = [
+      { val: total, label: 'Total colaboradores', color: 'var(--red-light)', iconColor: 'var(--red)', icon: '<path d="M16 11c1.66 0 2.99-1.34 2.99-3S17.66 5 16 5c-1.66 0-3 1.34-3 3s1.34 3 3 3zm-8 0c1.66 0 2.99-1.34 2.99-3S9.66 5 8 5C6.34 5 5 6.34 5 8s1.34 3 3 3zm0 2c-2.33 0-7 1.17-7 3.5V19h14v-2.5c0-2.33-4.67-3.5-7-3.5zm8 0c-.29 0-.62.02-.97.05 1.16.84 1.97 1.97 1.97 3.45V19h6v-2.5c0-2.33-4.67-3.5-7-3.5z"/>' },
+      { val: done, label: 'Evaluaciones enviadas', color: '#e8f5e9', iconColor: 'var(--success)', icon: '<path d="M9 16.17L4.83 12l-1.42 1.41L9 19 21 7l-1.41-1.41z"/>' },
+      { val: total - done, label: 'Evaluaciones pendientes', color: '#fff3e0', iconColor: '#f57c00', icon: '<path d="M12 2C6.48 2 2 6.48 2 12s4.48 10 10 10 10-4.48 10-10S17.52 2 12 2zm1 15h-2v-2h2v2zm0-4h-2V7h2v6z"/>' },
+      { val: STATE.pdi.filter(p => teamIds.includes(p.colaborador_id)).length, label: 'PDI activos', color: '#e3f2fd', iconColor: 'var(--info)', icon: '<path d="M12 3L1 9l11 6 9-4.91V17h2V9M5 13.18v4L12 21l7-3.82v-4L12 17l-7-3.82z"/>' },
+    ];
+  } else {
+    const myEval = STATE.evaluaciones.find(e => e.evaluado_id === u.id && e.tipo === 'jefe' && e.estado === 'enviado');
+    const autoEval = STATE.evaluaciones.find(e => e.evaluado_id === u.id && e.tipo === 'auto');
+    const myPDI = STATE.pdi.filter(p => p.colaborador_id === u.id);
+    const avgPDI = myPDI.length ? Math.round(myPDI.reduce((a,p) => a+p.progreso,0)/myPDI.length) : 0;
+    stats = [
+      { val: myEval ? myEval.score_final?.toFixed(1) || '—' : '—', label: 'Mi calificación final', color: 'var(--red-light)', iconColor: 'var(--red)', icon: '<path d="M19 3H5c-1.1 0-2 .9-2 2v14c0 1.1.9 2 2 2h14c1.1 0 2-.9 2-2V5c0-1.1-.9-2-2-2zM9 17H7v-7h2v7zm4 0h-2V7h2v10zm4 0h-2v-4h2v4z"/>' },
+      { val: autoEval?.estado === 'enviado' ? '✓' : '⏳', label: 'Mi autoevaluación', color: '#e8f5e9', iconColor: 'var(--success)', icon: '<path d="M12 12c2.21 0 4-1.79 4-4s-1.79-4-4-4-4 1.79-4 4 1.79 4 4 4zm0 2c-2.67 0-8 1.34-8 4v2h16v-2c0-2.66-5.33-4-8-4z"/>' },
+      { val: myPDI.length, label: 'Acciones de desarrollo', color: '#e3f2fd', iconColor: 'var(--info)', icon: '<path d="M12 3L1 9l11 6 9-4.91V17h2V9M5 13.18v4L12 21l7-3.82v-4L12 17l-7-3.82z"/>' },
+      { val: avgPDI + '%', label: 'Avance PDI promedio', color: '#fff3e0', iconColor: '#f57c00', icon: '<path d="M12 2C6.48 2 2 6.48 2 12s4.48 10 10 10 10-4.48 10-10S17.52 2 12 2zm-2 14.5v-9l6 4.5-6 4.5z"/>' },
+    ];
+  }
+
+  document.getElementById('statsGrid').innerHTML = stats.map(s => `
+    <div class="stat-card">
+      <div class="stat-icon" style="background:${s.color}">
+        <svg viewBox="0 0 24 24" fill="${s.iconColor}">${s.icon}</svg>
+      </div>
+      <div>
+        <div class="stat-value">${s.val}</div>
+        <div class="stat-label">${s.label}</div>
+      </div>
+    </div>
+  `).join('');
+
+  // Charts
+  setTimeout(() => {
+    renderDashCharts();
+  }, 100);
+}
+
+function renderDashCharts() {
+  // Destruir charts previos
+  ['chartStatus','chartDist'].forEach(id => {
+    if (STATE.charts[id]) { STATE.charts[id].destroy(); delete STATE.charts[id]; }
+  });
+
+  const evs = STATE.evaluaciones.filter(e => e.tipo === 'jefe');
+  const pendiente = evs.filter(e => e.estado === 'pendiente').length;
+  const enviado = evs.filter(e => e.estado === 'enviado').length;
+  const borrador = evs.filter(e => e.estado === 'borrador').length;
+
+  const ctx1 = document.getElementById('chartStatus')?.getContext('2d');
+  if (ctx1) {
+    STATE.charts['chartStatus'] = new Chart(ctx1, {
+      type: 'doughnut',
+      data: {
+        labels: ['Pendiente', 'En borrador', 'Enviado'],
+        datasets: [{ data: [pendiente, borrador, enviado], backgroundColor: ['#ffcdd2','#ffe0b2','#c8e6c9'], borderColor: ['#e53935','#fb8c00','#43a047'], borderWidth: 2 }]
+      },
+      options: { responsive:true, maintainAspectRatio:false, plugins: { legend: { position:'bottom', labels: { font: { family:'Asap' } } } } }
+    });
+  }
+
+  const sent = evs.filter(e => e.estado === 'enviado' && e.score_final !== null);
+  const dist = [0,0,0,0];
+  sent.forEach(e => {
+    const s = e.score_final;
+    if (s < 1.5)      dist[0]++; // No Cumple
+    else if (s < 2.5) dist[1]++; // En Desarrollo
+    else if (s < 3.5) dist[2]++; // Cumple
+    else              dist[3]++; // Excepcional
+  });
+
+  const ctx2 = document.getElementById('chartDist')?.getContext('2d');
+  if (ctx2) {
+    STATE.charts['chartDist'] = new Chart(ctx2, {
+      type: 'bar',
+      data: {
+        labels: ['No Cumple','En Desarrollo','Cumple','Excepcional'],
+        datasets: [{ label: '# Colaboradores', data: dist, backgroundColor: ['#ffcdd2','#ffe0b2','#c8e6c9','#bbdefb'], borderColor: ['#e53935','#fb8c00','#43a047','#1e88e5'], borderWidth: 2 }]
+      },
+      options: { responsive:true, maintainAspectRatio:false, plugins: { legend: { display:false } }, scales: { y: { beginAtZero:true, ticks: { font:{ family:'Asap' } } }, x: { ticks: { font:{ family:'Asap' } } } } }
+    });
+  }
+}
+
+// ═══════════════════════════════════════════
+//  EQUIPO (JEFE)
+// ═══════════════════════════════════════════
+function renderTeam() {
+  const u = STATE.user;
+  const team = STATE.users.filter(x => x.jefe_id === u.id || u.rol === 'admin');
+  const tbody = document.getElementById('teamTableBody');
+  if (!team.length) { tbody.innerHTML = '<tr><td colspan="6" class="empty-state"><p>No tienes colaboradores asignados.</p></td></tr>'; return; }
+
+  tbody.innerHTML = team.map(colab => {
+    const evalJefe = STATE.evaluaciones.find(e => e.evaluado_id === colab.id && e.tipo === 'jefe');
+    const evalAuto = STATE.evaluaciones.find(e => e.evaluado_id === colab.id && e.tipo === 'auto');
+    const stateLabel = { pendiente:'Pendiente', borrador:'Borrador', enviado:'Enviado', calibracion:'Calibración' };
+    const stateClass = { pendiente:'pill-pending', borrador:'pill-progress', enviado:'pill-done', calibracion:'pill-calibration' };
+    const score = evalJefe?.score_final ? `<strong>${evalJefe.score_final.toFixed(2)}</strong> / 4` : '—';
+    return `<tr>
+      <td><strong>${colab.nombre}</strong></td>
+      <td>${colab.cargo}</td>
+      <td><span class="status-pill ${stateClass[evalAuto?.estado||'pendiente']}">${stateLabel[evalAuto?.estado||'pendiente']}</span></td>
+      <td><span class="status-pill ${stateClass[evalJefe?.estado||'pendiente']}">${stateLabel[evalJefe?.estado||'pendiente']}</span></td>
+      <td>${score}</td>
+      <td style="display:flex;gap:6px;flex-wrap:wrap">
+        <button class="btn btn-primary btn-sm" onclick="openEvalForm('${colab.id}')">Evaluar</button>
+        <button class="btn btn-secondary btn-sm" onclick="viewColabResults('${colab.id}')">Ver resultados</button>
+      </td>
+    </tr>`;
+  }).join('');
+}
+
+async function refreshTeam() {
+  await loadAllData();
+  renderTeam();
+  showToast('Datos actualizados', 'success');
+}
+
+// ═══════════════════════════════════════════
+//  FORMULARIO EVALUACIÓN
+// ═══════════════════════════════════════════
+function openEvalForm(evaluadoId) {
+  const evaluado = getUserById(evaluadoId);
+  const evalObj = STATE.evaluaciones.find(e => e.evaluado_id === evaluadoId && e.evaluador_id === STATE.user.id && e.tipo === 'jefe');
+  if (!evaluado || !evalObj) { showToast('No se encontró evaluación asignada', 'error'); return; }
+
+  STATE.currentEval = { ...evalObj, _evaluado: evaluado };
+  document.getElementById('evalFormTitle').textContent = 'Evaluando a: ' + evaluado.nombre;
+  document.getElementById('evalFormSubtitle').textContent = evaluado.cargo + ' | Periodo: ' + (STATE.periodo.nombre || '2025');
+  document.getElementById('evalBreadName').textContent = evaluado.nombre;
+
+  const readOnly = evalObj.estado === 'enviado';
+  document.getElementById('evalReadOnlyBanner').style.display = readOnly ? 'flex' : 'none';
+  document.getElementById('evalButtons').style.display = readOnly ? 'none' : 'flex';
+
+  renderCompetenciasForm(evaluado.cargo, evalObj.comp_scores || {}, readOnly);
+  renderMetasForm(evalObj.metas || [], readOnly);
+
+  document.getElementById('evalFortalezas').value = evalObj.fortalezas || '';
+  document.getElementById('evalMejoras').value = evalObj.mejoras || '';
+  document.getElementById('evalComentario').value = evalObj.comentario || '';
+  if (readOnly) {
+    ['evalFortalezas','evalMejoras','evalComentario'].forEach(id => document.getElementById(id).disabled = true);
+  }
+
+  navigateTo('form-eval');
+}
+
+function renderCompetenciasForm(cargo, savedScores, readOnly) {
+  const comps = getCompsByRole(cargo);
+  const container = document.getElementById('competenciasContainer');
+  if (!comps.length) { container.innerHTML = '<p style="color:#888;padding:16px">No hay competencias configuradas para este cargo.</p>'; return; }
+
+  container.innerHTML = comps.map((c, i) => {
+    const savedVal = savedScores[c.id] || 0;
+    const btns = [1,2,3,4].map(n => {
+      const b = BEHAVIORS[n];
+      const sel = savedVal === n ? `selected-${n}` : '';
+      return `<button class="rating-btn ${sel}" onclick="${readOnly?'return false':''}" 
+        ${readOnly?'disabled':''} data-comp="${c.id}" data-val="${n}"
+        onclick="rateComp('${c.id}',${n})"
+        style="cursor:${readOnly?'default':'pointer'}"
+      >${n} — ${b.label}</button>`;
+    }).join('');
+    const behavBox = savedVal ? `<div class="behaviors-box show" id="beh-${c.id}">${renderBehaviors(savedVal)}</div>` : `<div class="behaviors-box" id="beh-${c.id}"></div>`;
+    return `<div class="competencia-row">
+      <div class="competencia-header">
+        <div class="comp-num">${i+1}</div>
+        <div>
+          <div class="comp-name">${c.nombre} <span style="font-size:.75rem;background:var(--red-light);color:var(--red);border-radius:10px;padding:2px 8px;margin-left:6px">Peso: ${c.peso}%</span></div>
+          <div class="comp-desc">${c.descripcion}</div>
+        </div>
+      </div>
+      <div class="rating-scale" data-comp="${c.id}">${btns}</div>
+      ${behavBox}
+      <textarea class="comp-comment" placeholder="Comentario específico (opcional)..." ${readOnly?'disabled':''}>${savedScores['comment_'+c.id]||''}</textarea>
+    </div>`;
+  }).join('');
+
+  // Attach click events after render
+  if (!readOnly) {
+    container.querySelectorAll('.rating-btn').forEach(btn => {
+      btn.addEventListener('click', () => {
+        const compId = btn.dataset.comp;
+        const val = parseInt(btn.dataset.val);
+        rateComp(compId, val);
+      });
+    });
+  }
+  updateCompScore();
+}
+
+function renderBehaviors(val) {
+  const b = BEHAVIORS[val];
+  return `<strong style="color:${b.color}">★ ${b.label}: ${b.desc}</strong>
+    <ul style="margin-top:6px">${b.items.map(i => `<li>${i}</li>`).join('')}</ul>`;
+}
+
+function rateComp(compId, val) {
+  if (!STATE.currentEval) return;
+  if (!STATE.currentEval.comp_scores) STATE.currentEval.comp_scores = {};
+  STATE.currentEval.comp_scores[compId] = val;
+
+  // Update buttons
+  document.querySelectorAll(`.rating-scale[data-comp="${compId}"] .rating-btn`).forEach(btn => {
+    btn.className = 'rating-btn';
+    if (parseInt(btn.dataset.val) === val) btn.classList.add(`selected-${val}`);
+  });
+
+  // Show behaviors
+  const behBox = document.getElementById('beh-' + compId);
+  if (behBox) { behBox.innerHTML = renderBehaviors(val); behBox.classList.add('show'); }
+
+  updateCompScore();
+}
+
+function updateCompScore() {
+  if (!STATE.currentEval) return;
+  const scores = STATE.currentEval.comp_scores || {};
+  const vals = Object.values(scores).filter(v => typeof v === 'number');
+  const avg = vals.length ? (vals.reduce((a,b)=>a+b,0)/vals.length).toFixed(2) : '—';
+  document.getElementById('evalScoreComp').textContent = avg;
+  if (!isNaN(avg)) STATE.currentEval.score_comp = parseFloat(avg);
+}
+
+function renderMetasForm(metas, readOnly) {
+  const cont = document.getElementById('metasRows');
+  STATE.currentEval._metas = metas.length ? JSON.parse(JSON.stringify(metas)) : [
+    { meta:'', peso:50, resultado:'', cumplimiento:0 },
+    { meta:'', peso:50, resultado:'', cumplimiento:0 },
+  ];
+  document.getElementById('btnAddMeta').style.display = readOnly ? 'none' : 'inline-flex';
+  renderMetaRows(readOnly);
+}
+
+function renderMetaRows(readOnly) {
+  const cont = document.getElementById('metasRows');
+  const metas = STATE.currentEval._metas;
+  cont.innerHTML = metas.map((m, i) => {
+    const pct = Math.min(100, Math.max(0, m.cumplimiento || 0));
+    const color = pct >= 80 ? '#43a047' : pct >= 50 ? '#f9a825' : '#e53935';
+    return `<div class="meta-row">
+      <input class="meta-input" value="${m.meta||''}" placeholder="Descripción de la meta" ${readOnly?'disabled':''} onchange="updateMeta(${i},'meta',this.value)">
+      <input class="meta-input" type="number" value="${m.peso||0}" min="0" max="100" ${readOnly?'disabled':''} onchange="updateMeta(${i},'peso',+this.value)" style="text-align:center">
+      <input class="meta-input" value="${m.resultado||''}" placeholder="Resultado real" ${readOnly?'disabled':''} onchange="updateMeta(${i},'resultado',this.value)">
+      <div>
+        <input class="meta-input" type="number" value="${pct}" min="0" max="100" ${readOnly?'disabled':''} onchange="updateMeta(${i},'cumplimiento',+this.value)" style="text-align:center;margin-bottom:4px">
+        <div class="progress-bar-wrap"><div class="progress-bar" style="width:${pct}%;background:${color}"></div></div>
+      </div>
+      ${readOnly ? '<span></span>' : `<button class="btn btn-danger btn-sm" onclick="removeMeta(${i})">✕</button>`}
+    </div>`;
+  }).join('');
+  updateMetaScore();
+}
+
+function updateMeta(idx, field, val) {
+  STATE.currentEval._metas[idx][field] = val;
+  updateMetaScore();
+}
+function addMetaRow() {
+  STATE.currentEval._metas.push({ meta:'', peso:0, resultado:'', cumplimiento:0 });
+  renderMetaRows(false);
+}
+function removeMeta(idx) {
+  STATE.currentEval._metas.splice(idx,1);
+  renderMetaRows(false);
+}
+function updateMetaScore() {
+  const metas = STATE.currentEval._metas;
+  const totalPeso = metas.reduce((a,m)=>a+(+m.peso||0),0);
+  let weighted = 0;
+  metas.forEach(m => { weighted += (+m.peso||0) * (+m.cumplimiento||0); });
+  const pct = totalPeso > 0 ? Math.round(weighted / totalPeso) : 0;
+  document.getElementById('evalScoreMetas').textContent = pct + '%';
+  STATE.currentEval.score_metas = pct;
+}
+
+function calcFinalScore() {
+  const e = STATE.currentEval;
+  const w = STATE.periodo;
+  const pComp = (w.peso_comp || 60) / 100;
+  const pMetas = (w.peso_metas || 40) / 100;
+  const compScore = e.score_comp || 0;
+  const metaScore = (e.score_metas || 0) / 25; // convert % to 0-4
+  return ((compScore * pComp) + (metaScore * pMetas)).toFixed(2);
+}
+
+async function saveEvalDraft() {
+  if (!STATE.currentEval) return;
+  const data = buildEvalPayload('borrador');
+  await apiCall('saveEval', data);
+  // Update local
+  const idx = STATE.evaluaciones.findIndex(e => e.id === STATE.currentEval.id);
+  if (idx >= 0) Object.assign(STATE.evaluaciones[idx], data);
+  showToast('Borrador guardado exitosamente', 'success');
+}
+
+async function submitEval() {
+  const e = STATE.currentEval;
+  const comps = getCompsByRole(e._evaluado.cargo);
+  const scores = e.comp_scores || {};
+  const rated = comps.filter(c => scores[c.id] > 0).length;
+  if (rated < comps.length) {
+    showToast(`Debes calificar todas las competencias (${rated}/${comps.length})`, 'error'); return;
+  }
+  if (!confirm('¿Confirmas el envío de la evaluación? No podrás editarla después.')) return;
+
+  const data = buildEvalPayload('enviado');
+  data.score_final = parseFloat(calcFinalScore());
+  data.fecha_envio = new Date().toISOString().split('T')[0];
+
+  await apiCall('saveEval', data);
+  const idx = STATE.evaluaciones.findIndex(ev => ev.id === STATE.currentEval.id);
+  if (idx >= 0) Object.assign(STATE.evaluaciones[idx], data);
+  showToast('✅ Evaluación enviada exitosamente', 'success');
+  navigateTo('mis-evaluaciones');
+}
+
+function buildEvalPayload(estado) {
+  const e = STATE.currentEval;
+  const compScores = {};
+  getCompsByRole(e._evaluado.cargo).forEach(c => {
+    compScores[c.id] = e.comp_scores?.[c.id] || 0;
+    const ta = document.querySelector(`textarea[placeholder="Comentario específico (opcional)..."]`);
+  });
+  // Collect comments
+  document.querySelectorAll('.comp-comment[placeholder="Comentario específico (opcional)..."]').forEach((ta, i) => {
+    const comp = getCompsByRole(e._evaluado.cargo)[i];
+    if (comp) compScores['comment_'+comp.id] = ta.value;
+  });
+
+  return {
+    id: e.id,
+    estado,
+    comp_scores: { ...e.comp_scores, ...compScores },
+    metas: e._metas || [],
+    score_comp: e.score_comp,
+    score_metas: e.score_metas,
+    fortalezas: document.getElementById('evalFortalezas').value,
+    mejoras: document.getElementById('evalMejoras').value,
+    comentario: document.getElementById('evalComentario').value,
+  };
+}
+
+// ═══════════════════════════════════════════
+//  AUTOEVALUACIÓN (COLABORADOR)
+// ═══════════════════════════════════════════
+function renderAutoEval() {
+  const u = STATE.user;
+  const evalAuto = STATE.evaluaciones.find(e => e.evaluado_id === u.id && e.tipo === 'auto');
+  if (!evalAuto) return;
+  const pill = document.getElementById('autoEvalStatus');
+  const btn = document.getElementById('btnOpenAutoEval');
+  if (evalAuto.estado === 'enviado') {
+    pill.textContent = 'Completada'; pill.className = 'status-pill pill-done';
+    btn.textContent = 'Ver mi autoevaluación'; btn.onclick = () => openAutoEvalForm(true);
+  } else {
+    pill.textContent = evalAuto.estado === 'borrador' ? 'En borrador' : 'Pendiente';
+    pill.className = 'status-pill ' + (evalAuto.estado === 'borrador' ? 'pill-progress' : 'pill-pending');
+    btn.textContent = evalAuto.estado === 'borrador' ? 'Continuar autoevaluación' : 'Iniciar autoevaluación';
+    btn.onclick = () => openAutoEvalForm(false);
+  }
+}
+
+function openAutoEval() { openAutoEvalForm(false); }
+
+function openAutoEvalForm(readOnly) {
+  const u = STATE.user;
+  const evalAuto = STATE.evaluaciones.find(e => e.evaluado_id === u.id && e.tipo === 'auto');
+  if (!evalAuto) { showToast('No se encontró tu autoevaluación', 'error'); return; }
+
+  STATE.currentEval = { ...evalAuto, _evaluado: u };
+  document.getElementById('evalFormTitle').textContent = 'Mi Autoevaluación';
+  document.getElementById('evalFormSubtitle').textContent = u.cargo + ' | Reflexiona honestamente sobre tu desempeño';
+  document.getElementById('evalBreadName').textContent = 'Autoevaluación';
+  document.getElementById('evalReadOnlyBanner').style.display = readOnly ? 'flex' : 'none';
+  document.getElementById('evalButtons').style.display = readOnly ? 'none' : 'flex';
+
+  renderCompetenciasForm(u.cargo, evalAuto.comp_scores || {}, readOnly);
+  renderMetasForm(evalAuto.metas || [], readOnly);
+
+  document.getElementById('evalFortalezas').value = evalAuto.fortalezas || '';
+  document.getElementById('evalMejoras').value = evalAuto.mejoras || '';
+  document.getElementById('evalComentario').value = evalAuto.comentario || '';
+  if (readOnly) ['evalFortalezas','evalMejoras','evalComentario'].forEach(id => document.getElementById(id).disabled = true);
+
+  navigateTo('form-eval');
+}
+
+// ═══════════════════════════════════════════
+//  RESULTADOS
+// ═══════════════════════════════════════════
+function renderResultados() {
+  const u = STATE.user;
+  const evalJefe = STATE.evaluaciones.find(e => e.evaluado_id === u.id && e.tipo === 'jefe' && e.estado === 'enviado');
+  const evalAuto = STATE.evaluaciones.find(e => e.evaluado_id === u.id && e.tipo === 'auto' && e.estado === 'enviado');
+  const cont = document.getElementById('resultadosContent');
+
+  if (!evalJefe) {
+    cont.innerHTML = `<div class="empty-state"><svg viewBox="0 0 24 24" fill="currentColor"><path d="M12 2C6.48 2 2 6.48 2 12s4.48 10 10 10 10-4.48 10-10S17.52 2 12 2zm1 15h-2v-6h2v6zm0-8h-2V7h2v2z"/></svg><p>Tus resultados estarán disponibles cuando tu evaluador complete y publique tu evaluación.</p></div>`;
+    return;
+  }
+
+  const cat = getCategory(evalJefe.score_final);
+  const comps = getCompsByRole(u.cargo);
+  const compLabels = comps.map(c => c.nombre.substring(0,18));
+  const jefeScores = comps.map(c => evalJefe.comp_scores?.[c.id] || 0);
+  const autoScores = evalAuto ? comps.map(c => evalAuto.comp_scores?.[c.id] || 0) : [];
+
+  cont.innerHTML = `
+    <div class="results-grid">
+      <div>
+        <div class="score-big">
+          <div class="val">${evalJefe.score_final?.toFixed(2)}</div>
+          <div class="label">Calificación Final</div>
+          <div class="cat">${cat.label}</div>
+        </div>
+        <div class="card" style="margin-top:16px">
+          <div class="card-title" style="margin-bottom:10px">Desglose de Puntaje</div>
+          <div style="display:flex;justify-content:space-between;padding:8px 0;border-bottom:1px solid var(--gray-light)">
+            <span>Competencias (${STATE.periodo.peso_comp||60}%)</span>
+            <strong>${evalJefe.score_comp?.toFixed(2)||'—'} / 4</strong>
+          </div>
+          <div style="display:flex;justify-content:space-between;padding:8px 0;border-bottom:1px solid var(--gray-light)">
+            <span>Desempeño/Metas (${STATE.periodo.peso_metas||40}%)</span>
+            <strong>${evalJefe.score_metas||'—'}%</strong>
+          </div>
+          <div style="display:flex;justify-content:space-between;padding:8px 0">
+            <span><strong>Calificación Final</strong></span>
+            <strong style="color:var(--red);font-size:1.1rem">${evalJefe.score_final?.toFixed(2)||'—'}</strong>
+          </div>
+        </div>
+      </div>
+      <div class="card">
+        <div class="card-title" style="margin-bottom:10px">Perfil de Competencias</div>
+        <div class="radar-container"><canvas id="chartRadarResult"></canvas></div>
+      </div>
+    </div>
+    <div class="card" style="margin-top:0">
+      <div class="card-title" style="margin-bottom:14px">💬 Retroalimentación del Evaluador</div>
+      <div class="form-row">
+        <div class="form-field">
+          <label>✅ Fortalezas</label>
+          <p style="background:var(--gray-light);padding:12px;border-radius:8px;font-size:.9rem">${evalJefe.fortalezas || 'Sin comentarios'}</p>
+        </div>
+        <div class="form-field">
+          <label>🎯 Oportunidades de mejora</label>
+          <p style="background:var(--gray-light);padding:12px;border-radius:8px;font-size:.9rem">${evalJefe.mejoras || 'Sin comentarios'}</p>
+        </div>
+      </div>
+      <div class="form-field">
+        <label>📝 Comentario general</label>
+        <p style="background:var(--gray-light);padding:12px;border-radius:8px;font-size:.9rem">${evalJefe.comentario || 'Sin comentarios'}</p>
+      </div>
+    </div>
+  `;
+
+  setTimeout(() => {
+    const datasets = [{ label:'Evaluación Jefe', data:jefeScores, borderColor:'#ba0020', backgroundColor:'rgba(186,0,32,.15)', pointBackgroundColor:'#ba0020' }];
+    if (evalAuto && autoScores.some(s=>s>0)) {
+      datasets.push({ label:'Autoevaluación', data:autoScores, borderColor:'#4e4e4e', backgroundColor:'rgba(78,78,78,.1)', pointBackgroundColor:'#4e4e4e', borderDash:[5,5] });
+    }
+    if (STATE.charts['chartRadarResult']) STATE.charts['chartRadarResult'].destroy();
+    const ctx = document.getElementById('chartRadarResult')?.getContext('2d');
+    if (ctx) {
+      STATE.charts['chartRadarResult'] = new Chart(ctx, {
+        type: 'radar',
+        data: { labels: compLabels, datasets },
+        options: { responsive:true, maintainAspectRatio:false, scales: { r: { min:0, max:4, ticks:{ stepSize:1, font:{family:'Asap',size:10} }, pointLabels:{ font:{family:'Asap',size:10} } } }, plugins: { legend: { labels: { font:{family:'Asap'} } } } }
+      });
+    }
+  }, 150);
+}
+
+function viewColabResults(colabId) {
+  // Temporarily switch to results view for colab
+  const origUser = STATE.user;
+  STATE.user = { ...getUserById(colabId), _viewing: true };
+  navigateTo('resultados');
+  STATE.user = origUser;
+}
+
+// ═══════════════════════════════════════════
+//  PDI — PLAN DE DESARROLLO INDIVIDUAL (COMPLETO)
+// ═══════════════════════════════════════════
+function renderPDI() {
+  const u = STATE.user;
+  const cont = document.getElementById('pdiContent');
+  let pdiItems = [];
+
+  if (u.rol === 'colaborador') {
+    pdiItems = STATE.pdi.filter(p => p.colaborador_id === u.id);
+  } else {
+    const teamIds = STATE.users.filter(x => x.jefe_id === u.id || u.rol === 'admin').map(t => t.id);
+    pdiItems = STATE.pdi.filter(p => teamIds.includes(p.colaborador_id));
+  }
+
+  // Separar propuestas pendientes de aprobación (solo para jefe/admin)
+  const pendingApproval = (u.rol !== 'colaborador')
+    ? pdiItems.filter(p => p.propuesto_por === 'colaborador' && p.estado === 'propuesta')
+    : [];
+  const activePDI = pdiItems.filter(p => p.estado !== 'propuesta');
+  const myProposals = (u.rol === 'colaborador')
+    ? pdiItems.filter(p => p.propuesto_por === 'colaborador' && p.estado === 'propuesta')
+    : [];
+
+  let html = '';
+
+  // ─── BANNER: PROPUESTAS PENDIENTES DE APROBACIÓN (JEFE) ───
+  if (pendingApproval.length) {
+    html += `<div class="card" style="border-left:4px solid #f57c00;margin-bottom:20px">
+      <div class="card-header">
+        <div>
+          <div class="card-title">⏳ Propuestas pendientes de aprobación</div>
+          <div class="card-subtitle">${pendingApproval.length} propuesta(s) enviadas por colaboradores esperan tu revisión</div>
+        </div>
+      </div>
+      <div class="table-wrap">
+        <table>
+          <thead><tr><th>Colaborador</th><th>Competencia</th><th>Acción propuesta</th><th>Fecha sugerida</th><th>Acciones</th></tr></thead>
+          <tbody>
+            ${pendingApproval.map(p => {
+              const colab = getUserById(p.colaborador_id);
+              return `<tr>
+                <td><strong>${colab?.nombre||'—'}</strong></td>
+                <td>${p.competencia}</td>
+                <td style="font-size:.85rem">${p.accion}</td>
+                <td style="font-size:.82rem">${p.fecha_inicio||'—'} → ${p.fecha_fin||'—'}</td>
+                <td style="display:flex;gap:6px">
+                  <button class="btn btn-success btn-sm" onclick="approvePDI('${p.id}')">✓ Aprobar</button>
+                  <button class="btn btn-secondary btn-sm" onclick="editPDI('${p.id}')">Editar</button>
+                  <button class="btn btn-danger btn-sm" onclick="rejectPDI('${p.id}')">✕ Rechazar</button>
+                </td>
+              </tr>`;
+            }).join('')}
+          </tbody>
+        </table>
+      </div>
+    </div>`;
+  }
+
+  // ─── ACCIÓN PRINCIPAL ───
+  html += `<div class="card">
+    <div class="card-header">
+      <div>
+        <div class="card-title">📋 Plan de Desarrollo Individual</div>
+        <div class="card-subtitle">${u.rol === 'colaborador' ? 'Tu plan de desarrollo acordado con tu líder' : 'Planes activos de tu equipo'}</div>
+      </div>
+      <div style="display:flex;gap:8px">
+        ${u.rol !== 'colaborador' ? `<button class="btn btn-primary btn-sm" onclick="openPDIModal()">+ Nueva acción</button>` : ''}
+        ${u.rol === 'colaborador' ? `<button class="btn btn-secondary btn-sm" onclick="openPDIProposal()">💡 Proponer acción</button>` : ''}
+      </div>
+    </div>`;
+
+  // ─── PROPUESTAS DEL COLABORADOR (estado visual) ───
+  if (u.rol === 'colaborador' && myProposals.length) {
+    html += `<div class="info-banner" style="margin-bottom:14px">
+      <svg width="16" height="16" viewBox="0 0 24 24" fill="currentColor"><path d="M12 2C6.48 2 2 6.48 2 12s4.48 10 10 10 10-4.48 10-10S17.52 2 12 2zm1 15h-2v-6h2v6zm0-8h-2V7h2v2z"/></svg>
+      <div>Tienes <strong>${myProposals.length}</strong> propuesta(s) esperando aprobación de tu líder: ${myProposals.map(p=>`<em>${p.competencia}</em>`).join(', ')}</div>
+    </div>`;
+  }
+
+  if (!activePDI.length) {
+    html += `<div class="empty-state"><svg viewBox="0 0 24 24" fill="currentColor"><path d="M12 3L1 9l11 6 9-4.91V17h2V9M5 13.18v4L12 21l7-3.82v-4L12 17l-7-3.82z"/></svg><p>No hay acciones de desarrollo registradas aún.</p></div>`;
+  } else {
+    activePDI.forEach(p => {
+      const colab = getUserById(p.colaborador_id);
+      const pct = p.progreso || 0;
+      const color = pct >= 80 ? '#43a047' : pct >= 50 ? '#f9a825' : '#e53935';
+      const stateConfig = {
+        pendiente:   { label:'Pendiente',    cls:'pill-pending' },
+        en_progreso: { label:'En progreso',  cls:'pill-progress' },
+        completado:  { label:'Completado',   cls:'pill-done' },
+        cancelado:   { label:'Cancelado',    cls:'pill-pending' },
+        propuesta:   { label:'Propuesta',    cls:'pill-calibration' },
+      };
+      const st = stateConfig[p.estado] || stateConfig.pendiente;
+      const propBadge = p.propuesto_por === 'colaborador'
+        ? `<span style="font-size:.72rem;background:#e3f2fd;color:#1565c0;border-radius:10px;padding:2px 8px;margin-left:6px">Propuesto por colaborador</span>` : '';
+
+      const canEdit = u.rol !== 'colaborador';
+      const canUpdateProgress = u.rol === 'colaborador' && p.colaborador_id === u.id;
+
+      html += `<div class="pdi-item">
+        <div class="pdi-item-header">
+          <div>
+            ${u.rol !== 'colaborador' ? `<div style="font-size:.78rem;color:#888;margin-bottom:2px">${colab?.nombre||'—'} · ${colab?.cargo||'—'}</div>` : ''}
+            <div class="pdi-item-title">📚 ${p.competencia}${propBadge}</div>
+            <div style="font-size:.85rem;color:#888;margin-top:3px">${p.accion}</div>
+          </div>
+          <div style="display:flex;align-items:center;gap:8px;flex-wrap:wrap;justify-content:flex-end">
+            <span class="status-pill ${st.cls}">${st.label}</span>
+            ${canEdit ? `<button class="btn btn-secondary btn-sm" onclick="editPDI('${p.id}')">Editar</button>` : ''}
+            ${canUpdateProgress ? `<button class="btn btn-primary btn-sm" onclick="openProgressUpdate('${p.id}')">Actualizar avance</button>` : ''}
+          </div>
+        </div>
+        <div style="display:flex;align-items:center;gap:12px;margin-bottom:10px">
+          <div style="flex:1">
+            <div style="display:flex;justify-content:space-between;font-size:.78rem;color:#888;margin-bottom:4px">
+              <span>Progreso</span><strong style="color:${color}">${pct}%</strong>
+            </div>
+            <div class="progress-bar-wrap"><div class="progress-bar" style="width:${pct}%;background:${color}"></div></div>
+          </div>
+        </div>
+        <div class="pdi-fields">
+          <div class="pdi-field"><label>Recursos</label><p style="font-size:.85rem">${p.recursos||'—'}</p></div>
+          <div class="pdi-field"><label>Fechas</label><p style="font-size:.85rem">${p.fecha_inicio||'—'} → ${p.fecha_fin||'—'}</p></div>
+          ${p.indicador_exito ? `<div class="pdi-field"><label>Indicador de éxito</label><p style="font-size:.85rem">${p.indicador_exito}</p></div>` : ''}
+          ${p.observaciones ? `<div class="pdi-field" style="${!p.indicador_exito?'grid-column:1/-1':''}"><label>Seguimiento / Observaciones</label><p style="font-size:.85rem">${p.observaciones}</p></div>` : ''}
+        </div>
+      </div>`;
+    });
+  }
+  html += '</div>';
+  cont.innerHTML = html;
+}
+
+// ─── JEFE: CREAR/EDITAR ACCIÓN PDI ───
+function openPDIModal(pdiId) {
+  const pdi = pdiId ? STATE.pdi.find(p=>p.id===pdiId) : null;
+  const team = STATE.users.filter(x => x.jefe_id === STATE.user.id || STATE.user.rol === 'admin');
+  const newId = 'P' + Date.now();
+  openModal(pdi ? 'Editar acción de PDI' : 'Nueva acción de desarrollo', `
+    <div class="form-field">
+      <label>Colaborador *</label>
+      <select id="pdiColab">
+        ${team.map(t=>`<option value="${t.id}" ${pdi?.colaborador_id===t.id?'selected':''}>${t.nombre} — ${t.cargo}</option>`).join('')}
+      </select>
+    </div>
+    <div class="form-field">
+      <label>Competencia a desarrollar *</label>
+      <input type="text" id="pdiComp" value="${pdi?.competencia||''}" placeholder="Ej: Comunicación Efectiva">
+    </div>
+    <div class="form-field">
+      <label>Acción de desarrollo *</label>
+      <textarea id="pdiAccion" rows="2" placeholder="Describe la acción concreta a realizar...">${pdi?.accion||''}</textarea>
+    </div>
+    <div class="form-field">
+      <label>Indicador de éxito</label>
+      <input type="text" id="pdiIndicador" value="${pdi?.indicador_exito||''}" placeholder="¿Cómo sabremos que se logró?">
+    </div>
+    <div class="form-field">
+      <label>Recursos requeridos</label>
+      <input type="text" id="pdiRecursos" value="${pdi?.recursos||''}" placeholder="Plataforma, presupuesto, mentor...">
+    </div>
+    <div class="form-row">
+      <div class="form-field"><label>Fecha inicio</label><input type="date" id="pdiFechaInicio" value="${pdi?.fecha_inicio||''}"></div>
+      <div class="form-field"><label>Fecha cierre</label><input type="date" id="pdiFechaFin" value="${pdi?.fecha_fin||''}"></div>
+    </div>
+    <div class="form-row">
+      <div class="form-field">
+        <label>Estado</label>
+        <select id="pdiEstado">
+          ${['pendiente','en_progreso','completado','cancelado'].map(s=>`<option value="${s}" ${pdi?.estado===s?'selected':''}>${s}</option>`).join('')}
+        </select>
+      </div>
+      <div class="form-field">
+        <label>Progreso (%)</label>
+        <input type="number" id="pdiProgreso" min="0" max="100" value="${pdi?.progreso||0}">
+      </div>
+    </div>
+    <div class="form-field">
+      <label>Observaciones del seguimiento</label>
+      <textarea id="pdiObs" rows="2" placeholder="Notas del último seguimiento realizado...">${pdi?.observaciones||''}</textarea>
+    </div>
+  `, [
+    { label:'Cancelar', cls:'btn-secondary', action:'closeModal()' },
+    { label: pdi?'Guardar cambios':'Crear en PDI', cls:'btn-primary', action:`savePDIModal('${pdi?.id||newId}','jefe')` }
+  ]);
+}
+
+// ─── COLABORADOR: PROPONER ACCIÓN PDI ───
+function openPDIProposal() {
+  const newId = 'P' + Date.now();
+  openModal('💡 Proponer una acción de desarrollo', `
+    <div class="info-banner" style="margin-bottom:14px;font-size:.85rem">
+      <svg width="16" height="16" viewBox="0 0 24 24" fill="currentColor"><path d="M12 2C6.48 2 2 6.48 2 12s4.48 10 10 10 10-4.48 10-10S17.52 2 12 2zm1 15h-2v-6h2v6zm0-8h-2V7h2v2z"/></svg>
+      Tu propuesta será enviada a tu líder para aprobación antes de quedar activa en tu PDI.
+    </div>
+    <div class="form-field">
+      <label>¿En qué competencia quieres trabajar? *</label>
+      <input type="text" id="pdiComp" value="" placeholder="Ej: Comunicación Efectiva, Liderazgo...">
+    </div>
+    <div class="form-field">
+      <label>¿Qué acción propones? *</label>
+      <textarea id="pdiAccion" rows="2" placeholder="Describe lo que quieres hacer para desarrollarte..."></textarea>
+    </div>
+    <div class="form-field">
+      <label>¿Por qué consideras que es importante para tu desarrollo?</label>
+      <textarea id="pdiJustificacion" rows="2" placeholder="Explica brevemente tu motivación..."></textarea>
+    </div>
+    <div class="form-field">
+      <label>Recursos que necesitarías</label>
+      <input type="text" id="pdiRecursos" value="" placeholder="Curso, tiempo, presupuesto...">
+    </div>
+    <div class="form-row">
+      <div class="form-field"><label>Fecha inicio sugerida</label><input type="date" id="pdiFechaInicio"></div>
+      <div class="form-field"><label>Fecha cierre sugerida</label><input type="date" id="pdiFechaFin"></div>
+    </div>
+  `, [
+    { label:'Cancelar', cls:'btn-secondary', action:'closeModal()' },
+    { label:'Enviar propuesta al líder', cls:'btn-primary', action:`savePDIModal('${newId}','colaborador')` }
+  ]);
+}
+
+// ─── COLABORADOR: ACTUALIZAR PROGRESO ───
+function openProgressUpdate(pdiId) {
+  const pdi = STATE.pdi.find(p=>p.id===pdiId);
+  if (!pdi) return;
+  openModal('📊 Actualizar avance en PDI', `
+    <div style="margin-bottom:14px">
+      <div style="font-weight:600;color:var(--gray)">${pdi.competencia}</div>
+      <div style="font-size:.85rem;color:#888;margin-top:2px">${pdi.accion}</div>
+    </div>
+    <div class="form-field">
+      <label>Progreso actual (%)</label>
+      <input type="range" id="pdiProgresoRange" min="0" max="100" value="${pdi.progreso||0}" 
+        oninput="document.getElementById('pdiProgresoVal').textContent=this.value+'%'"
+        style="width:100%;accent-color:var(--red)">
+      <div style="text-align:center;font-size:1.4rem;font-weight:700;color:var(--red);margin-top:6px" id="pdiProgresoVal">${pdi.progreso||0}%</div>
+    </div>
+    <div class="form-field">
+      <label>Estado</label>
+      <select id="pdiEstado">
+        ${['pendiente','en_progreso','completado'].map(s=>`<option value="${s}" ${pdi.estado===s?'selected':''}>${s}</option>`).join('')}
+      </select>
+    </div>
+    <div class="form-field">
+      <label>¿Qué has hecho? (nota de seguimiento)</label>
+      <textarea id="pdiObs" rows="3" placeholder="Describe brevemente tus avances...">${pdi.observaciones||''}</textarea>
+    </div>
+  `, [
+    { label:'Cancelar', cls:'btn-secondary', action:'closeModal()' },
+    { label:'Guardar avance', cls:'btn-primary', action:`saveProgressUpdate('${pdiId}')` }
+  ]);
+}
+
+async function saveProgressUpdate(pdiId) {
+  const pdi = STATE.pdi.find(p=>p.id===pdiId);
+  if (!pdi) return;
+  pdi.progreso = parseInt(document.getElementById('pdiProgresoRange').value)||0;
+  pdi.estado = document.getElementById('pdiEstado').value;
+  pdi.observaciones = document.getElementById('pdiObs').value;
+  await apiCall('savePDI', pdi);
+  closeModal(); renderPDI();
+  showToast('✅ Avance actualizado correctamente', 'success');
+}
+
+async function approvePDI(id) {
+  const pdi = STATE.pdi.find(p=>p.id===id);
+  if (!pdi) return;
+  pdi.estado = 'pendiente';
+  await apiCall('savePDI', pdi);
+  renderPDI();
+  showToast('✅ Propuesta aprobada y activada en el PDI', 'success');
+}
+
+async function rejectPDI(id) {
+  if (!confirm('¿Confirmas que deseas rechazar esta propuesta?')) return;
+  const pdi = STATE.pdi.find(p=>p.id===id);
+  if (!pdi) return;
+  pdi.estado = 'cancelado';
+  await apiCall('savePDI', pdi);
+  renderPDI();
+  showToast('Propuesta rechazada', '');
+}
+
+function editPDI(id) { openPDIModal(id); }
+
+async function savePDIModal(id, origen) {
+  const isColab = origen === 'colaborador';
+  const data = {
+    id,
+    colaborador_id: isColab ? STATE.user.id : document.getElementById('pdiColab')?.value || STATE.user.id,
+    jefe_id: isColab ? STATE.users.find(x=>x.id===STATE.user.jefe_id)?.id || '' : STATE.user.id,
+    competencia: document.getElementById('pdiComp').value,
+    accion: document.getElementById('pdiAccion').value,
+    indicador_exito: document.getElementById('pdiIndicador')?.value || '',
+    recursos: document.getElementById('pdiRecursos').value,
+    fecha_inicio: document.getElementById('pdiFechaInicio').value,
+    fecha_fin: document.getElementById('pdiFechaFin').value,
+    estado: isColab ? 'propuesta' : (document.getElementById('pdiEstado')?.value || 'pendiente'),
+    progreso: isColab ? 0 : (parseInt(document.getElementById('pdiProgreso')?.value)||0),
+    observaciones: document.getElementById('pdiObs')?.value || '',
+    propuesto_por: isColab ? 'colaborador' : 'jefe',
+    justificacion: document.getElementById('pdiJustificacion')?.value || '',
+  };
+  if (!data.competencia || !data.accion) { showToast('Competencia y acción son obligatorios', 'error'); return; }
+  await apiCall('savePDI', data);
+  const idx = STATE.pdi.findIndex(p=>p.id===id);
+  if (idx>=0) Object.assign(STATE.pdi[idx], data); else STATE.pdi.push(data);
+  closeModal();
+  renderPDI();
+  showToast(isColab ? '💡 Propuesta enviada a tu líder' : '✅ PDI guardado exitosamente', 'success');
+}
+
+// ═══════════════════════════════════════════
+//  ADMIN
+// ═══════════════════════════════════════════
+function renderAdmin() {
+  renderUsersTable();
+  renderCompsTable();
+  document.getElementById('periodName').value = STATE.periodo.nombre||'';
+  document.getElementById('periodStatus').value = STATE.periodo.estado||'open';
+  document.getElementById('periodStart').value = STATE.periodo.inicio||'';
+  document.getElementById('periodEnd').value = STATE.periodo.fin||'';
+  document.getElementById('pesoComp').value = STATE.periodo.peso_comp||60;
+  document.getElementById('pesoMetas').value = STATE.periodo.peso_metas||40;
+  setTimeout(renderAdminCharts, 150);
+}
+
+function renderUsersTable() {
+  const tbody = document.getElementById('usersTableBody');
+  const roleLabel = { admin:'Admin', jefe:'Jefe', colaborador:'Colaborador' };
+  tbody.innerHTML = STATE.users.map(u => {
+    const jefe = getUserById(u.jefe_id);
+    return `<tr>
+      <td><strong>${u.nombre}</strong></td>
+      <td>${u.usuario}</td>
+      <td>${u.cargo}</td>
+      <td><span class="status-pill pill-progress">${roleLabel[u.rol]||u.rol}</span></td>
+      <td>${jefe?.nombre||'—'}</td>
+      <td><span class="status-pill ${u.activo?'pill-done':'pill-pending'}">${u.activo?'Activo':'Inactivo'}</span></td>
+      <td><button class="btn btn-secondary btn-sm" onclick="openUserModal('${u.id}')">Editar</button></td>
+    </tr>`;
+  }).join('');
+}
+
+function renderCompsTable() {
+  const tbody = document.getElementById('compTableBody');
+  tbody.innerHTML = STATE.competencias.map(c => `<tr>
+    <td><strong>${c.nombre}</strong></td>
+    <td style="font-size:.82rem;color:#888">${c.descripcion}</td>
+    <td><span class="status-pill pill-progress">${c.cargos}</span></td>
+    <td>${c.peso}%</td>
+    <td><button class="btn btn-secondary btn-sm" onclick="openCompModal('${c.id}')">Editar</button></td>
+  </tr>`).join('');
+}
+
+function openUserModal(userId) {
+  const u = userId ? STATE.users.find(x=>x.id===userId) : null;
+  const newId = 'U' + Date.now();
+  const jefes = STATE.users.filter(x=>x.rol==='jefe'||x.rol==='admin');
+  openModal(u ? 'Editar usuario' : 'Nuevo usuario', `
+    <div class="form-row">
+      <div class="form-field"><label>Nombre completo</label><input type="text" id="uNombre" value="${u?.nombre||''}"></div>
+      <div class="form-field"><label>Usuario (login)</label><input type="text" id="uUsuario" value="${u?.usuario||''}"></div>
+    </div>
+    <div class="form-row">
+      <div class="form-field"><label>Contraseña</label><input type="password" id="uPass" placeholder="${u?'Dejar en blanco para no cambiar':'Nueva contraseña'}"></div>
+      <div class="form-field"><label>Cargo</label><input type="text" id="uCargo" value="${u?.cargo||''}"></div>
+    </div>
+    <div class="form-row">
+      <div class="form-field"><label>Rol</label>
+        <select id="uRol">
+          ${['admin','jefe','colaborador'].map(r=>`<option value="${r}" ${u?.rol===r?'selected':''}>${r}</option>`).join('')}
+        </select>
+      </div>
+      <div class="form-field"><label>Jefe directo</label>
+        <select id="uJefe">
+          <option value="">— Sin jefe —</option>
+          ${jefes.map(j=>`<option value="${j.id}" ${u?.jefe_id===j.id?'selected':''}>${j.nombre}</option>`).join('')}
+        </select>
+      </div>
+    </div>
+    <div class="form-field"><label>Estado</label>
+      <select id="uActivo">
+        <option value="true" ${u?.activo?'selected':''}>Activo</option>
+        <option value="false" ${!u?.activo?'selected':''}>Inactivo</option>
+      </select>
+    </div>
+  `, [
+    { label:'Cancelar', cls:'btn-secondary', action:'closeModal()' },
+    { label: u?'Guardar cambios':'Crear usuario', cls:'btn-primary', action:`saveUserModal('${u?.id||newId}')` }
+  ]);
+}
+
+async function saveUserModal(id) {
+  const pass = document.getElementById('uPass').value;
+  const existing = STATE.users.find(u=>u.id===id);
+  const data = {
+    id,
+    nombre: document.getElementById('uNombre').value,
+    usuario: document.getElementById('uUsuario').value,
+    contrasena: pass || (existing?.contrasena||''),
+    cargo: document.getElementById('uCargo').value,
+    rol: document.getElementById('uRol').value,
+    jefe_id: document.getElementById('uJefe').value,
+    activo: document.getElementById('uActivo').value === 'true',
+  };
+  if (!data.nombre || !data.usuario) { showToast('Nombre y usuario son obligatorios', 'error'); return; }
+  await apiCall('saveUser', data);
+  const idx = STATE.users.findIndex(u=>u.id===id);
+  if (idx>=0) Object.assign(STATE.users[idx], data); else STATE.users.push(data);
+  closeModal(); renderUsersTable();
+  showToast('Usuario guardado', 'success');
+}
+
+function openCompModal(compId) {
+  const c = compId ? STATE.competencias.find(x=>x.id===compId) : null;
+  const newId = 'C' + Date.now();
+  openModal(c ? 'Editar competencia' : 'Nueva competencia', `
+    <div class="form-field"><label>Nombre de la competencia</label><input type="text" id="cNombre" value="${c?.nombre||''}"></div>
+    <div class="form-field"><label>Descripción</label><textarea id="cDesc" rows="2">${c?.descripcion||''}</textarea></div>
+    <div class="form-row">
+      <div class="form-field"><label>Cargo(s) aplicables</label><input type="text" id="cCargos" value="${c?.cargos||'Todos'}" placeholder="Todos, o nombre del cargo"></div>
+      <div class="form-field"><label>Peso (%)</label><input type="number" id="cPeso" value="${c?.peso||10}" min="0" max="100"></div>
+    </div>
+  `, [
+    { label:'Cancelar', cls:'btn-secondary', action:'closeModal()' },
+    { label: c?'Guardar':'Agregar competencia', cls:'btn-primary', action:`saveCompModal('${c?.id||newId}')` }
+  ]);
+}
+
+async function saveCompModal(id) {
+  const data = {
+    id, nombre: document.getElementById('cNombre').value,
+    descripcion: document.getElementById('cDesc').value,
+    cargos: document.getElementById('cCargos').value,
+    peso: parseInt(document.getElementById('cPeso').value)||10,
+  };
+  if (!data.nombre) { showToast('El nombre es obligatorio', 'error'); return; }
+  const idx = STATE.competencias.findIndex(c=>c.id===id);
+  if (idx>=0) Object.assign(STATE.competencias[idx], data); else STATE.competencias.push(data);
+  await apiCall('saveComp', data);
+  closeModal(); renderCompsTable();
+  showToast('Competencia guardada', 'success');
+}
+
+function renderAdminCharts() {
+  ['chartAdminDist','chartAdminRadar'].forEach(id => {
+    if (STATE.charts[id]) { STATE.charts[id].destroy(); delete STATE.charts[id]; }
+  });
+  const sent = STATE.evaluaciones.filter(e=>e.tipo==='jefe'&&e.estado==='enviado'&&e.score_final!==null);
+  const dist=[0,0,0,0];
+  sent.forEach(e=>{ const s=e.score_final; if(s<1.5)dist[0]++;else if(s<2.5)dist[1]++;else if(s<3.5)dist[2]++;else dist[3]++; });
+
+  const ctx1 = document.getElementById('chartAdminDist')?.getContext('2d');
+  if(ctx1) STATE.charts['chartAdminDist'] = new Chart(ctx1,{type:'pie',data:{labels:['No Cumple','En Desarrollo','Cumple','Excepcional'],datasets:[{data:dist,backgroundColor:['#ffcdd2','#ffe0b2','#c8e6c9','#bbdefb'],borderWidth:2}]},options:{responsive:true,maintainAspectRatio:false,plugins:{legend:{position:'right',labels:{font:{family:'Asap',size:11}}}}}});
+
+  const comps = STATE.competencias.filter(c=>c.cargos==='Todos').slice(0,6);
+  const avgScores = comps.map(c=>{
+    const vals=sent.map(e=>e.comp_scores?.[c.id]||0).filter(v=>v>0);
+    return vals.length?+(vals.reduce((a,b)=>a+b,0)/vals.length).toFixed(2):0;
+  });
+  const ctx2 = document.getElementById('chartAdminRadar')?.getContext('2d');
+  if(ctx2) STATE.charts['chartAdminRadar'] = new Chart(ctx2,{type:'radar',data:{labels:comps.map(c=>c.nombre.substring(0,14)),datasets:[{label:'Promedio Empresa',data:avgScores,borderColor:'#ba0020',backgroundColor:'rgba(186,0,32,.15)',pointBackgroundColor:'#ba0020'}]},options:{responsive:true,maintainAspectRatio:false,scales:{r:{min:0,max:4,ticks:{stepSize:1,font:{family:'Asap',size:10}},pointLabels:{font:{family:'Asap',size:10}}}},plugins:{legend:{labels:{font:{family:'Asap'}}}}}});
+
+  // Report table
+  const tbody = document.getElementById('reportTableBody');
+  tbody.innerHTML = sent.map(e=>{
+    const colab=getUserById(e.evaluado_id);
+    const jefe=getUserById(colab?.jefe_id);
+    const cat=getCategory(e.score_final);
+    return `<tr>
+      <td><strong>${colab?.nombre||'—'}</strong></td>
+      <td>${colab?.cargo||'—'}</td>
+      <td>${jefe?.nombre||'—'}</td>
+      <td>${e.score_comp?.toFixed(2)||'—'}</td>
+      <td>${e.score_metas||'—'}%</td>
+      <td><strong style="color:var(--red)">${e.score_final?.toFixed(2)||'—'}</strong></td>
+      <td><span class="status-pill pill-done" style="background:${cat.color}20;color:${cat.color}">${cat.label}</span></td>
+    </tr>`;
+  }).join('') || '<tr><td colspan="7" style="text-align:center;color:#aaa;padding:20px">Sin evaluaciones completadas</td></tr>';
+}
+
+async function savePeriod() {
+  const data = {
+    nombre: document.getElementById('periodName').value,
+    estado: document.getElementById('periodStatus').value,
+    inicio: document.getElementById('periodStart').value,
+    fin: document.getElementById('periodEnd').value,
+    peso_comp: parseInt(document.getElementById('pesoComp').value)||60,
+    peso_metas: parseInt(document.getElementById('pesoMetas').value)||40,
+  };
+  const sumPesos = data.peso_comp + data.peso_metas;
+  if (sumPesos !== 100) { showToast(`Los pesos deben sumar 100% (actualmente: ${sumPesos}%)`, 'error'); return; }
+  Object.assign(STATE.periodo, data);
+  await apiCall('savePeriodo', data);
+  showToast('Periodo guardado exitosamente', 'success');
+}
+
+function switchAdminTab(tab, btn) {
+  document.querySelectorAll('.admin-tab').forEach(t=>t.classList.remove('active'));
+  document.querySelectorAll('.admin-tab-content').forEach(t=>t.classList.remove('active'));
+  btn.classList.add('active');
+  document.getElementById('adminTab-'+tab).classList.add('active');
+  if (tab === 'reportes') setTimeout(renderAdminCharts, 100);
+}
+
+function exportReport() {
+  const sent = STATE.evaluaciones.filter(e=>e.tipo==='jefe'&&e.estado==='enviado');
+  const rows = [['Colaborador','Cargo','Jefe','Competencias','Desempeño','Final','Categoría']];
+  sent.forEach(e=>{
+    const colab=getUserById(e.evaluado_id);
+    const jefe=getUserById(colab?.jefe_id);
+    const cat=getCategory(e.score_final);
+    rows.push([colab?.nombre||'',colab?.cargo||'',jefe?.nombre||'',e.score_comp||'',e.score_metas+'%',e.score_final||'',cat.label]);
+  });
+  const csv = rows.map(r=>r.join(',')).join('\n');
+  const blob = new Blob([csv],{type:'text/csv'});
+  const a = document.createElement('a'); a.href=URL.createObjectURL(blob); a.download='evaluaciones.csv'; a.click();
+  showToast('Reporte exportado', 'success');
+}
+
+// ═══════════════════════════════════════════
+//  MODAL
+// ═══════════════════════════════════════════
+function openModal(title, bodyHtml, buttons=[]) {
+  document.getElementById('modalTitle').textContent = title;
+  document.getElementById('modalBody').innerHTML = bodyHtml;
+  document.getElementById('modalFooter').innerHTML = buttons.map(b=>`<button class="btn ${b.cls}" onclick="${b.action}">${b.label}</button>`).join('');
+  document.getElementById('modalOverlay').classList.add('open');
+}
+function closeModal() { document.getElementById('modalOverlay').classList.remove('open'); }
+document.getElementById('modalOverlay').addEventListener('click', function(e){ if(e.target===this) closeModal(); });
+
+// Enter key on login
+document.addEventListener('keydown', e => {
+  if (e.key === 'Enter' && document.getElementById('loginScreen').style.display !== 'none') handleLogin();
+});
+</script>
+</body>
+</html>
