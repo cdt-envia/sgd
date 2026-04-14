@@ -582,30 +582,6 @@
           <div id="competenciasContainer"></div>
         </div>
 
-        <!-- SECCIÓN METAS -->
-        <div class="card">
-          <div class="card-header">
-            <div>
-              <div class="card-title">📊 Evaluación de Desempeño (Metas/KPIs)</div>
-              <div class="card-subtitle">Evalúa el cumplimiento de las metas acordadas para el periodo</div>
-            </div>
-            <div style="text-align:right">
-              <div style="font-size:1.8rem;font-weight:700;color:var(--red)" id="evalScoreMetas">—</div>
-              <div style="font-size:.75rem;color:#888">% Cumplimiento metas</div>
-            </div>
-          </div>
-          <div id="metasContainer">
-            <div class="meta-row header">
-              <span>Meta / KPI</span><span>Peso %</span><span>Resultado Real</span><span>% Cumplimiento</span><span>Acciones</span>
-            </div>
-            <div id="metasRows"></div>
-          </div>
-          <button class="btn btn-secondary btn-sm" style="margin-top:12px" onclick="addMetaRow()" id="btnAddMeta">
-            <svg width="14" height="14" viewBox="0 0 24 24" fill="currentColor"><path d="M19 13h-6v6h-2v-6H5v-2h6V5h2v6h6v2z"/></svg>
-            Agregar meta
-          </button>
-        </div>
-
         <!-- SECCIÓN OKR -->
         <div class="card" id="evalOKRSection">
           <div class="card-header">
@@ -788,7 +764,7 @@
             </div>
             <div class="table-wrap">
               <table>
-                <thead><tr><th>Competencia</th><th>Descripción</th><th>Cargo(s)</th><th>Peso %</th><th>Acciones</th></tr></thead>
+                <thead><tr><th>Competencia</th><th>Descripción</th><th>Cargo(s)</th><th>Peso %</th><th>Comportamientos</th><th>Acciones</th></tr></thead>
                 <tbody id="compTableBody"></tbody>
               </table>
             </div>
@@ -824,20 +800,16 @@
             <div class="form-row">
               <div class="form-field">
                 <label>Peso Competencias (%)</label>
-                <input type="number" id="pesoComp" value="50" min="0" max="100">
+                <input type="number" id="pesoComp" value="60" min="0" max="100">
               </div>
               <div class="form-field">
-                <label>Peso Desempeño/Metas (%)</label>
-                <input type="number" id="pesoMetas" value="30" min="0" max="100">
+                <label>Peso OKR (%)</label>
+                <input type="number" id="pesoOKR" value="40" min="0" max="100">
               </div>
             </div>
             <div class="form-row">
               <div class="form-field">
-                <label>Peso OKR (%)</label>
-                <input type="number" id="pesoOKR" value="20" min="0" max="100">
-              </div>
-              <div class="form-field">
-                <label style="color:#888;font-size:.78rem">Los tres pesos deben sumar 100%</label>
+                <label style="color:#888;font-size:.78rem">Los dos pesos deben sumar 100%</label>
                 <div id="pesosTotal" style="font-size:1.1rem;font-weight:700;color:var(--gray);margin-top:6px">Total: 100%</div>
               </div>
             </div>
@@ -858,7 +830,7 @@
             <hr class="divider">
             <div class="table-wrap">
               <table id="reportTable">
-                <thead><tr><th>Colaborador</th><th>Cargo</th><th>Jefe</th><th>Comp.</th><th>Desempeño</th><th>Final</th><th>Categoría</th></tr></thead>
+                <thead><tr><th>Colaborador</th><th>Cargo</th><th>Jefe</th><th>Comp.</th><th>OKR</th><th>Final</th><th>Categoría</th></tr></thead>
                 <tbody id="reportTableBody"></tbody>
               </table>
             </div>
@@ -889,7 +861,7 @@
 // ═══════════════════════════════════════════
 //  CONFIG — Reemplaza con tu URL de Google Apps Script
 // ═══════════════════════════════════════════
-const SCRIPT_URL = 'https://script.google.com/macros/s/AKfycbwV2swkNPD6VaOiYW6B2TcMxyJSRliVCaOIf_Kk4fBJH1Xb1nJYbqrTHs1D_CETFhEm/exec';
+const SCRIPT_URL = 'https://script.google.com/macros/s/AKfycbzOTzeznmUnJtWex_R6pBoGuAmUOGY1Wv_nssChl2_xReKkobzpxftVbuGAlkbq0iN9/exec';
 
 // ═══════════════════════════════════════════
 //  STATE
@@ -960,15 +932,60 @@ const DEMO_USERS = [
 ];
 
 const DEMO_COMPETENCIAS = [
-  { id:'C001', nombre:'Orientación al Logro',   descripcion:'Capacidad para establecer y superar metas retadoras', cargos:'Todos',  peso:15 },
-  { id:'C002', nombre:'Trabajo en Equipo',       descripcion:'Habilidad para colaborar y construir relaciones positivas', cargos:'Todos', peso:15 },
-  { id:'C003', nombre:'Comunicación Efectiva',   descripcion:'Capacidad para transmitir ideas con claridad y escuchar activamente', cargos:'Todos', peso:15 },
-  { id:'C004', nombre:'Orientación al Cliente',  descripcion:'Enfoque en satisfacer y superar las expectativas del cliente', cargos:'Ejecutiva Comercial', peso:20 },
-  { id:'C005', nombre:'Liderazgo',               descripcion:'Capacidad para guiar, motivar y desarrollar a otros', cargos:'Gerente Comercial', peso:20 },
-  { id:'C006', nombre:'Pensamiento Analítico',   descripcion:'Habilidad para analizar información y tomar decisiones basadas en datos', cargos:'Analista de Datos', peso:20 },
-  { id:'C007', nombre:'Adaptabilidad',           descripcion:'Capacidad de ajustarse eficazmente ante cambios e incertidumbre', cargos:'Todos', peso:10 },
-  { id:'C008', nombre:'Innovación y Creatividad',descripcion:'Propone soluciones nuevas y mejoras continuas en su trabajo', cargos:'Todos', peso:10 },
-  { id:'C009', nombre:'Integridad y Ética',      descripcion:'Actúa con transparencia, honestidad y coherencia con los valores', cargos:'Todos', peso:15 },
+  { id:'C001', nombre:'Orientación al Logro', descripcion:'Capacidad para establecer y superar metas retadoras', cargos:'Todos', peso:15,
+    comportamiento_1:'No establece metas propias, espera que todo le sea asignado y no da seguimiento a sus compromisos.',
+    comportamiento_2:'Establece metas básicas pero no las cumple con consistencia; pierde el foco ante dificultades.',
+    comportamiento_3:'Cumple sus metas de forma autónoma, organiza su trabajo y comunica oportunamente los obstáculos.',
+    comportamiento_4:'Supera sus metas constantemente, propone retos adicionales y motiva a otros a alcanzar sus objetivos.'
+  },
+  { id:'C002', nombre:'Trabajo en Equipo', descripcion:'Habilidad para colaborar y construir relaciones positivas', cargos:'Todos', peso:15,
+    comportamiento_1:'Trabaja de forma aislada, no comparte información y genera conflictos en el equipo.',
+    comportamiento_2:'Participa cuando se le pide pero rara vez toma iniciativa de apoyar o colaborar espontáneamente.',
+    comportamiento_3:'Colabora activamente, comparte conocimiento y mantiene relaciones respetuosas con todos.',
+    comportamiento_4:'Es referente de colaboración; integra al equipo, facilita conflictos y potencia a otros.'
+  },
+  { id:'C003', nombre:'Comunicación Efectiva', descripcion:'Capacidad para transmitir ideas con claridad y escuchar activamente', cargos:'Todos', peso:15,
+    comportamiento_1:'Se expresa de forma confusa, interrumpe a los demás y no verifica que su mensaje fue comprendido.',
+    comportamiento_2:'Comunica sus ideas en situaciones simples pero tiene dificultades con mensajes complejos.',
+    comportamiento_3:'Transmite sus ideas con claridad, adapta su lenguaje al interlocutor y escucha con atención.',
+    comportamiento_4:'Comunica con precisión e impacto en cualquier contexto; genera conversaciones que alinean y movilizan.'
+  },
+  { id:'C004', nombre:'Orientación al Cliente', descripcion:'Enfoque en satisfacer y superar las expectativas del cliente', cargos:'Ejecutiva Comercial', peso:20,
+    comportamiento_1:'Muestra desinterés por las necesidades del cliente y genera experiencias negativas.',
+    comportamiento_2:'Atiende solicitudes básicas pero no anticipa necesidades ni hace seguimiento posventa.',
+    comportamiento_3:'Entiende las necesidades del cliente, responde oportunamente y genera satisfacción consistente.',
+    comportamiento_4:'Anticipa necesidades no expresadas, construye relaciones de largo plazo y supera expectativas.'
+  },
+  { id:'C005', nombre:'Liderazgo', descripcion:'Capacidad para guiar, motivar y desarrollar a otros', cargos:'Gerente Comercial', peso:20,
+    comportamiento_1:'No orienta a su equipo, genera desmotivación y no hace seguimiento a los compromisos del área.',
+    comportamiento_2:'Da instrucciones pero no verifica comprensión ni acompaña el desarrollo del equipo.',
+    comportamiento_3:'Orienta, retroalimenta y desarrolla a su equipo; genera un ambiente de confianza y compromiso.',
+    comportamiento_4:'Inspira al equipo, identifica potencial individual y crea líderes; su área supera metas sostenidamente.'
+  },
+  { id:'C006', nombre:'Pensamiento Analítico', descripcion:'Habilidad para analizar información y tomar decisiones basadas en datos', cargos:'Analista de Datos', peso:20,
+    comportamiento_1:'Toma decisiones sin analizar información; sus conclusiones no tienen respaldo en datos.',
+    comportamiento_2:'Analiza información básica pero tiene dificultades con datos complejos o variables múltiples.',
+    comportamiento_3:'Analiza información de diversas fuentes, identifica patrones y fundamenta bien sus recomendaciones.',
+    comportamiento_4:'Domina el análisis de datos complejos, anticipa tendencias y genera insights que impactan decisiones clave.'
+  },
+  { id:'C007', nombre:'Adaptabilidad', descripcion:'Capacidad de ajustarse eficazmente ante cambios e incertidumbre', cargos:'Todos', peso:10,
+    comportamiento_1:'Resiste los cambios, se queja ante nuevas situaciones y necesita largo tiempo para adaptarse.',
+    comportamiento_2:'Acepta los cambios cuando se le explica el motivo, pero requiere apoyo constante para ajustarse.',
+    comportamiento_3:'Se adapta con agilidad a nuevas situaciones y mantiene su rendimiento en entornos cambiantes.',
+    comportamiento_4:'Lidera la adaptación del equipo ante cambios; convierte la incertidumbre en oportunidades de mejora.'
+  },
+  { id:'C008', nombre:'Innovación y Creatividad', descripcion:'Propone soluciones nuevas y mejoras continuas en su trabajo', cargos:'Todos', peso:10,
+    comportamiento_1:'Solo ejecuta lo que se le indica; nunca propone ideas o mejoras a los procesos actuales.',
+    comportamiento_2:'Genera ideas ocasionalmente pero pocas llegan a implementarse por falta de seguimiento.',
+    comportamiento_3:'Propone mejoras concretas a sus procesos y las implementa con resultados medibles.',
+    comportamiento_4:'Genera innovaciones que impactan toda el área; sus ideas son adoptadas como mejores prácticas.'
+  },
+  { id:'C009', nombre:'Integridad y Ética', descripcion:'Actúa con transparencia, honestidad y coherencia con los valores', cargos:'Todos', peso:15,
+    comportamiento_1:'Ha incurrido en conductas deshonestas o inconsistentes con los valores de la organización.',
+    comportamiento_2:'Actúa con honestidad en situaciones directas, pero evita asumir responsabilidad ante errores.',
+    comportamiento_3:'Es transparente, reconoce sus errores y actúa con coherencia entre lo que dice y hace.',
+    comportamiento_4:'Es referente de integridad; confronta situaciones éticamente comprometidas y genera cultura de confianza.'
+  },
 ];
 
 const DEMO_EVALUACIONES = [
@@ -1121,7 +1138,7 @@ function demoBridge(action, data) {
     case 'getEvaluaciones':return { ok:true, data: DEMO_EVALUACIONES };
     case 'getPDI':         return { ok:true, data: DEMO_PDI };
     case 'getOKR':         return { ok:true, data: DEMO_OKR };
-    case 'getPeriodo':     return { ok:true, data: { nombre:'Evaluación Anual 2025', estado:'open', inicio:'2025-10-01', fin:'2025-12-31', peso_comp:50, peso_metas:30, peso_okr:20 } };
+    case 'getPeriodo':     return { ok:true, data: { nombre:'Evaluación Anual 2025', estado:'open', inicio:'2025-10-01', fin:'2025-12-31', peso_comp:60, peso_okr:40 } };
     case 'saveEval': {
       const idx = DEMO_EVALUACIONES.findIndex(e => e.id === data.id);
       if (idx >= 0) Object.assign(DEMO_EVALUACIONES[idx], data);
@@ -1480,7 +1497,6 @@ function openEvalForm(evaluadoId) {
   document.getElementById('evalButtons').style.display = readOnly ? 'none' : 'flex';
 
   renderCompetenciasForm(evaluado.cargo, evalObj.comp_scores || {}, readOnly);
-  renderMetasForm(evalObj.metas || [], readOnly);
   renderEvalOKRSection(evaluadoId, evalObj.score_okr || 0, readOnly);
 
   document.getElementById('evalFortalezas').value = evalObj.fortalezas || '';
@@ -1509,7 +1525,7 @@ function renderCompetenciasForm(cargo, savedScores, readOnly) {
         style="cursor:${readOnly?'default':'pointer'}"
       >${n} — ${b.label}</button>`;
     }).join('');
-    const behavBox = savedVal ? `<div class="behaviors-box show" id="beh-${c.id}">${renderBehaviors(savedVal)}</div>` : `<div class="behaviors-box" id="beh-${c.id}"></div>`;
+    const behavBox = savedVal ? `<div class="behaviors-box show" id="beh-${c.id}">${renderBehaviors(savedVal, c.id)}</div>` : `<div class="behaviors-box" id="beh-${c.id}"></div>`;
     return `<div class="competencia-row">
       <div class="competencia-header">
         <div class="comp-num">${i+1}</div>
@@ -1537,10 +1553,12 @@ function renderCompetenciasForm(cargo, savedScores, readOnly) {
   updateCompScore();
 }
 
-function renderBehaviors(val) {
+function renderBehaviors(val, compId) {
   const b = BEHAVIORS[val];
-  return `<strong style="color:${b.color}">★ ${b.label}: ${b.desc}</strong>
-    <ul style="margin-top:6px">${b.items.map(i => `<li>${i}</li>`).join('')}</ul>`;
+  const comp = compId ? STATE.competencias.find(c => c.id === compId) : null;
+  const customText = comp?.['comportamiento_' + val];
+  return `<strong style="color:${b.color}">★ ${val} — ${b.label}</strong>
+    <p style="margin-top:5px;font-size:.83rem;line-height:1.5">${customText || b.desc}</p>`;
 }
 
 function rateComp(compId, val) {
@@ -1556,7 +1574,7 @@ function rateComp(compId, val) {
 
   // Show behaviors
   const behBox = document.getElementById('beh-' + compId);
-  if (behBox) { behBox.innerHTML = renderBehaviors(val); behBox.classList.add('show'); }
+  if (behBox) { behBox.innerHTML = renderBehaviors(val, compId); behBox.classList.add('show'); }
 
   updateCompScore();
 }
@@ -1568,58 +1586,6 @@ function updateCompScore() {
   const avg = vals.length ? (vals.reduce((a,b)=>a+b,0)/vals.length).toFixed(2) : '—';
   document.getElementById('evalScoreComp').textContent = avg;
   if (!isNaN(avg)) STATE.currentEval.score_comp = parseFloat(avg);
-}
-
-function renderMetasForm(metas, readOnly) {
-  const cont = document.getElementById('metasRows');
-  STATE.currentEval._metas = metas.length ? JSON.parse(JSON.stringify(metas)) : [
-    { meta:'', peso:50, resultado:'', cumplimiento:0 },
-    { meta:'', peso:50, resultado:'', cumplimiento:0 },
-  ];
-  document.getElementById('btnAddMeta').style.display = readOnly ? 'none' : 'inline-flex';
-  renderMetaRows(readOnly);
-}
-
-function renderMetaRows(readOnly) {
-  const cont = document.getElementById('metasRows');
-  const metas = STATE.currentEval._metas;
-  cont.innerHTML = metas.map((m, i) => {
-    const pct = Math.min(100, Math.max(0, m.cumplimiento || 0));
-    const color = pct >= 80 ? '#43a047' : pct >= 50 ? '#f9a825' : '#e53935';
-    return `<div class="meta-row">
-      <input class="meta-input" value="${m.meta||''}" placeholder="Descripción de la meta" ${readOnly?'disabled':''} onchange="updateMeta(${i},'meta',this.value)">
-      <input class="meta-input" type="number" value="${m.peso||0}" min="0" max="100" ${readOnly?'disabled':''} onchange="updateMeta(${i},'peso',+this.value)" style="text-align:center">
-      <input class="meta-input" value="${m.resultado||''}" placeholder="Resultado real" ${readOnly?'disabled':''} onchange="updateMeta(${i},'resultado',this.value)">
-      <div>
-        <input class="meta-input" type="number" value="${pct}" min="0" max="100" ${readOnly?'disabled':''} onchange="updateMeta(${i},'cumplimiento',+this.value)" style="text-align:center;margin-bottom:4px">
-        <div class="progress-bar-wrap"><div class="progress-bar" style="width:${pct}%;background:${color}"></div></div>
-      </div>
-      ${readOnly ? '<span></span>' : `<button class="btn btn-danger btn-sm" onclick="removeMeta(${i})">✕</button>`}
-    </div>`;
-  }).join('');
-  updateMetaScore();
-}
-
-function updateMeta(idx, field, val) {
-  STATE.currentEval._metas[idx][field] = val;
-  updateMetaScore();
-}
-function addMetaRow() {
-  STATE.currentEval._metas.push({ meta:'', peso:0, resultado:'', cumplimiento:0 });
-  renderMetaRows(false);
-}
-function removeMeta(idx) {
-  STATE.currentEval._metas.splice(idx,1);
-  renderMetaRows(false);
-}
-function updateMetaScore() {
-  const metas = STATE.currentEval._metas;
-  const totalPeso = metas.reduce((a,m)=>a+(+m.peso||0),0);
-  let weighted = 0;
-  metas.forEach(m => { weighted += (+m.peso||0) * (+m.cumplimiento||0); });
-  const pct = totalPeso > 0 ? Math.round(weighted / totalPeso) : 0;
-  document.getElementById('evalScoreMetas').textContent = pct + '%';
-  STATE.currentEval.score_metas = pct;
 }
 
 function renderEvalOKRSection(colaboradorId, savedOKRScore, readOnly) {
@@ -1751,13 +1717,11 @@ function updateOKRScore(val) {
 function calcFinalScore() {
   const e = STATE.currentEval;
   const w = STATE.periodo;
-  const pComp  = (w.peso_comp  || 50) / 100;
-  const pMetas = (w.peso_metas || 30) / 100;
-  const pOKR   = (w.peso_okr   || 20) / 100;
+  const pComp = (w.peso_comp || 60) / 100;
+  const pOKR  = (w.peso_okr  || 40) / 100;
   const compScore = e.score_comp || 0;
-  const metaScore = (e.score_metas || 0) / 25;   // % → 0-4
-  const okrScore  = (e.score_okr  || 0) / 25;    // % → 0-4
-  return ((compScore * pComp) + (metaScore * pMetas) + (okrScore * pOKR)).toFixed(2);
+  const okrScore  = (e.score_okr  || 0) / 25;  // % → 0-4
+  return ((compScore * pComp) + (okrScore * pOKR)).toFixed(2);
 }
 
 async function saveEvalDraft() {
@@ -1808,9 +1772,7 @@ function buildEvalPayload(estado) {
     id: e.id,
     estado,
     comp_scores: { ...e.comp_scores, ...compScores },
-    metas: e._metas || [],
     score_comp: e.score_comp,
-    score_metas: e.score_metas,
     score_okr: e.score_okr || 0,
     fortalezas: document.getElementById('evalFortalezas').value,
     mejoras: document.getElementById('evalMejoras').value,
@@ -1869,7 +1831,6 @@ function openAutoEvalForm(readOnly) {
   document.getElementById('evalButtons').style.display = readOnly ? 'none' : 'flex';
 
   renderCompetenciasForm(u.cargo, evalAuto.comp_scores || {}, readOnly);
-  renderMetasForm(evalAuto.metas || [], readOnly);
   renderEvalOKRSection(u.id, evalAuto.score_okr || 0, true); // OKR siempre solo lectura en autoevaluación
 
   document.getElementById('evalFortalezas').value = evalAuto.fortalezas || '';
@@ -1911,15 +1872,11 @@ function renderResultados() {
         <div class="card" style="margin-top:16px">
           <div class="card-title" style="margin-bottom:10px">Desglose de Puntaje</div>
           <div style="display:flex;justify-content:space-between;padding:8px 0;border-bottom:1px solid var(--gray-light)">
-            <span>Competencias (${STATE.periodo.peso_comp||50}%)</span>
+            <span>Competencias (${STATE.periodo.peso_comp||60}%)</span>
             <strong>${evalJefe.score_comp?.toFixed(2)||'—'} / 4</strong>
           </div>
           <div style="display:flex;justify-content:space-between;padding:8px 0;border-bottom:1px solid var(--gray-light)">
-            <span>Desempeño/Metas (${STATE.periodo.peso_metas||30}%)</span>
-            <strong>${evalJefe.score_metas||'—'}%</strong>
-          </div>
-          <div style="display:flex;justify-content:space-between;padding:8px 0;border-bottom:1px solid var(--gray-light)">
-            <span>🎯 OKR (${STATE.periodo.peso_okr||20}%)</span>
+            <span>🎯 OKR (${STATE.periodo.peso_okr||40}%)</span>
             <strong>${evalJefe.score_okr != null ? evalJefe.score_okr + '%' : '—'}</strong>
           </div>
           <div style="display:flex;justify-content:space-between;padding:8px 0">
@@ -2789,9 +2746,8 @@ function renderAdmin() {
   document.getElementById('periodStatus').value = STATE.periodo.estado||'open';
   document.getElementById('periodStart').value = STATE.periodo.inicio||'';
   document.getElementById('periodEnd').value = STATE.periodo.fin||'';
-  document.getElementById('pesoComp').value = STATE.periodo.peso_comp||50;
-  document.getElementById('pesoMetas').value = STATE.periodo.peso_metas||30;
-  document.getElementById('pesoOKR').value = STATE.periodo.peso_okr||20;
+  document.getElementById('pesoComp').value = STATE.periodo.peso_comp||60;
+  document.getElementById('pesoOKR').value  = STATE.periodo.peso_okr||40;
   setTimeout(renderAdminCharts, 150);
 }
 
@@ -2814,13 +2770,22 @@ function renderUsersTable() {
 
 function renderCompsTable() {
   const tbody = document.getElementById('compTableBody');
-  tbody.innerHTML = STATE.competencias.map(c => `<tr>
-    <td><strong>${c.nombre}</strong></td>
-    <td style="font-size:.82rem;color:#888">${c.descripcion}</td>
-    <td><span class="status-pill pill-progress">${c.cargos}</span></td>
-    <td>${c.peso}%</td>
-    <td><button class="btn btn-secondary btn-sm" onclick="openCompModal('${c.id}')">Editar</button></td>
-  </tr>`).join('');
+  tbody.innerHTML = STATE.competencias.map(c => {
+    const defined = [1,2,3,4].filter(n => c['comportamiento_' + n]?.trim()).length;
+    const behIndicator = defined === 4
+      ? `<span style="color:#2e7d32;font-size:.78rem;font-weight:600">✓ 4/4 definidos</span>`
+      : defined > 0
+        ? `<span style="color:#f57c00;font-size:.78rem;font-weight:600">${defined}/4 definidos</span>`
+        : `<span style="color:#e53935;font-size:.78rem">Sin comportamientos</span>`;
+    return `<tr>
+      <td><strong>${c.nombre}</strong></td>
+      <td style="font-size:.82rem;color:#888">${c.descripcion}</td>
+      <td><span class="status-pill pill-progress">${c.cargos}</span></td>
+      <td>${c.peso}%</td>
+      <td>${behIndicator}</td>
+      <td><button class="btn btn-secondary btn-sm" onclick="openCompModal('${c.id}')">Ver</button></td>
+    </tr>`;
+  }).join('');
 }
 
 function openUserModal(userId) {
@@ -2885,32 +2850,71 @@ async function saveUserModal(id) {
 function openCompModal(compId) {
   const c = compId ? STATE.competencias.find(x=>x.id===compId) : null;
   const newId = 'C' + Date.now();
+
+  // Build behavior preview (read-only — se editan directamente en Google Sheets)
+  const behPreview = c ? [1,2,3,4].map(n => {
+    const b = BEHAVIORS[n];
+    const texto = c['comportamiento_' + n];
+    return `<div style="display:flex;gap:10px;padding:8px 0;border-bottom:1px solid var(--gray-light)">
+      <span style="background:${b.color};color:white;border-radius:6px;padding:2px 9px;font-size:.72rem;font-weight:700;flex-shrink:0;height:fit-content;margin-top:2px">${n} — ${b.label}</span>
+      <span style="font-size:.83rem;color:${texto ? 'var(--gray)' : '#aaa'};line-height:1.5">
+        ${texto || '<em>Sin comportamiento definido — agrégalo en la hoja "competencias" del Google Sheets</em>'}
+      </span>
+    </div>`;
+  }).join('') : '';
+
   openModal(c ? 'Editar competencia' : 'Nueva competencia', `
-    <div class="form-field"><label>Nombre de la competencia</label><input type="text" id="cNombre" value="${c?.nombre||''}"></div>
-    <div class="form-field"><label>Descripción</label><textarea id="cDesc" rows="2">${c?.descripcion||''}</textarea></div>
+    <div class="form-field"><label>Nombre de la competencia *</label><input type="text" id="cNombre" value="${c?.nombre||''}"></div>
+    <div class="form-field"><label>Descripción general</label><textarea id="cDesc" rows="2">${c?.descripcion||''}</textarea></div>
     <div class="form-row">
-      <div class="form-field"><label>Cargo(s) aplicables</label><input type="text" id="cCargos" value="${c?.cargos||'Todos'}" placeholder="Todos, o nombre del cargo"></div>
+      <div class="form-field"><label>Cargo(s) aplicables</label><input type="text" id="cCargos" value="${c?.cargos||'Todos'}" placeholder="Todos, o nombre exacto del cargo"></div>
       <div class="form-field"><label>Peso (%)</label><input type="number" id="cPeso" value="${c?.peso||10}" min="0" max="100"></div>
     </div>
+    ${c ? `
+    <hr style="border:none;border-top:1px solid var(--gray-light);margin:14px 0">
+    <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:10px">
+      <span style="font-size:.82rem;font-weight:700;color:var(--gray);text-transform:uppercase;letter-spacing:.06em">Comportamientos por nivel</span>
+      <span style="font-size:.75rem;color:#aaa">📋 Se editan en Google Sheets</span>
+    </div>
+    <div style="background:var(--gray-light);border-radius:8px;padding:8px 14px">${behPreview}</div>
+    ` : `
+    <div class="info-banner" style="margin-top:12px;font-size:.82rem">
+      <svg width="14" height="14" viewBox="0 0 24 24" fill="currentColor"><path d="M12 2C6.48 2 2 6.48 2 12s4.48 10 10 10 10-4.48 10-10S17.52 2 12 2zm1 15h-2v-6h2v6zm0-8h-2V7h2v2z"/></svg>
+      Después de crear la competencia, agrega los 4 comportamientos directamente en la pestaña <strong>competencias</strong> de tu Google Sheets (columnas comportamiento_1 a comportamiento_4).
+    </div>
+    `}
   `, [
     { label:'Cancelar', cls:'btn-secondary', action:'closeModal()' },
-    { label: c?'Guardar':'Agregar competencia', cls:'btn-primary', action:`saveCompModal('${c?.id||newId}')` }
+    { label: c ? 'Guardar cambios' : 'Crear competencia', cls:'btn-primary', action:`saveCompModal('${c?.id||newId}')` }
   ]);
 }
 
 async function saveCompModal(id) {
+  const nombre = document.getElementById('cNombre').value.trim();
+  if (!nombre) { showToast('El nombre es obligatorio', 'error'); return; }
+
+  const existing = STATE.competencias.find(c => c.id === id);
   const data = {
-    id, nombre: document.getElementById('cNombre').value,
+    id,
+    nombre,
     descripcion: document.getElementById('cDesc').value,
-    cargos: document.getElementById('cCargos').value,
-    peso: parseInt(document.getElementById('cPeso').value)||10,
+    cargos: document.getElementById('cCargos').value || 'Todos',
+    peso: parseInt(document.getElementById('cPeso').value) || 10,
+    // Preserve existing behavior columns
+    comportamiento_1: existing?.comportamiento_1 || '',
+    comportamiento_2: existing?.comportamiento_2 || '',
+    comportamiento_3: existing?.comportamiento_3 || '',
+    comportamiento_4: existing?.comportamiento_4 || '',
   };
-  if (!data.nombre) { showToast('El nombre es obligatorio', 'error'); return; }
-  const idx = STATE.competencias.findIndex(c=>c.id===id);
-  if (idx>=0) Object.assign(STATE.competencias[idx], data); else STATE.competencias.push(data);
+
+  const idx = STATE.competencias.findIndex(c => c.id === id);
+  if (idx >= 0) Object.assign(STATE.competencias[idx], data);
+  else STATE.competencias.push(data);
+
   await apiCall('saveComp', data);
-  closeModal(); renderCompsTable();
-  showToast('Competencia guardada', 'success');
+  closeModal();
+  renderCompsTable();
+  showToast('✅ Competencia guardada. Recuerda agregar los comportamientos en el Sheets.', 'success');
 }
 
 function renderAdminCharts() {
@@ -2943,7 +2947,7 @@ function renderAdminCharts() {
       <td>${colab?.cargo||'—'}</td>
       <td>${jefe?.nombre||'—'}</td>
       <td>${e.score_comp?.toFixed(2)||'—'}</td>
-      <td>${e.score_metas||'—'}%</td>
+      <td>${e.score_okr != null ? e.score_okr + '%' : '—'}</td>
       <td><strong style="color:var(--red)">${e.score_final?.toFixed(2)||'—'}</strong></td>
       <td><span class="status-pill pill-done" style="background:${cat.color}20;color:${cat.color}">${cat.label}</span></td>
     </tr>`;
@@ -2956,11 +2960,10 @@ async function savePeriod() {
     estado: document.getElementById('periodStatus').value,
     inicio: document.getElementById('periodStart').value,
     fin: document.getElementById('periodEnd').value,
-    peso_comp:  parseInt(document.getElementById('pesoComp').value)||50,
-    peso_metas: parseInt(document.getElementById('pesoMetas').value)||30,
-    peso_okr:   parseInt(document.getElementById('pesoOKR').value)||20,
+    peso_comp: parseInt(document.getElementById('pesoComp').value)||60,
+    peso_okr:  parseInt(document.getElementById('pesoOKR').value)||40,
   };
-  const sumPesos = data.peso_comp + data.peso_metas + data.peso_okr;
+  const sumPesos = data.peso_comp + data.peso_okr;
   if (sumPesos !== 100) {
     showToast(`Los pesos deben sumar 100% (actualmente: ${sumPesos}%)`, 'error');
     document.getElementById('pesosTotal').textContent = `Total: ${sumPesos}% ⚠️`;
@@ -3109,7 +3112,7 @@ function exportReport() {
     const colab=getUserById(e.evaluado_id);
     const jefe=getUserById(colab?.jefe_id);
     const cat=getCategory(e.score_final);
-    rows.push([colab?.nombre||'',colab?.cargo||'',jefe?.nombre||'',e.score_comp||'',e.score_metas+'%',e.score_final||'',cat.label]);
+    rows.push([colab?.nombre||'',colab?.cargo||'',jefe?.nombre||'',e.score_comp||'',(e.score_okr != null ? e.score_okr+'%' : ''),e.score_final||'',cat.label]);
   });
   const csv = rows.map(r=>r.join(',')).join('\n');
   const blob = new Blob([csv],{type:'text/csv'});
