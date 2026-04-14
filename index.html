@@ -871,7 +871,7 @@
 // ═══════════════════════════════════════════
 //  CONFIG — Reemplaza con tu URL de Google Apps Script
 // ═══════════════════════════════════════════
-const SCRIPT_URL = 'https://script.google.com/macros/s/AKfycbxjWEm8KQrW0hjYlngwP9Rf-bN8DXigrwZQAgpZyiDt-e3qEPfvXINok3dXm3Rt9sQA/exec';
+const SCRIPT_URL = 'https://script.google.com/macros/s/AKfycbyP_LZuP0emafHlCpyJunIGNdjUUWTyrJEk826Z6NVdKYRNWaPQQok-h2Qn4gE57T08/exec';
 
 // ═══════════════════════════════════════════
 //  STATE
@@ -1507,7 +1507,20 @@ function openEvalForm(evaluadoId) {
   document.getElementById('evalReadOnlyBanner').style.display = readOnly ? 'flex' : 'none';
   document.getElementById('evalButtons').style.display = readOnly ? 'none' : 'flex';
 
-  renderCompetenciasForm(evaluado.cargo, evalObj.comp_scores || {}, readOnly);
+  // Reconstruir comp_scores desde JSON o columnas individuales
+  const savedScoresRaw = evalObj.comp_scores || {};
+  const savedScores = { ...savedScoresRaw };
+  // Fallback: leer de columnas comp_CXXX si el objeto está vacío
+  if (!Object.keys(savedScores).filter(k => !k.startsWith('comment_')).length) {
+    Object.keys(evalObj).forEach(k => {
+      if (k.startsWith('comp_C')) {
+        const id = k.replace('comp_', '');
+        const v = Number(evalObj[k]);
+        if (v > 0) savedScores[id] = v;
+      }
+    });
+  }
+  renderCompetenciasForm(evaluado.cargo, savedScores, readOnly);
   renderEvalOKRSection(evaluadoId, evalObj.score_okr || 0, readOnly);
 
   document.getElementById('evalFortalezas').value = evalObj.fortalezas || '';
@@ -1872,7 +1885,19 @@ function openAutoEvalForm(readOnly) {
   document.getElementById('evalReadOnlyBanner').style.display = readOnly ? 'flex' : 'none';
   document.getElementById('evalButtons').style.display = readOnly ? 'none' : 'flex';
 
-  renderCompetenciasForm(u.cargo, evalAuto.comp_scores || {}, readOnly);
+  // Reconstruir comp_scores desde JSON o columnas individuales
+  const autoScoresRaw = evalAuto.comp_scores || {};
+  const autoSavedScores = { ...autoScoresRaw };
+  if (!Object.keys(autoSavedScores).filter(k => !k.startsWith('comment_')).length) {
+    Object.keys(evalAuto).forEach(k => {
+      if (k.startsWith('comp_C')) {
+        const id = k.replace('comp_', '');
+        const v = Number(evalAuto[k]);
+        if (v > 0) autoSavedScores[id] = v;
+      }
+    });
+  }
+  renderCompetenciasForm(u.cargo, autoSavedScores, readOnly);
   renderEvalOKRSection(u.id, evalAuto.score_okr || 0, true); // OKR siempre solo lectura en autoevaluación
 
   document.getElementById('evalFortalezas').value = evalAuto.fortalezas || '';
@@ -1899,9 +1924,18 @@ function renderResultados() {
 
   const cat = getCategory(evalJefe.score_final);
   const comps = getCompsByRole(u.cargo);
-  const compLabels = comps.map(c => c.nombre.substring(0,18));
-  const jefeScores = comps.map(c => evalJefe.comp_scores?.[c.id] || 0);
-  const autoScores = evalAuto ? comps.map(c => evalAuto.comp_scores?.[c.id] || 0) : [];
+  const compLabels = comps.map(c => c.nombre.substring(0, 18));
+
+  // Leer calificación de comp_scores o de columna individual comp_CXXX
+  function getCompScore(eval_, compId) {
+    const fromJson = eval_.comp_scores?.[compId];
+    if (fromJson > 0) return fromJson;
+    const fromCol = eval_['comp_' + compId];
+    return fromCol ? Number(fromCol) : 0;
+  }
+
+  const jefeScores = comps.map(c => getCompScore(evalJefe, c.id));
+  const autoScores = evalAuto ? comps.map(c => getCompScore(evalAuto, c.id)) : [];
 
   cont.innerHTML = `
     <div class="results-grid">
