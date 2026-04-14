@@ -871,7 +871,7 @@
 // ═══════════════════════════════════════════
 //  CONFIG — Reemplaza con tu URL de Google Apps Script
 // ═══════════════════════════════════════════
-const SCRIPT_URL = 'https://script.google.com/macros/s/AKfycbyDOXDnjRITx3lh4fvB2Xu8EFryXdIzzw8tqorrSQtmmBbkaA1YtcEhVabXzgyeDpyF/exec';
+const SCRIPT_URL = 'https://script.google.com/macros/s/AKfycbxjWEm8KQrW0hjYlngwP9Rf-bN8DXigrwZQAgpZyiDt-e3qEPfvXINok3dXm3Rt9sQA/exec';
 
 // ═══════════════════════════════════════════
 //  STATE
@@ -1420,7 +1420,9 @@ function renderDashCharts() {
 // ═══════════════════════════════════════════
 function renderTeam() {
   const u = STATE.user;
-  const team = STATE.users.filter(x => x.jefe_id === u.id || u.rol === 'admin');
+  const team = u.rol === 'admin'
+    ? STATE.users.filter(x => x.id !== u.id && String(x.activo) !== 'false')
+    : STATE.users.filter(x => x.jefe_id === u.id && x.rol === 'colaborador' && String(x.activo) !== 'false');
   const tbody = document.getElementById('teamTableBody');
   if (!team.length) { tbody.innerHTML = '<tr><td colspan="6" class="empty-state"><p>No tienes colaboradores asignados.</p></td></tr>'; return; }
 
@@ -1782,26 +1784,41 @@ async function submitEval() {
 
 function buildEvalPayload(estado) {
   const e = STATE.currentEval;
-  const compScores = {};
-  getCompsByRole(e._evaluado.cargo).forEach(c => {
-    compScores[c.id] = e.comp_scores?.[c.id] || 0;
-    const ta = document.querySelector(`textarea[placeholder="Comentario específico (opcional)..."]`);
-  });
-  // Collect comments
+  const comps = getCompsByRole(e._evaluado.cargo);
+
+  // Recopilar calificaciones y comentarios por competencia
+  const compScores = { ...e.comp_scores };
   document.querySelectorAll('.comp-comment[placeholder="Comentario específico (opcional)..."]').forEach((ta, i) => {
-    const comp = getCompsByRole(e._evaluado.cargo)[i];
-    if (comp) compScores['comment_'+comp.id] = ta.value;
+    const comp = comps[i];
+    if (comp) compScores['comment_' + comp.id] = ta.value;
+  });
+
+  // Expandir comp_scores a columnas individuales (comp_C001, comp_C002, etc.)
+  // para que sea legible en Google Sheets
+  const compColumnas = {};
+  comps.forEach(c => {
+    compColumnas['comp_' + c.id] = compScores[c.id] || 0;
+    if (compScores['comment_' + c.id]) {
+      compColumnas['comment_' + c.id] = compScores['comment_' + c.id];
+    }
   });
 
   return {
     id: e.id,
+    evaluado_id: e.evaluado_id,
+    evaluador_id: e.evaluador_id,
+    tipo: e.tipo,
+    periodo: e.periodo,
     estado,
-    comp_scores: { ...e.comp_scores, ...compScores },
     score_comp: e.score_comp,
     score_okr: e.score_okr || 0,
+    score_final: e.score_final || null,
+    comp_scores: JSON.stringify(compScores), // para compatibilidad interna
+    ...compColumnas,                          // columnas individuales legibles en Sheets
     fortalezas: document.getElementById('evalFortalezas').value,
     mejoras: document.getElementById('evalMejoras').value,
     comentario: document.getElementById('evalComentario').value,
+    fecha_envio: e.fecha_envio || null,
   };
 }
 
