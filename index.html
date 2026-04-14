@@ -2893,20 +2893,23 @@ async function saveUserModal(id) {
 }
 
 function openCompModal(compId) {
-  const c = compId ? STATE.competencias.find(x=>x.id===compId) : null;
+  const c = compId ? STATE.competencias.find(x => x.id === compId) : null;
   const newId = 'C' + Date.now();
 
-  // Build behavior preview (read-only — se editan directamente en Google Sheets)
-  const behPreview = c ? [1,2,3,4].map(n => {
+  const behFields = [1,2,3,4].map(n => {
     const b = BEHAVIORS[n];
-    const texto = c['comportamiento_' + n];
-    return `<div style="display:flex;gap:10px;padding:8px 0;border-bottom:1px solid var(--gray-light)">
-      <span style="background:${b.color};color:white;border-radius:6px;padding:2px 9px;font-size:.72rem;font-weight:700;flex-shrink:0;height:fit-content;margin-top:2px">${n} — ${b.label}</span>
-      <span style="font-size:.83rem;color:${texto ? 'var(--gray)' : '#aaa'};line-height:1.5">
-        ${texto || '<em>Sin comportamiento definido — agrégalo en la hoja "competencias" del Google Sheets</em>'}
-      </span>
+    const val = c?.['comportamiento_' + n] || '';
+    return `<div class="form-field" style="margin-bottom:8px">
+      <label style="display:flex;align-items:center;gap:8px;margin-bottom:5px">
+        <span style="background:${b.color};color:white;border-radius:6px;padding:2px 10px;font-size:.72rem;font-weight:700;white-space:nowrap">${n} — ${b.label}</span>
+      </label>
+      <textarea id="cBeh${n}" rows="2"
+        placeholder="Describe cómo se ve este nivel en la competencia..."
+        style="width:100%;padding:8px 10px;border:1.5px solid var(--gray-mid);border-radius:8px;font-family:Asap,sans-serif;font-size:.84rem;resize:vertical;outline:none"
+        onfocus="this.style.borderColor='var(--red)'" onblur="this.style.borderColor='var(--gray-mid)'"
+      >${val}</textarea>
     </div>`;
-  }).join('') : '';
+  }).join('');
 
   openModal(c ? 'Editar competencia' : 'Nueva competencia', `
     <div class="form-field"><label>Nombre de la competencia *</label><input type="text" id="cNombre" value="${c?.nombre||''}"></div>
@@ -2915,19 +2918,15 @@ function openCompModal(compId) {
       <div class="form-field"><label>Cargo(s) aplicables</label><input type="text" id="cCargos" value="${c?.cargos||'Todos'}" placeholder="Todos, o nombre exacto del cargo"></div>
       <div class="form-field"><label>Peso (%)</label><input type="number" id="cPeso" value="${c?.peso||10}" min="0" max="100"></div>
     </div>
-    ${c ? `
     <hr style="border:none;border-top:1px solid var(--gray-light);margin:14px 0">
-    <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:10px">
-      <span style="font-size:.82rem;font-weight:700;color:var(--gray);text-transform:uppercase;letter-spacing:.06em">Comportamientos por nivel</span>
-      <span style="font-size:.75rem;color:#aaa">📋 Se editan en Google Sheets</span>
+    <div style="font-size:.82rem;font-weight:700;color:var(--gray);text-transform:uppercase;letter-spacing:.06em;margin-bottom:10px">
+      Comportamientos por nivel de calificación
     </div>
-    <div style="background:var(--gray-light);border-radius:8px;padding:8px 14px">${behPreview}</div>
-    ` : `
-    <div class="info-banner" style="margin-top:12px;font-size:.82rem">
-      <svg width="14" height="14" viewBox="0 0 24 24" fill="currentColor"><path d="M12 2C6.48 2 2 6.48 2 12s4.48 10 10 10 10-4.48 10-10S17.52 2 12 2zm1 15h-2v-6h2v6zm0-8h-2V7h2v2z"/></svg>
-      Después de crear la competencia, agrega los 4 comportamientos directamente en la pestaña <strong>"competencias"</strong> de tu Google Sheets (columnas: comportamiento_1, comportamiento_2, comportamiento_3, comportamiento_4).
+    <div class="info-banner" style="margin-bottom:12px;font-size:.8rem">
+      <svg width="13" height="13" viewBox="0 0 24 24" fill="currentColor"><path d="M12 2C6.48 2 2 6.48 2 12s4.48 10 10 10 10-4.48 10-10S17.52 2 12 2zm1 15h-2v-6h2v6zm0-8h-2V7h2v2z"/></svg>
+      Puedes editarlos aquí o directamente en la pestaña <strong>"competencias"</strong> del Google Sheets (columnas comportamiento_1 a comportamiento_4). Ambos métodos sincronizan.
     </div>
-    `}
+    ${behFields}
   `, [
     { label:'Cancelar', cls:'btn-secondary', action:'closeModal()' },
     { label: c ? 'Guardar cambios' : 'Crear competencia', cls:'btn-primary', action:`saveCompModal('${c?.id||newId}')` }
@@ -2938,18 +2937,16 @@ async function saveCompModal(id) {
   const nombre = document.getElementById('cNombre').value.trim();
   if (!nombre) { showToast('El nombre es obligatorio', 'error'); return; }
 
-  const existing = STATE.competencias.find(c => c.id === id);
   const data = {
     id,
     nombre,
     descripcion: document.getElementById('cDesc').value,
     cargos: document.getElementById('cCargos').value || 'Todos',
     peso: parseInt(document.getElementById('cPeso').value) || 10,
-    // Preserve existing behavior columns
-    comportamiento_1: existing?.comportamiento_1 || '',
-    comportamiento_2: existing?.comportamiento_2 || '',
-    comportamiento_3: existing?.comportamiento_3 || '',
-    comportamiento_4: existing?.comportamiento_4 || '',
+    comportamiento_1: document.getElementById('cBeh1')?.value?.trim() || '',
+    comportamiento_2: document.getElementById('cBeh2')?.value?.trim() || '',
+    comportamiento_3: document.getElementById('cBeh3')?.value?.trim() || '',
+    comportamiento_4: document.getElementById('cBeh4')?.value?.trim() || '',
   };
 
   const idx = STATE.competencias.findIndex(c => c.id === id);
@@ -2959,7 +2956,7 @@ async function saveCompModal(id) {
   await apiCall('saveComp', data);
   closeModal();
   renderCompsTable();
-  showToast('✅ Competencia guardada. Recuerda agregar los comportamientos en el Sheets.', 'success');
+  showToast('✅ Competencia guardada', 'success');
 }
 
 function renderAdminCharts() {
