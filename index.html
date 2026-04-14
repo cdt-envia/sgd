@@ -351,6 +351,82 @@
   }
   @keyframes spin { to { transform: rotate(360deg); } }
 
+  /* ─── OKR ─── */
+  .okr-objective {
+    background: white; border-radius: var(--radius); margin-bottom: 20px;
+    box-shadow: var(--shadow); overflow: hidden; border-top: 4px solid var(--red);
+    transition: box-shadow var(--transition);
+  }
+  .okr-objective:hover { box-shadow: var(--shadow-lg); }
+  .okr-obj-header {
+    padding: 18px 22px; display: flex; align-items: flex-start;
+    justify-content: space-between; gap: 14px; cursor: pointer;
+  }
+  .okr-obj-left { flex: 1; }
+  .okr-obj-title { font-size: 1rem; font-weight: 700; color: var(--gray); margin-bottom: 4px; }
+  .okr-obj-meta { font-size: .78rem; color: #aaa; display: flex; gap: 14px; flex-wrap: wrap; margin-top: 4px; }
+  .okr-obj-score {
+    min-width: 72px; text-align: center; flex-shrink: 0;
+  }
+  .okr-obj-score .score-num {
+    font-size: 2rem; font-weight: 700; line-height: 1;
+  }
+  .okr-obj-score .score-lbl { font-size: .7rem; color: #aaa; }
+  .okr-kr-list { border-top: 1px solid var(--gray-light); }
+  .okr-kr-row {
+    padding: 14px 22px 14px 38px; border-bottom: 1px solid var(--gray-light);
+    display: grid; grid-template-columns: 1fr 140px 120px 110px;
+    gap: 12px; align-items: center; font-size: .88rem;
+  }
+  .okr-kr-row:last-child { border-bottom: none; }
+  .okr-kr-row:hover { background: #fafafa; }
+  .okr-kr-name { font-weight: 500; color: var(--gray); }
+  .okr-kr-name small { display: block; font-size: .75rem; color: #aaa; font-weight: 400; margin-top: 2px; }
+  .okr-kr-progress { }
+  .okr-kr-actions { display: flex; gap: 6px; justify-content: flex-end; }
+  .okr-period-badge {
+    display: inline-block; padding: 2px 10px; border-radius: 10px;
+    font-size: .72rem; font-weight: 600; background: var(--red-light); color: var(--red);
+  }
+  .okr-checkin-dot {
+    width: 8px; height: 8px; border-radius: 50%; display: inline-block; margin-right: 4px;
+  }
+  .okr-filter-bar {
+    display: flex; gap: 8px; align-items: center; flex-wrap: wrap; margin-bottom: 20px;
+  }
+  .okr-filter-bar select, .okr-filter-bar input {
+    padding: 7px 12px; border: 1.5px solid var(--gray-mid); border-radius: 8px;
+    font-family: 'Asap', sans-serif; font-size: .85rem; outline: none; background: white;
+  }
+  .okr-filter-bar select:focus, .okr-filter-bar input:focus { border-color: var(--red); }
+  .okr-summary-bar {
+    display: grid; grid-template-columns: repeat(4, 1fr); gap: 12px; margin-bottom: 20px;
+  }
+  .okr-summary-card {
+    background: white; border-radius: var(--radius); padding: 16px 18px;
+    box-shadow: var(--shadow); text-align: center;
+  }
+  .okr-summary-card .val { font-size: 1.8rem; font-weight: 700; color: var(--red); }
+  .okr-summary-card .lbl { font-size: .75rem; color: #888; margin-top: 2px; }
+  .confidence-pill {
+    display: inline-block; padding: 2px 10px; border-radius: 10px; font-size: .72rem; font-weight: 600;
+  }
+  .conf-high   { background: #e8f5e9; color: #2e7d32; }
+  .conf-mid    { background: #fff3e0; color: #e65100; }
+  .conf-low    { background: #ffebee; color: #c62828; }
+  .checkin-list { padding: 0 22px 14px 38px; }
+  .checkin-item {
+    display: flex; gap: 10px; padding: 8px 0;
+    border-bottom: 1px dashed var(--gray-light); font-size: .83rem;
+  }
+  .checkin-item:last-child { border-bottom: none; }
+  .checkin-date { color: #aaa; flex-shrink: 0; width: 90px; }
+  .checkin-author { color: var(--red); font-weight: 600; flex-shrink: 0; width: 100px; }
+
+  @media (max-width: 700px) {
+    .okr-kr-row { grid-template-columns: 1fr; }
+    .okr-summary-bar { grid-template-columns: 1fr 1fr; }
+  }
   @media (max-width: 900px) {
     .sidebar { width: 200px; }
     .results-grid { grid-template-columns: 1fr; }
@@ -530,6 +606,25 @@
           </button>
         </div>
 
+        <!-- SECCIÓN OKR -->
+        <div class="card" id="evalOKRSection">
+          <div class="card-header">
+            <div>
+              <div class="card-title">🎯 Cumplimiento de OKR</div>
+              <div class="card-subtitle">Evalúa el cumplimiento de los OKR asignados al colaborador en el periodo</div>
+            </div>
+            <div style="text-align:right">
+              <div style="font-size:1.8rem;font-weight:700;color:var(--red)" id="evalScoreOKR">—</div>
+              <div style="font-size:.75rem;color:#888">% Cumplimiento OKR</div>
+            </div>
+          </div>
+          <div id="evalOKRContainer">
+            <div class="empty-state" style="padding:20px">
+              <p style="font-size:.85rem;color:#aaa">Cargando OKR del colaborador...</p>
+            </div>
+          </div>
+        </div>
+
         <!-- SECCIÓN COMENTARIOS -->
         <div class="card">
           <div class="card-title" style="margin-bottom:14px">💬 Comentarios y Fortalezas</div>
@@ -600,6 +695,40 @@
         <div id="pdiContent"></div>
       </div>
 
+      <!-- ─── PÁGINA: OKR ─── -->
+      <div class="page" id="page-okr">
+        <div class="page-header">
+          <h2>OKR — Objetivos y Resultados Clave</h2>
+          <p id="okrSubtitle">Gestiona y haz seguimiento a los OKR del equipo</p>
+        </div>
+        <!-- Barra de resumen -->
+        <div class="okr-summary-bar" id="okrSummaryBar"></div>
+        <!-- Filtros -->
+        <div class="okr-filter-bar">
+          <select id="okrFilterPeriod" onchange="renderOKR()">
+            <option value="">Todos los periodos</option>
+          </select>
+          <select id="okrFilterOwner" onchange="renderOKR()">
+            <option value="">Todos los responsables</option>
+          </select>
+          <select id="okrFilterTipo" onchange="renderOKR()">
+            <option value="">Todos los tipos</option>
+            <option value="equipo">OKR de Equipo</option>
+            <option value="individual">OKR Individuales</option>
+          </select>
+          <select id="okrFilterStatus" onchange="renderOKR()">
+            <option value="">Todos los estados</option>
+            <option value="on_track">En camino</option>
+            <option value="at_risk">En riesgo</option>
+            <option value="off_track">Fuera de rumbo</option>
+            <option value="completed">Completado</option>
+          </select>
+          <div style="margin-left:auto;display:flex;gap:8px" id="okrActionBtns"></div>
+        </div>
+        <!-- Lista de objetivos -->
+        <div id="okrList"></div>
+      </div>
+
       <!-- ─── PÁGINA: ADMIN - USUARIOS ─── -->
       <div class="page" id="page-admin">
         <div class="page-header">
@@ -608,10 +737,35 @@
         </div>
         <div class="admin-tabs">
           <button class="admin-tab active" onclick="switchAdminTab('usuarios',this)">Usuarios</button>
+          <button class="admin-tab" onclick="switchAdminTab('asignaciones',this)">Asignar Evaluaciones</button>
           <button class="admin-tab" onclick="switchAdminTab('competencias',this)">Competencias</button>
           <button class="admin-tab" onclick="switchAdminTab('periodo',this)">Periodo</button>
           <button class="admin-tab" onclick="switchAdminTab('reportes',this)">Reportes</button>
         </div>
+        <div class="admin-tab-content" id="adminTab-asignaciones">
+          <div class="card">
+            <div class="card-header">
+              <div>
+                <div class="card-title">Asignar Evaluaciones al Equipo</div>
+                <div class="card-subtitle">Genera las evaluaciones (jefe→colaborador y autoevaluación) para el periodo activo</div>
+              </div>
+            </div>
+            <div class="info-banner" style="margin-bottom:16px">
+              <svg width="16" height="16" viewBox="0 0 24 24" fill="currentColor"><path d="M12 2C6.48 2 2 6.48 2 12s4.48 10 10 10 10-4.48 10-10S17.52 2 12 2zm1 15h-2v-6h2v6zm0-8h-2V7h2v2z"/></svg>
+              <div>Este proceso crea los formularios de evaluación para cada colaborador. Si ya existen para el periodo, no se duplican. Ejecuta este paso <strong>una sola vez al inicio de cada ciclo</strong>.</div>
+            </div>
+            <div class="form-field" style="max-width:280px">
+              <label>Periodo de evaluación</label>
+              <input type="text" id="asigPeriodo" placeholder="Ej: 2025" value="2025">
+            </div>
+            <div id="asignacionesTableWrap" style="margin:16px 0"></div>
+            <div style="display:flex;gap:10px;margin-top:4px">
+              <button class="btn btn-secondary" onclick="previewAsignaciones()">🔍 Ver estado actual</button>
+              <button class="btn btn-primary" onclick="ejecutarAsignaciones()">⚡ Generar evaluaciones faltantes</button>
+            </div>
+          </div>
+        </div>
+
         <div class="admin-tab-content active" id="adminTab-usuarios">
           <div class="card">
             <div class="card-header">
@@ -670,11 +824,21 @@
             <div class="form-row">
               <div class="form-field">
                 <label>Peso Competencias (%)</label>
-                <input type="number" id="pesoComp" value="60" min="0" max="100">
+                <input type="number" id="pesoComp" value="50" min="0" max="100">
               </div>
               <div class="form-field">
                 <label>Peso Desempeño/Metas (%)</label>
-                <input type="number" id="pesoMetas" value="40" min="0" max="100">
+                <input type="number" id="pesoMetas" value="30" min="0" max="100">
+              </div>
+            </div>
+            <div class="form-row">
+              <div class="form-field">
+                <label>Peso OKR (%)</label>
+                <input type="number" id="pesoOKR" value="20" min="0" max="100">
+              </div>
+              <div class="form-field">
+                <label style="color:#888;font-size:.78rem">Los tres pesos deben sumar 100%</label>
+                <div id="pesosTotal" style="font-size:1.1rem;font-weight:700;color:var(--gray);margin-top:6px">Total: 100%</div>
               </div>
             </div>
             <button class="btn btn-primary" onclick="savePeriod()">Guardar configuración</button>
@@ -731,11 +895,12 @@ const SCRIPT_URL = 'https://script.google.com/macros/s/AKfycbwV2swkNPD6VaOiYW6B2
 //  STATE
 // ═══════════════════════════════════════════
 let STATE = {
-  user: null,        // {id, nombre, usuario, cargo, rol, jefe_id}
+  user: null,
   users: [],
   competencias: [],
   evaluaciones: [],
   pdi: [],
+  okr: [],
   periodo: {},
   currentEval: null,
   charts: {}
@@ -820,7 +985,92 @@ const DEMO_PDI = [
   { id:'P002', colaborador_id:'U005', jefe_id:'U002', competencia:'Pensamiento Analítico', accion:'Certificación en Excel avanzado y Power BI', recursos:'Presupuesto capacitación', fecha_inicio:'2025-02-01', fecha_fin:'2025-07-31', estado:'en_progreso', progreso:70, observaciones:'Va muy bien' },
 ];
 
-const DEMO_PERIODO = { nombre:'Evaluación Anual 2025', estado:'open', inicio:'2025-10-01', fin:'2025-12-31', peso_comp:60, peso_metas:40 };
+const DEMO_OKR = [
+  // ── OKR DE EQUIPO ──────────────────────────────────────────
+  {
+    id: 'OBJ001', jefe_id: 'U002', tipo: 'equipo',
+    titulo: 'Incrementar los ingresos del área comercial',
+    descripcion: 'Asegurar el crecimiento sostenido de la cartera de clientes y el ticket promedio',
+    periodo: 'Q1-2025', fecha_inicio: '2025-01-01', fecha_fin: '2025-03-31',
+    estado: 'on_track', score: 72,
+    krs: [
+      { id:'KR001', descripcion:'Cerrar 15 nuevos clientes enterprise', responsable_id:'U003',
+        meta:'15 clientes', actual:'11 clientes', progreso:73, confianza:'high', checkins:[
+          { fecha:'2025-02-15', autor_id:'U002', nota:'Llevamos 8 clientes, buen ritmo', progreso:53 },
+          { fecha:'2025-03-01', autor_id:'U002', nota:'Gran avance, 11 clientes cerrados', progreso:73 },
+        ]},
+      { id:'KR002', descripcion:'Aumentar ticket promedio a $5.000.000 COP', responsable_id:'U003',
+        meta:'$5.000.000', actual:'$4.200.000', progreso:84, confianza:'high', checkins:[
+          { fecha:'2025-02-20', autor_id:'U002', nota:'Estamos en $3.8M, necesitamos subir upsell', progreso:76 },
+        ]},
+      { id:'KR003', descripcion:'Reducir churn de clientes al 3%', responsable_id:'U005',
+        meta:'3%', actual:'5.2%', progreso:40, confianza:'low', checkins:[
+          { fecha:'2025-03-01', autor_id:'U002', nota:'Churn sigue alto, trabajando en plan de retención', progreso:40 },
+        ]},
+    ]
+  },
+  {
+    id: 'OBJ002', jefe_id: 'U002', tipo: 'equipo',
+    titulo: 'Fortalecer la cultura y retención del equipo',
+    descripcion: 'Mejorar el clima laboral y reducir la rotación del área',
+    periodo: 'Q1-2025', fecha_inicio: '2025-01-01', fecha_fin: '2025-03-31',
+    estado: 'at_risk', score: 55,
+    krs: [
+      { id:'KR004', descripcion:'Alcanzar eNPS de 40 en encuesta trimestral', responsable_id:'U005',
+        meta:'40 puntos', actual:'28 puntos', progreso:55, confianza:'mid', checkins:[] },
+      { id:'KR005', descripcion:'Completar 100% de PDI activos del equipo', responsable_id:'U002',
+        meta:'100%', actual:'60%', progreso:60, confianza:'mid', checkins:[
+          { fecha:'2025-02-28', autor_id:'U002', nota:'3 de 5 PDI avanzando bien', progreso:60 },
+        ]},
+    ]
+  },
+  // ── OKR INDIVIDUALES ───────────────────────────────────────
+  {
+    id: 'OBJ003', jefe_id: 'U002', tipo: 'individual', colaborador_id: 'U003',
+    titulo: 'Consolidar la cartera de clientes asignada',
+    descripcion: 'Mejorar la gestión de cuenta y aumentar la retención individual',
+    periodo: 'Q1-2025', fecha_inicio: '2025-01-01', fecha_fin: '2025-03-31',
+    estado: 'on_track', score: 78,
+    krs: [
+      { id:'KR006', descripcion:'Mantener NPS de cartera por encima de 50', responsable_id:'U003',
+        meta:'NPS ≥ 50', actual:'NPS 54', progreso:80, confianza:'high', checkins:[
+          { fecha:'2025-02-10', autor_id:'U002', nota:'Excelente gestión de cuenta, clientes satisfechos', progreso:80 },
+        ]},
+      { id:'KR007', descripcion:'Lograr upsell en al menos 5 cuentas existentes', responsable_id:'U003',
+        meta:'5 upsells', actual:'3 upsells', progreso:60, confianza:'mid', checkins:[] },
+    ]
+  },
+  {
+    id: 'OBJ004', jefe_id: 'U002', tipo: 'individual', colaborador_id: 'U004',
+    titulo: 'Automatizar los reportes de datos del área',
+    descripcion: 'Reducir tiempo manual en generación de reportes con dashboards',
+    periodo: 'Q1-2025', fecha_inicio: '2025-01-01', fecha_fin: '2025-03-31',
+    estado: 'on_track', score: 65,
+    krs: [
+      { id:'KR008', descripcion:'Construir dashboard ejecutivo en Power BI', responsable_id:'U004',
+        meta:'1 dashboard publicado', actual:'En construcción', progreso:65, confianza:'mid', checkins:[
+          { fecha:'2025-02-25', autor_id:'U002', nota:'Avance del 65%, faltan los módulos de ventas', progreso:65 },
+        ]},
+    ]
+  },
+  {
+    id: 'OBJ005', jefe_id: 'U002', tipo: 'individual', colaborador_id: 'U005',
+    titulo: 'Implementar el proceso de onboarding rediseñado',
+    descripcion: 'Ejecutar el nuevo proceso de vinculación y medir su impacto',
+    periodo: 'Q1-2025', fecha_inicio: '2025-01-01', fecha_fin: '2025-03-31',
+    estado: 'completed', score: 90,
+    krs: [
+      { id:'KR009', descripcion:'Diseñar y publicar guía de onboarding digital', responsable_id:'U005',
+        meta:'Guía publicada', actual:'Publicado', progreso:100, confianza:'high', checkins:[
+          { fecha:'2025-03-05', autor_id:'U002', nota:'Guía publicada y socializada con el equipo', progreso:100 },
+        ]},
+      { id:'KR010', descripcion:'Reducir tiempo de onboarding de 30 a 20 días', responsable_id:'U005',
+        meta:'20 días', actual:'22 días', progreso:80, confianza:'high', checkins:[] },
+    ]
+  },
+];
+
+
 
 // ═══════════════════════════════════════════
 //  UTILS
@@ -862,28 +1112,50 @@ async function apiCall(action, data={}) {
 
 function demoBridge(action, data) {
   switch(action) {
-    case 'login':
+    case 'login': {
       const u = DEMO_USERS.find(x => x.usuario === data.usuario && x.contrasena === data.contrasena && x.activo);
       return u ? { ok: true, user: u } : { ok: false, error: 'Credenciales incorrectas' };
-    case 'getUsers': return { ok:true, data: DEMO_USERS };
-    case 'getCompetencias': return { ok:true, data: DEMO_COMPETENCIAS };
-    case 'getEvaluaciones': return { ok:true, data: DEMO_EVALUACIONES };
-    case 'getPDI': return { ok:true, data: DEMO_PDI };
-    case 'getPeriodo': return { ok:true, data: DEMO_PERIODO };
-    case 'saveEval':
+    }
+    case 'getUsers':       return { ok:true, data: DEMO_USERS };
+    case 'getCompetencias':return { ok:true, data: DEMO_COMPETENCIAS };
+    case 'getEvaluaciones':return { ok:true, data: DEMO_EVALUACIONES };
+    case 'getPDI':         return { ok:true, data: DEMO_PDI };
+    case 'getOKR':         return { ok:true, data: DEMO_OKR };
+    case 'getPeriodo':     return { ok:true, data: { nombre:'Evaluación Anual 2025', estado:'open', inicio:'2025-10-01', fin:'2025-12-31', peso_comp:50, peso_metas:30, peso_okr:20 } };
+    case 'saveEval': {
       const idx = DEMO_EVALUACIONES.findIndex(e => e.id === data.id);
       if (idx >= 0) Object.assign(DEMO_EVALUACIONES[idx], data);
+      else DEMO_EVALUACIONES.push(data);
       return { ok:true };
-    case 'savePDI':
+    }
+    case 'savePDI': {
       const pidx = DEMO_PDI.findIndex(p => p.id === data.id);
       if (pidx >= 0) Object.assign(DEMO_PDI[pidx], data);
       else DEMO_PDI.push(data);
       return { ok:true };
-    case 'saveUser':
+    }
+    case 'saveOKR': {
+      const oidx = DEMO_OKR.findIndex(o => o.id === data.id);
+      if (oidx >= 0) Object.assign(DEMO_OKR[oidx], data);
+      else DEMO_OKR.push(data);
+      return { ok:true };
+    }
+    case 'saveUser': {
       const uidx = DEMO_USERS.findIndex(u => u.id === data.id);
       if (uidx >= 0) Object.assign(DEMO_USERS[uidx], data);
       else DEMO_USERS.push(data);
       return { ok:true };
+    }
+    case 'asignarEvaluaciones': {
+      // Genera evaluaciones jefe→colab y auto para cada colaborador
+      data.asignaciones.forEach(a => {
+        const yaJefe = DEMO_EVALUACIONES.find(e => e.evaluado_id === a.colab_id && e.evaluador_id === a.jefe_id && e.tipo === 'jefe');
+        const yaAuto = DEMO_EVALUACIONES.find(e => e.evaluado_id === a.colab_id && e.tipo === 'auto');
+        if (!yaJefe) DEMO_EVALUACIONES.push({ id:'E'+Date.now()+Math.random(), evaluado_id:a.colab_id, evaluador_id:a.jefe_id, tipo:'jefe', periodo:data.periodo||'2025', estado:'pendiente', score_comp:null, score_metas:null, score_okr:null, score_final:null, comp_scores:{}, metas:[], fortalezas:'', mejoras:'', comentario:'', fecha_envio:null });
+        if (!yaAuto) DEMO_EVALUACIONES.push({ id:'E'+Date.now()+Math.random()+'a', evaluado_id:a.colab_id, evaluador_id:a.colab_id, tipo:'auto', periodo:data.periodo||'2025', estado:'pendiente', score_comp:null, score_metas:null, score_okr:null, score_final:null, comp_scores:{}, metas:[], fortalezas:'', mejoras:'', comentario:'', fecha_envio:null });
+      });
+      return { ok:true };
+    }
     default: return { ok:true };
   }
 }
@@ -910,7 +1182,7 @@ function showError(msg) {
   setTimeout(() => e.style.display = 'none', 3000);
 }
 function handleLogout() {
-  STATE = { user:null, users:[], competencias:[], evaluaciones:[], pdi:[], periodo:{}, currentEval:null, charts:{} };
+  STATE = { user:null, users:[], competencias:[], evaluaciones:[], pdi:[], okr:[], periodo:{}, currentEval:null, charts:{} };
   document.getElementById('appShell').style.display = 'none';
   document.getElementById('loginScreen').style.display = 'flex';
   document.getElementById('loginUser').value = '';
@@ -921,15 +1193,17 @@ function handleLogout() {
 //  DATA LOAD
 // ═══════════════════════════════════════════
 async function loadAllData() {
-  const [ru, rc, re, rp, rper] = await Promise.all([
+  const [ru, rc, re, rp, rper, rokr] = await Promise.all([
     apiCall('getUsers'), apiCall('getCompetencias'),
-    apiCall('getEvaluaciones'), apiCall('getPDI'), apiCall('getPeriodo')
+    apiCall('getEvaluaciones'), apiCall('getPDI'), apiCall('getPeriodo'),
+    apiCall('getOKR')
   ]);
   STATE.users = ru.data || [];
   STATE.competencias = rc.data || [];
   STATE.evaluaciones = re.data || [];
   STATE.pdi = rp.data || [];
   STATE.periodo = rper.data || {};
+  STATE.okr = rokr.data || [];
 }
 
 // ═══════════════════════════════════════════
@@ -957,17 +1231,20 @@ function buildSidebar() {
       { id:'dashboard', icon:'chart', label:'Dashboard' },
       { id:'admin', icon:'settings', label:'Administración' },
       { id:'mis-evaluaciones', icon:'eval', label:'Evaluaciones del equipo' },
+      { id:'okr', icon:'okr', label:'OKR' },
       { id:'pdi', icon:'pdi', label:'PDI Equipos' },
     ],
     jefe: [
       { id:'dashboard', icon:'chart', label:'Dashboard' },
       { id:'mis-evaluaciones', icon:'eval', label:'Evaluar equipo' },
+      { id:'okr', icon:'okr', label:'OKR del equipo' },
       { id:'pdi', icon:'pdi', label:'PDI del equipo' },
     ],
     colaborador: [
       { id:'dashboard', icon:'chart', label:'Mi panel' },
       { id:'autoevaluacion', icon:'self', label:'Mi Autoevaluación' },
       { id:'resultados', icon:'results', label:'Mis Resultados' },
+      { id:'okr', icon:'okr', label:'Mis OKR' },
       { id:'pdi', icon:'pdi', label:'Mi PDI' },
     ]
   };
@@ -978,6 +1255,7 @@ function buildSidebar() {
     pdi: '<path d="M12 3L1 9l11 6 9-4.91V17h2V9M5 13.18v4L12 21l7-3.82v-4L12 17l-7-3.82z"/>',
     self: '<path d="M12 12c2.21 0 4-1.79 4-4s-1.79-4-4-4-4 1.79-4 4 1.79 4 4 4zm0 2c-2.67 0-8 1.34-8 4v2h16v-2c0-2.66-5.33-4-8-4z"/>',
     results: '<path d="M19 3H5c-1.1 0-2 .9-2 2v14c0 1.1.9 2 2 2h14c1.1 0 2-.9 2-2V5c0-1.1-.9-2-2-2zM9 17H7v-7h2v7zm4 0h-2V7h2v10zm4 0h-2v-4h2v4z"/>',
+    okr: '<path d="M19 3H5c-1.1 0-2 .9-2 2v14c0 1.1.9 2 2 2h14c1.1 0 2-.9 2-2V5c0-1.1-.9-2-2-2zm-7 14l-5-5 1.41-1.41L12 14.17l7.59-7.59L21 8l-9 9z"/>',
   };
   const list = items[rol] || items.colaborador;
   let html = '<div class="sidebar-section"><div class="sidebar-label">Menú principal</div>';
@@ -1009,6 +1287,7 @@ function navigateTo(pageId) {
     case 'autoevaluacion': renderAutoEval(); break;
     case 'resultados': renderResultados(); break;
     case 'pdi': renderPDI(); break;
+    case 'okr': renderOKR(); break;
     case 'admin': renderAdmin(); break;
   }
 }
@@ -1150,8 +1429,46 @@ async function refreshTeam() {
 // ═══════════════════════════════════════════
 function openEvalForm(evaluadoId) {
   const evaluado = getUserById(evaluadoId);
-  const evalObj = STATE.evaluaciones.find(e => e.evaluado_id === evaluadoId && e.evaluador_id === STATE.user.id && e.tipo === 'jefe');
-  if (!evaluado || !evalObj) { showToast('No se encontró evaluación asignada', 'error'); return; }
+  if (!evaluado) { showToast('Colaborador no encontrado', 'error'); return; }
+
+  // Buscar evaluación existente
+  let evalObj = STATE.evaluaciones.find(e =>
+    e.evaluado_id === evaluadoId &&
+    e.evaluador_id === STATE.user.id &&
+    e.tipo === 'jefe'
+  );
+
+  // Si no existe, crearla automáticamente
+  if (!evalObj) {
+    evalObj = {
+      id: 'E' + Date.now(),
+      evaluado_id: evaluadoId,
+      evaluador_id: STATE.user.id,
+      tipo: 'jefe',
+      periodo: STATE.periodo.nombre || '2025',
+      estado: 'pendiente',
+      score_comp: null, score_metas: null, score_okr: null, score_final: null,
+      comp_scores: {}, metas: [], fortalezas: '', mejoras: '', comentario: '', fecha_envio: null
+    };
+    STATE.evaluaciones.push(evalObj);
+    // También crear autoevaluación si no existe
+    const yaAuto = STATE.evaluaciones.find(e =>
+      e.evaluado_id === evaluadoId && e.tipo === 'auto'
+    );
+    if (!yaAuto) {
+      STATE.evaluaciones.push({
+        id: 'E' + Date.now() + 'a',
+        evaluado_id: evaluadoId,
+        evaluador_id: evaluadoId,
+        tipo: 'auto',
+        periodo: STATE.periodo.nombre || '2025',
+        estado: 'pendiente',
+        score_comp: null, score_metas: null, score_okr: null, score_final: null,
+        comp_scores: {}, metas: [], fortalezas: '', mejoras: '', comentario: '', fecha_envio: null
+      });
+    }
+    apiCall('saveEval', evalObj); // guardar en backend sin bloquear
+  }
 
   STATE.currentEval = { ...evalObj, _evaluado: evaluado };
   document.getElementById('evalFormTitle').textContent = 'Evaluando a: ' + evaluado.nombre;
@@ -1164,6 +1481,7 @@ function openEvalForm(evaluadoId) {
 
   renderCompetenciasForm(evaluado.cargo, evalObj.comp_scores || {}, readOnly);
   renderMetasForm(evalObj.metas || [], readOnly);
+  renderEvalOKRSection(evaluadoId, evalObj.score_okr || 0, readOnly);
 
   document.getElementById('evalFortalezas').value = evalObj.fortalezas || '';
   document.getElementById('evalMejoras').value = evalObj.mejoras || '';
@@ -1304,14 +1622,142 @@ function updateMetaScore() {
   STATE.currentEval.score_metas = pct;
 }
 
+function renderEvalOKRSection(colaboradorId, savedOKRScore, readOnly) {
+  const cont = document.getElementById('evalOKRContainer');
+  const scoreEl = document.getElementById('evalScoreOKR');
+
+  // Find individual OKR for this colaborador in the current period
+  const indivOKRs = STATE.okr.filter(o =>
+    o.tipo === 'individual' && o.colaborador_id === colaboradorId
+  );
+  // Also team OKRs where this person has assigned KRs
+  const teamKRs = STATE.okr
+    .filter(o => o.tipo === 'equipo')
+    .flatMap(o => (o.krs || [])
+      .filter(kr => kr.responsable_id === colaboradorId)
+      .map(kr => ({ ...kr, _objTitulo: o.titulo, _objId: o.id }))
+    );
+
+  if (!indivOKRs.length && !teamKRs.length) {
+    cont.innerHTML = `<div style="padding:16px 0;color:#aaa;font-size:.88rem;text-align:center">
+      No hay OKR asignados a este colaborador para el periodo actual.<br>
+      <small>Puedes asignarlos desde el módulo de OKR.</small>
+    </div>`;
+    if (STATE.currentEval) STATE.currentEval.score_okr = 0;
+    scoreEl.textContent = '0%';
+    return;
+  }
+
+  // Restore saved value or compute from live OKR data
+  let currentOKRScore = savedOKRScore || 0;
+  if (!savedOKRScore) {
+    const allProgs = [
+      ...indivOKRs.flatMap(o => (o.krs||[]).map(k => k.progreso || 0)),
+      ...teamKRs.map(k => k.progreso || 0),
+    ];
+    currentOKRScore = allProgs.length
+      ? Math.round(allProgs.reduce((a,b)=>a+b,0)/allProgs.length)
+      : 0;
+  }
+  if (STATE.currentEval) STATE.currentEval.score_okr = currentOKRScore;
+  scoreEl.textContent = currentOKRScore + '%';
+
+  let html = '';
+
+  // Individual OKRs
+  if (indivOKRs.length) {
+    html += `<div style="font-size:.78rem;font-weight:700;color:#888;text-transform:uppercase;letter-spacing:.06em;padding:12px 16px 6px;border-bottom:1px solid var(--gray-light)">OKR Individuales</div>`;
+    indivOKRs.forEach(obj => {
+      const objAvg = (obj.krs||[]).length
+        ? Math.round((obj.krs||[]).reduce((a,k)=>a+(k.progreso||0),0)/(obj.krs||[]).length)
+        : 0;
+      const st = OKR_STATUS[obj.estado] || OKR_STATUS.on_track;
+      html += `<div style="padding:12px 16px;border-bottom:1px solid var(--gray-light)">
+        <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:8px">
+          <div>
+            <span style="font-weight:600;color:var(--gray)">${obj.titulo}</span>
+            <span class="okr-period-badge" style="margin-left:8px">${obj.periodo}</span>
+            <span class="status-pill" style="margin-left:6px;background:${st.bg};color:${st.color}">${st.label}</span>
+          </div>
+          <strong style="color:var(--red)">${objAvg}%</strong>
+        </div>
+        ${(obj.krs||[]).map(kr => renderOKREvalKR(kr, obj.id, readOnly)).join('')}
+      </div>`;
+    });
+  }
+
+  // Team KRs
+  if (teamKRs.length) {
+    html += `<div style="font-size:.78rem;font-weight:700;color:#888;text-transform:uppercase;letter-spacing:.06em;padding:12px 16px 6px;border-bottom:1px solid var(--gray-light)">KR de OKR Equipo (responsable)</div>`;
+    teamKRs.forEach(kr => {
+      html += `<div style="padding:8px 16px;border-bottom:1px solid var(--gray-light)">
+        <div style="font-size:.75rem;color:#aaa;margin-bottom:3px">Objetivo: ${kr._objTitulo}</div>
+        ${renderOKREvalKR(kr, kr._objId, readOnly)}
+      </div>`;
+    });
+  }
+
+  // OKR Score override (jefe puede ajustar manualmente)
+  if (!readOnly) {
+    const w = STATE.periodo;
+    html += `<div style="padding:14px 16px;background:var(--gray-light);display:flex;align-items:center;gap:14px;flex-wrap:wrap">
+      <div style="flex:1">
+        <label style="font-size:.78rem;font-weight:600;color:var(--gray);display:block;margin-bottom:4px">
+          % Cumplimiento OKR final <small style="color:#aaa">(calculado automáticamente o ajusta manualmente)</small>
+        </label>
+        <input type="number" id="okrScoreInput" min="0" max="100" value="${currentOKRScore}"
+          style="width:120px;padding:6px 10px;border:1.5px solid var(--gray-mid);border-radius:6px;font-family:Asap,sans-serif;font-size:.9rem"
+          oninput="updateOKRScore(this.value)">
+      </div>
+      <div style="text-align:right">
+        <div style="font-size:.75rem;color:#888">Peso en calificación final</div>
+        <div style="font-size:1.2rem;font-weight:700;color:var(--red)">${w.peso_okr||20}%</div>
+      </div>
+    </div>`;
+  }
+
+  cont.innerHTML = html;
+}
+
+function renderOKREvalKR(kr, objId, readOnly) {
+  const pct = kr.progreso || 0;
+  const barColor = pct >= 70 ? '#43a047' : pct >= 40 ? '#f57c00' : '#e53935';
+  const conf = CONF_CONFIG[kr.confianza] || CONF_CONFIG.mid;
+  return `<div style="display:grid;grid-template-columns:1fr 100px 130px;gap:10px;align-items:center;padding:6px 0">
+    <div style="font-size:.85rem;color:var(--gray)">
+      ${kr.descripcion}
+      <small style="color:#aaa;display:block">${kr.actual||'—'} / meta: ${kr.meta||'—'}</small>
+    </div>
+    <div>
+      <div style="display:flex;justify-content:space-between;font-size:.72rem;margin-bottom:3px">
+        <span style="color:#888">Avance</span><strong style="color:${barColor}">${pct}%</strong>
+      </div>
+      <div class="progress-bar-wrap"><div class="progress-bar" style="width:${pct}%;background:${barColor}"></div></div>
+    </div>
+    <div style="text-align:right">
+      <span class="confidence-pill ${conf.cls}">${conf.label}</span>
+      ${!readOnly ? `<button class="btn btn-secondary btn-sm" style="margin-left:4px;padding:3px 8px" onclick="openCheckinModal('${objId}','${kr.id}')">✏️ Actualizar</button>` : ''}
+    </div>
+  </div>`;
+}
+
+function updateOKRScore(val) {
+  const pct = Math.min(100, Math.max(0, parseInt(val)||0));
+  if (STATE.currentEval) STATE.currentEval.score_okr = pct;
+  document.getElementById('evalScoreOKR').textContent = pct + '%';
+}
+
+
 function calcFinalScore() {
   const e = STATE.currentEval;
   const w = STATE.periodo;
-  const pComp = (w.peso_comp || 60) / 100;
-  const pMetas = (w.peso_metas || 40) / 100;
+  const pComp  = (w.peso_comp  || 50) / 100;
+  const pMetas = (w.peso_metas || 30) / 100;
+  const pOKR   = (w.peso_okr   || 20) / 100;
   const compScore = e.score_comp || 0;
-  const metaScore = (e.score_metas || 0) / 25; // convert % to 0-4
-  return ((compScore * pComp) + (metaScore * pMetas)).toFixed(2);
+  const metaScore = (e.score_metas || 0) / 25;   // % → 0-4
+  const okrScore  = (e.score_okr  || 0) / 25;    // % → 0-4
+  return ((compScore * pComp) + (metaScore * pMetas) + (okrScore * pOKR)).toFixed(2);
 }
 
 async function saveEvalDraft() {
@@ -1365,6 +1811,7 @@ function buildEvalPayload(estado) {
     metas: e._metas || [],
     score_comp: e.score_comp,
     score_metas: e.score_metas,
+    score_okr: e.score_okr || 0,
     fortalezas: document.getElementById('evalFortalezas').value,
     mejoras: document.getElementById('evalMejoras').value,
     comentario: document.getElementById('evalComentario').value,
@@ -1377,17 +1824,18 @@ function buildEvalPayload(estado) {
 function renderAutoEval() {
   const u = STATE.user;
   const evalAuto = STATE.evaluaciones.find(e => e.evaluado_id === u.id && e.tipo === 'auto');
-  if (!evalAuto) return;
   const pill = document.getElementById('autoEvalStatus');
   const btn = document.getElementById('btnOpenAutoEval');
-  if (evalAuto.estado === 'enviado') {
+
+  if (!evalAuto || evalAuto.estado === 'pendiente') {
+    pill.textContent = 'Pendiente'; pill.className = 'status-pill pill-pending';
+    btn.textContent = 'Iniciar autoevaluación'; btn.onclick = () => openAutoEvalForm(false);
+  } else if (evalAuto.estado === 'enviado') {
     pill.textContent = 'Completada'; pill.className = 'status-pill pill-done';
     btn.textContent = 'Ver mi autoevaluación'; btn.onclick = () => openAutoEvalForm(true);
   } else {
-    pill.textContent = evalAuto.estado === 'borrador' ? 'En borrador' : 'Pendiente';
-    pill.className = 'status-pill ' + (evalAuto.estado === 'borrador' ? 'pill-progress' : 'pill-pending');
-    btn.textContent = evalAuto.estado === 'borrador' ? 'Continuar autoevaluación' : 'Iniciar autoevaluación';
-    btn.onclick = () => openAutoEvalForm(false);
+    pill.textContent = 'En borrador'; pill.className = 'status-pill pill-progress';
+    btn.textContent = 'Continuar autoevaluación'; btn.onclick = () => openAutoEvalForm(false);
   }
 }
 
@@ -1395,8 +1843,23 @@ function openAutoEval() { openAutoEvalForm(false); }
 
 function openAutoEvalForm(readOnly) {
   const u = STATE.user;
-  const evalAuto = STATE.evaluaciones.find(e => e.evaluado_id === u.id && e.tipo === 'auto');
-  if (!evalAuto) { showToast('No se encontró tu autoevaluación', 'error'); return; }
+  let evalAuto = STATE.evaluaciones.find(e => e.evaluado_id === u.id && e.tipo === 'auto');
+
+  // Si no existe, crearla automáticamente
+  if (!evalAuto) {
+    evalAuto = {
+      id: 'E' + Date.now() + 'a',
+      evaluado_id: u.id,
+      evaluador_id: u.id,
+      tipo: 'auto',
+      periodo: STATE.periodo.nombre || '2025',
+      estado: 'pendiente',
+      score_comp: null, score_metas: null, score_okr: null, score_final: null,
+      comp_scores: {}, metas: [], fortalezas: '', mejoras: '', comentario: '', fecha_envio: null
+    };
+    STATE.evaluaciones.push(evalAuto);
+    apiCall('saveEval', evalAuto);
+  }
 
   STATE.currentEval = { ...evalAuto, _evaluado: u };
   document.getElementById('evalFormTitle').textContent = 'Mi Autoevaluación';
@@ -1407,6 +1870,7 @@ function openAutoEvalForm(readOnly) {
 
   renderCompetenciasForm(u.cargo, evalAuto.comp_scores || {}, readOnly);
   renderMetasForm(evalAuto.metas || [], readOnly);
+  renderEvalOKRSection(u.id, evalAuto.score_okr || 0, true); // OKR siempre solo lectura en autoevaluación
 
   document.getElementById('evalFortalezas').value = evalAuto.fortalezas || '';
   document.getElementById('evalMejoras').value = evalAuto.mejoras || '';
@@ -1447,12 +1911,16 @@ function renderResultados() {
         <div class="card" style="margin-top:16px">
           <div class="card-title" style="margin-bottom:10px">Desglose de Puntaje</div>
           <div style="display:flex;justify-content:space-between;padding:8px 0;border-bottom:1px solid var(--gray-light)">
-            <span>Competencias (${STATE.periodo.peso_comp||60}%)</span>
+            <span>Competencias (${STATE.periodo.peso_comp||50}%)</span>
             <strong>${evalJefe.score_comp?.toFixed(2)||'—'} / 4</strong>
           </div>
           <div style="display:flex;justify-content:space-between;padding:8px 0;border-bottom:1px solid var(--gray-light)">
-            <span>Desempeño/Metas (${STATE.periodo.peso_metas||40}%)</span>
+            <span>Desempeño/Metas (${STATE.periodo.peso_metas||30}%)</span>
             <strong>${evalJefe.score_metas||'—'}%</strong>
+          </div>
+          <div style="display:flex;justify-content:space-between;padding:8px 0;border-bottom:1px solid var(--gray-light)">
+            <span>🎯 OKR (${STATE.periodo.peso_okr||20}%)</span>
+            <strong>${evalJefe.score_okr != null ? evalJefe.score_okr + '%' : '—'}</strong>
           </div>
           <div style="display:flex;justify-content:space-between;padding:8px 0">
             <span><strong>Calificación Final</strong></span>
@@ -1507,6 +1975,494 @@ function viewColabResults(colabId) {
   STATE.user = { ...getUserById(colabId), _viewing: true };
   navigateTo('resultados');
   STATE.user = origUser;
+}
+
+// ═══════════════════════════════════════════
+//  OKR — OBJETIVOS Y RESULTADOS CLAVE
+// ═══════════════════════════════════════════
+
+const OKR_STATUS = {
+  on_track:  { label: 'En camino',       color: '#43a047', bg: '#e8f5e9', dot: '#43a047' },
+  at_risk:   { label: 'En riesgo',       color: '#f57c00', bg: '#fff3e0', dot: '#f57c00' },
+  off_track: { label: 'Fuera de rumbo',  color: '#e53935', bg: '#ffebee', dot: '#e53935' },
+  completed: { label: 'Completado',      color: '#1565c0', bg: '#e3f2fd', dot: '#1565c0' },
+};
+const CONF_CONFIG = {
+  high: { label: 'Alta confianza', cls: 'conf-high' },
+  mid:  { label: 'Media',          cls: 'conf-mid'  },
+  low:  { label: 'Baja confianza', cls: 'conf-low'  },
+};
+
+function getMyOKRs() {
+  const u = STATE.user;
+  if (u.rol === 'colaborador') {
+    // Individual OKRs assigned to me + team OKRs where I have KRs
+    return STATE.okr.filter(obj =>
+      (obj.tipo === 'individual' && obj.colaborador_id === u.id) ||
+      (obj.tipo === 'equipo' && obj.krs && obj.krs.some(kr => kr.responsable_id === u.id))
+    );
+  }
+  if (u.rol === 'jefe') {
+    return STATE.okr.filter(obj => obj.jefe_id === u.id);
+  }
+  return STATE.okr; // admin ve todos
+}
+
+function renderOKR() {
+  const u = STATE.user;
+  const isReadOnly = u.rol === 'colaborador';
+
+  // Populate filter dropdowns
+  const periods = [...new Set(STATE.okr.map(o => o.periodo).filter(Boolean))];
+  const pfSel = document.getElementById('okrFilterPeriod');
+  const curPeriod = pfSel?.value || '';
+  if (pfSel) {
+    pfSel.innerHTML = '<option value="">Todos los periodos</option>' +
+      periods.map(p => `<option value="${p}" ${curPeriod===p?'selected':''}>${p}</option>`).join('');
+  }
+
+  const teamIds = u.rol === 'admin'
+    ? STATE.users.map(x => x.id)
+    : [u.id, ...STATE.users.filter(x => x.jefe_id === u.id).map(x => x.id)];
+  const ofSel = document.getElementById('okrFilterOwner');
+  const curOwner = ofSel?.value || '';
+  if (ofSel) {
+    const owners = STATE.users.filter(x => teamIds.includes(x.id));
+    ofSel.innerHTML = '<option value="">Todos los responsables</option>' +
+      owners.map(x => `<option value="${x.id}" ${curOwner===x.id?'selected':''}>${x.nombre}</option>`).join('');
+  }
+
+  // Action button
+  const actBtns = document.getElementById('okrActionBtns');
+  if (actBtns) {
+    actBtns.innerHTML = !isReadOnly
+      ? `<button class="btn btn-primary btn-sm" onclick="openOKRModal()">+ Nuevo objetivo</button>`
+      : '';
+  }
+
+  // Filter objectives
+  let objectives = getMyOKRs();
+  const filterPeriod = document.getElementById('okrFilterPeriod')?.value;
+  const filterOwner  = document.getElementById('okrFilterOwner')?.value;
+  const filterStatus = document.getElementById('okrFilterStatus')?.value;
+  const filterTipo   = document.getElementById('okrFilterTipo')?.value;
+  if (filterPeriod) objectives = objectives.filter(o => o.periodo === filterPeriod);
+  if (filterStatus) objectives = objectives.filter(o => o.estado === filterStatus);
+  if (filterTipo)   objectives = objectives.filter(o => o.tipo === filterTipo);
+  if (filterOwner) objectives = objectives.filter(o =>
+    o.jefe_id === filterOwner || (o.krs && o.krs.some(kr => kr.responsable_id === filterOwner))
+  );
+  // For colaborador: for team OKRs only show their KRs
+  if (isReadOnly) {
+    objectives = objectives.map(obj => obj.tipo === 'equipo'
+      ? { ...obj, krs: (obj.krs||[]).filter(kr => kr.responsable_id === u.id) }
+      : obj
+    ).filter(obj => (obj.krs||[]).length > 0 || obj.tipo === 'individual');
+  }
+
+  // Summary bar — always from full set
+  const allObj = getMyOKRs();
+  const teamObjs = allObj.filter(o => o.tipo === 'equipo');
+  const indivObjs = allObj.filter(o => o.tipo === 'individual');
+  const avgScore = allObj.length
+    ? Math.round(allObj.reduce((a, o) => a + (o.score || 0), 0) / allObj.length)
+    : 0;
+  const onTrack = allObj.filter(o => o.estado === 'on_track').length;
+  const allKRs  = allObj.flatMap(o => o.krs || []);
+  const avgKR   = allKRs.length
+    ? Math.round(allKRs.reduce((a, k) => a + (k.progreso || 0), 0) / allKRs.length)
+    : 0;
+
+  document.getElementById('okrSummaryBar').innerHTML = [
+    { val: allObj.length, lbl: 'Total objetivos' },
+    { val: teamObjs.length + ' equipo / ' + indivObjs.length + ' ind.', lbl: 'Equipo vs Individuales' },
+    { val: avgScore + '%', lbl: 'Score promedio' },
+    { val: avgKR + '%', lbl: 'Avance promedio KR' },
+  ].map(s => `<div class="okr-summary-card"><div class="val" style="font-size:${String(s.val).length > 6 ? '1.2rem' : '1.8rem'}">${s.val}</div><div class="lbl">${s.lbl}</div></div>`).join('');
+
+  // Render objectives
+  const list = document.getElementById('okrList');
+  if (!objectives.length) {
+    list.innerHTML = `<div class="empty-state" style="background:white;border-radius:10px;padding:48px">
+      <svg viewBox="0 0 24 24" fill="currentColor"><path d="M19 3H5c-1.1 0-2 .9-2 2v14c0 1.1.9 2 2 2h14c1.1 0 2-.9 2-2V5c0-1.1-.9-2-2-2zm-7 14l-5-5 1.41-1.41L12 14.17l7.59-7.59L21 8l-9 9z"/></svg>
+      <p>No hay OKR registrados aún. ${!isReadOnly ? 'Crea el primer objetivo.' : 'Tu jefe aún no ha definido OKR.'}</p>
+    </div>`;
+    return;
+  }
+
+  list.innerHTML = objectives.map(obj => renderObjectiveCard(obj, isReadOnly)).join('');
+}
+
+function renderObjectiveCard(obj, isReadOnly) {
+  const st = OKR_STATUS[obj.estado] || OKR_STATUS.on_track;
+  const krs = obj.krs || [];
+  const avgProg = krs.length
+    ? Math.round(krs.reduce((a, k) => a + (k.progreso || 0), 0) / krs.length)
+    : 0;
+  const scoreColor = obj.score >= 70 ? '#43a047' : obj.score >= 40 ? '#f57c00' : '#e53935';
+  const krRows = krs.map(kr => renderKRRow(kr, obj.id, isReadOnly)).join('');
+  const canEdit = !isReadOnly;
+  const isIndiv = obj.tipo === 'individual';
+  const colabName = isIndiv ? getUserById(obj.colaborador_id)?.nombre : null;
+  const tipoBadge = isIndiv
+    ? `<span style="background:#e3f2fd;color:#1565c0;border-radius:10px;padding:2px 9px;font-size:.72rem;font-weight:700">👤 Individual${colabName ? ' · ' + colabName.split(' ')[0] : ''}</span>`
+    : `<span style="background:#e8f5e9;color:#2e7d32;border-radius:10px;padding:2px 9px;font-size:.72rem;font-weight:700">🏆 Equipo</span>`;
+
+  return `<div class="okr-objective" id="okr-${obj.id}" style="border-top-color:${isIndiv ? '#1565c0' : 'var(--red)'}">
+    <div class="okr-obj-header" onclick="toggleOKRExpand('${obj.id}')">
+      <div class="okr-obj-left">
+        <div style="display:flex;align-items:center;gap:8px;margin-bottom:6px;flex-wrap:wrap">
+          ${tipoBadge}
+          <span class="okr-period-badge">${obj.periodo || '—'}</span>
+          <span class="status-pill" style="background:${st.bg};color:${st.color}">${st.label}</span>
+        </div>
+        <div class="okr-obj-title">🎯 ${obj.titulo}</div>
+        ${obj.descripcion ? `<div style="font-size:.82rem;color:#888;margin-top:3px">${obj.descripcion}</div>` : ''}
+        <div class="okr-obj-meta">
+          <span>📅 ${obj.fecha_inicio||'—'} → ${obj.fecha_fin||'—'}</span>
+          <span>📊 ${krs.length} KR${krs.length !== 1 ? 's' : ''}</span>
+          <span>🧑‍💼 Líder: ${getUserById(obj.jefe_id)?.nombre?.split(' ')[0] || '—'}</span>
+          ${isIndiv && colabName ? `<span>👤 Colaborador: ${colabName}</span>` : ''}
+        </div>
+        <div style="margin-top:10px">
+          <div style="display:flex;justify-content:space-between;font-size:.75rem;color:#888;margin-bottom:4px">
+            <span>Avance promedio KRs</span><span>${avgProg}%</span>
+          </div>
+          <div class="progress-bar-wrap" style="height:10px">
+            <div class="progress-bar" style="width:${avgProg}%;background:${scoreColor}"></div>
+          </div>
+        </div>
+      </div>
+      <div class="okr-obj-score">
+        <div class="score-num" style="color:${scoreColor}">${obj.score || 0}</div>
+        <div class="score-lbl">Score OKR</div>
+        ${canEdit ? `<div style="display:flex;gap:4px;margin-top:8px;justify-content:center">
+          <button class="btn btn-secondary btn-sm" style="padding:4px 8px;font-size:.72rem" onclick="event.stopPropagation();openOKRModal('${obj.id}')">✏️</button>
+          <button class="btn btn-primary btn-sm" style="padding:4px 8px;font-size:.72rem" onclick="event.stopPropagation();openAddKRModal('${obj.id}')">+ KR</button>
+        </div>` : ''}
+      </div>
+    </div>
+    <div class="okr-kr-list" id="okr-krs-${obj.id}">
+      <div style="display:grid;grid-template-columns:1fr 140px 120px 110px;gap:12px;padding:8px 22px 8px 38px;background:var(--gray-light);font-size:.75rem;font-weight:700;color:#888;text-transform:uppercase;letter-spacing:.05em">
+        <span>Resultado Clave</span><span>Meta vs Actual</span><span>Progreso</span><span style="text-align:right">Acciones</span>
+      </div>
+      ${krRows}
+    </div>
+  </div>`;
+}
+
+function renderKRRow(kr, objId, isReadOnly) {
+  const resp = getUserById(kr.responsable_id);
+  const pct = kr.progreso || 0;
+  const barColor = pct >= 70 ? '#43a047' : pct >= 40 ? '#f57c00' : '#e53935';
+  const conf = CONF_CONFIG[kr.confianza] || CONF_CONFIG.mid;
+  const checkinCount = (kr.checkins || []).length;
+
+  return `<div class="okr-kr-row">
+    <div class="okr-kr-name">
+      ${kr.descripcion}
+      <small>👤 ${resp?.nombre || '—'} &nbsp;|&nbsp; <span class="confidence-pill ${conf.cls}">${conf.label}</span>
+        ${checkinCount ? `&nbsp;|&nbsp; 💬 ${checkinCount} check-in(s)` : ''}</small>
+    </div>
+    <div style="font-size:.82rem;text-align:center">
+      <div style="font-weight:600;color:var(--gray)">${kr.actual || '—'}</div>
+      <div style="color:#aaa;font-size:.75rem">meta: ${kr.meta || '—'}</div>
+    </div>
+    <div>
+      <div style="display:flex;justify-content:space-between;font-size:.75rem;margin-bottom:3px">
+        <span style="color:#888">Avance</span><strong style="color:${barColor}">${pct}%</strong>
+      </div>
+      <div class="progress-bar-wrap"><div class="progress-bar" style="width:${pct}%;background:${barColor}"></div></div>
+    </div>
+    <div class="okr-kr-actions">
+      ${!isReadOnly ? `<button class="btn btn-secondary btn-sm" onclick="openCheckinModal('${objId}','${kr.id}')" title="Registrar check-in">💬 Check-in</button>` : ''}
+      ${!isReadOnly ? `<button class="btn btn-secondary btn-sm" onclick="openEditKRModal('${objId}','${kr.id}')" title="Editar KR">✏️</button>` : ''}
+    </div>
+  </div>
+  ${(kr.checkins||[]).length ? renderCheckins(kr.checkins) : ''}`;
+}
+
+function renderCheckins(checkins) {
+  const recent = [...checkins].sort((a,b) => b.fecha.localeCompare(a.fecha)).slice(0, 3);
+  return `<div class="checkin-list">
+    ${recent.map(c => {
+      const autor = getUserById(c.autor_id);
+      return `<div class="checkin-item">
+        <span class="checkin-date">${c.fecha}</span>
+        <span class="checkin-author">${autor?.nombre?.split(' ')[0] || '—'}</span>
+        <span style="color:var(--gray);flex:1">${c.nota}</span>
+        <span style="font-weight:600;color:#888;font-size:.75rem">${c.progreso}%</span>
+      </div>`;
+    }).join('')}
+  </div>`;
+}
+
+function toggleOKRExpand(objId) {
+  const krsDiv = document.getElementById('okr-krs-' + objId);
+  if (!krsDiv) return;
+  krsDiv.style.display = krsDiv.style.display === 'none' ? '' : 'none';
+}
+
+// ─── MODAL: NUEVO / EDITAR OBJETIVO ───
+function openOKRModal(objId) {
+  const obj = objId ? STATE.okr.find(o => o.id === objId) : null;
+  const newId = 'OBJ' + Date.now();
+  const periods = ['Q1-2025','Q2-2025','Q3-2025','Q4-2025','H1-2025','H2-2025','Anual-2025','Q1-2026'];
+  const team = STATE.users.filter(x => x.jefe_id === STATE.user.id || STATE.user.rol === 'admin');
+
+  openModal(obj ? 'Editar Objetivo' : 'Nuevo Objetivo', `
+    <div class="form-row">
+      <div class="form-field">
+        <label>Tipo de OKR *</label>
+        <select id="okrTipo" onchange="toggleOKRColabField(this.value)">
+          <option value="equipo"    ${(!obj||obj.tipo==='equipo')?'selected':''}>🏆 OKR de Equipo</option>
+          <option value="individual" ${obj?.tipo==='individual'?'selected':''}>👤 OKR Individual</option>
+        </select>
+      </div>
+      <div class="form-field" id="okrColabField" style="display:${obj?.tipo==='individual'?'block':'none'}">
+        <label>Colaborador asignado *</label>
+        <select id="okrColabId">
+          ${team.map(t => `<option value="${t.id}" ${obj?.colaborador_id===t.id?'selected':''}>${t.nombre} — ${t.cargo}</option>`).join('')}
+        </select>
+      </div>
+    </div>
+    <div class="form-field">
+      <label>Título del objetivo *</label>
+      <input type="text" id="okrTitulo" value="${obj?.titulo||''}" placeholder="Ej: Incrementar la satisfacción del cliente">
+    </div>
+    <div class="form-field">
+      <label>Descripción / contexto</label>
+      <textarea id="okrDesc" rows="2" placeholder="¿Por qué este objetivo es importante?">${obj?.descripcion||''}</textarea>
+    </div>
+    <div class="form-row">
+      <div class="form-field">
+        <label>Periodo</label>
+        <select id="okrPeriodo">
+          ${periods.map(p => `<option value="${p}" ${obj?.periodo===p?'selected':''}>${p}</option>`).join('')}
+        </select>
+      </div>
+      <div class="form-field">
+        <label>Estado</label>
+        <select id="okrEstado">
+          ${Object.entries(OKR_STATUS).map(([k,v]) =>
+            `<option value="${k}" ${obj?.estado===k?'selected':''}>${v.label}</option>`
+          ).join('')}
+        </select>
+      </div>
+    </div>
+    <div class="form-row">
+      <div class="form-field"><label>Fecha inicio</label><input type="date" id="okrFechaInicio" value="${obj?.fecha_inicio||''}"></div>
+      <div class="form-field"><label>Fecha fin</label><input type="date" id="okrFechaFin" value="${obj?.fecha_fin||''}"></div>
+    </div>
+    <div class="form-field">
+      <label>Score OKR (0–100) <small style="color:#aaa">— Actualiza al cierre del periodo</small></label>
+      <input type="number" id="okrScore" min="0" max="100" value="${obj?.score||0}">
+    </div>
+  `, [
+    { label:'Cancelar', cls:'btn-secondary', action:'closeModal()' },
+    { label: obj ? 'Guardar cambios' : 'Crear objetivo', cls:'btn-primary', action:`saveOKRObjective('${obj?.id||newId}')` }
+  ]);
+}
+
+function toggleOKRColabField(val) {
+  document.getElementById('okrColabField').style.display = val === 'individual' ? 'block' : 'none';
+}
+
+async function saveOKRObjective(id) {
+  const titulo = document.getElementById('okrTitulo').value.trim();
+  if (!titulo) { showToast('El título del objetivo es obligatorio', 'error'); return; }
+  const tipo = document.getElementById('okrTipo').value;
+  if (tipo === 'individual' && !document.getElementById('okrColabId')?.value) {
+    showToast('Selecciona el colaborador para el OKR individual', 'error'); return;
+  }
+  const existing = STATE.okr.find(o => o.id === id);
+  const data = {
+    id,
+    jefe_id: STATE.user.id,
+    tipo,
+    colaborador_id: tipo === 'individual' ? document.getElementById('okrColabId').value : null,
+    titulo,
+    descripcion: document.getElementById('okrDesc').value,
+    periodo: document.getElementById('okrPeriodo').value,
+    estado: document.getElementById('okrEstado').value,
+    fecha_inicio: document.getElementById('okrFechaInicio').value,
+    fecha_fin: document.getElementById('okrFechaFin').value,
+    score: parseInt(document.getElementById('okrScore').value) || 0,
+    krs: existing?.krs || [],
+  };
+  await apiCall('saveOKR', data);
+  const idx = STATE.okr.findIndex(o => o.id === id);
+  if (idx >= 0) Object.assign(STATE.okr[idx], data); else STATE.okr.push(data);
+  closeModal();
+  renderOKR();
+  showToast('✅ Objetivo guardado', 'success');
+}
+
+// ─── MODAL: AGREGAR / EDITAR KR ───
+function openAddKRModal(objId) { openEditKRModal(objId, null); }
+
+function openEditKRModal(objId, krId) {
+  const obj = STATE.okr.find(o => o.id === objId);
+  if (!obj) return;
+  const kr = krId ? (obj.krs || []).find(k => k.id === krId) : null;
+  const newKRId = 'KR' + Date.now();
+  const team = STATE.users.filter(x => x.jefe_id === STATE.user.id || STATE.user.rol === 'admin');
+  team.push(STATE.user); // include self
+
+  openModal(kr ? 'Editar Resultado Clave' : 'Agregar Resultado Clave (KR)', `
+    <div style="background:var(--red-light);border-radius:8px;padding:10px 14px;margin-bottom:14px;font-size:.82rem;color:var(--red-dark)">
+      <strong>Objetivo:</strong> ${obj.titulo}
+    </div>
+    <div class="form-field">
+      <label>Descripción del resultado clave *</label>
+      <input type="text" id="krDesc" value="${kr?.descripcion||''}" placeholder="Ej: Cerrar 15 nuevos clientes enterprise">
+    </div>
+    <div class="form-row">
+      <div class="form-field">
+        <label>Meta a alcanzar</label>
+        <input type="text" id="krMeta" value="${kr?.meta||''}" placeholder="Ej: 15 clientes, $50M, 95%">
+      </div>
+      <div class="form-field">
+        <label>Resultado actual</label>
+        <input type="text" id="krActual" value="${kr?.actual||''}" placeholder="Ej: 8 clientes">
+      </div>
+    </div>
+    <div class="form-row">
+      <div class="form-field">
+        <label>% Progreso</label>
+        <input type="number" id="krProgreso" min="0" max="100" value="${kr?.progreso||0}">
+      </div>
+      <div class="form-field">
+        <label>Nivel de confianza</label>
+        <select id="krConfianza">
+          ${Object.entries(CONF_CONFIG).map(([k,v]) =>
+            `<option value="${k}" ${kr?.confianza===k?'selected':''}>${v.label}</option>`
+          ).join('')}
+        </select>
+      </div>
+    </div>
+    <div class="form-field">
+      <label>Responsable *</label>
+      <select id="krResponsable">
+        ${[...new Map(team.map(t => [t.id, t])).values()].map(t =>
+          `<option value="${t.id}" ${kr?.responsable_id===t.id?'selected':''}>${t.nombre} — ${t.cargo}</option>`
+        ).join('')}
+      </select>
+    </div>
+  `, [
+    { label:'Cancelar', cls:'btn-secondary', action:'closeModal()' },
+    { label: kr ? 'Guardar KR' : 'Agregar KR', cls:'btn-primary', action:`saveKR('${objId}','${kr?.id||newKRId}')` }
+  ]);
+}
+
+async function saveKR(objId, krId) {
+  const desc = document.getElementById('krDesc').value.trim();
+  if (!desc) { showToast('La descripción del KR es obligatoria', 'error'); return; }
+
+  const obj = STATE.okr.find(o => o.id === objId);
+  if (!obj) return;
+  if (!obj.krs) obj.krs = [];
+
+  const krData = {
+    id: krId,
+    descripcion: desc,
+    meta: document.getElementById('krMeta').value,
+    actual: document.getElementById('krActual').value,
+    progreso: parseInt(document.getElementById('krProgreso').value) || 0,
+    confianza: document.getElementById('krConfianza').value,
+    responsable_id: document.getElementById('krResponsable').value,
+    checkins: obj.krs.find(k => k.id === krId)?.checkins || [],
+  };
+
+  const kidx = obj.krs.findIndex(k => k.id === krId);
+  if (kidx >= 0) obj.krs[kidx] = krData; else obj.krs.push(krData);
+
+  // Recalculate obj score
+  const avgProg = obj.krs.reduce((a, k) => a + (k.progreso || 0), 0) / obj.krs.length;
+  obj.score = Math.round(avgProg);
+
+  await apiCall('saveOKR', obj);
+  closeModal();
+  renderOKR();
+  showToast('✅ Resultado Clave guardado', 'success');
+}
+
+// ─── MODAL: CHECK-IN ───
+function openCheckinModal(objId, krId) {
+  const obj = STATE.okr.find(o => o.id === objId);
+  const kr = obj?.krs?.find(k => k.id === krId);
+  if (!kr) return;
+
+  openModal(`💬 Check-in: ${kr.descripcion.substring(0, 50)}...`, `
+    <div style="display:flex;gap:14px;margin-bottom:14px;align-items:center">
+      <div style="flex:1">
+        <div style="font-size:.78rem;color:#888;margin-bottom:4px">Progreso actual</div>
+        <div class="progress-bar-wrap" style="height:10px"><div class="progress-bar" style="width:${kr.progreso||0}%;background:#43a047"></div></div>
+        <div style="font-size:.75rem;color:#888;margin-top:3px">${kr.actual||'—'} de meta: ${kr.meta||'—'}</div>
+      </div>
+      <div style="text-align:center">
+        <div style="font-size:1.8rem;font-weight:700;color:var(--red)">${kr.progreso||0}%</div>
+      </div>
+    </div>
+    <div class="form-row">
+      <div class="form-field">
+        <label>Nuevo % de progreso</label>
+        <input type="number" id="ciProgreso" min="0" max="100" value="${kr.progreso||0}">
+      </div>
+      <div class="form-field">
+        <label>Resultado actual actualizado</label>
+        <input type="text" id="ciActual" value="${kr.actual||''}" placeholder="${kr.meta||''}">
+      </div>
+    </div>
+    <div class="form-field">
+      <label>Nivel de confianza</label>
+      <select id="ciConfianza">
+        ${Object.entries(CONF_CONFIG).map(([k,v]) =>
+          `<option value="${k}" ${kr.confianza===k?'selected':''}>${v.label}</option>`
+        ).join('')}
+      </select>
+    </div>
+    <div class="form-field">
+      <label>Nota del check-in *</label>
+      <textarea id="ciNota" rows="3" placeholder="¿Qué avances hubo? ¿Qué bloqueos hay? ¿Qué sigue?"></textarea>
+    </div>
+    <div style="background:var(--gray-light);border-radius:8px;padding:10px 14px;font-size:.8rem;color:#888">
+      <strong>Historial:</strong> ${(kr.checkins||[]).length} check-in(s) previos registrados
+    </div>
+  `, [
+    { label:'Cancelar', cls:'btn-secondary', action:'closeModal()' },
+    { label:'Registrar check-in', cls:'btn-primary', action:`saveCheckin('${objId}','${krId}')` }
+  ]);
+}
+
+async function saveCheckin(objId, krId) {
+  const nota = document.getElementById('ciNota').value.trim();
+  if (!nota) { showToast('Escribe una nota para el check-in', 'error'); return; }
+
+  const obj = STATE.okr.find(o => o.id === objId);
+  const kr = obj?.krs?.find(k => k.id === krId);
+  if (!kr) return;
+
+  if (!kr.checkins) kr.checkins = [];
+  kr.checkins.push({
+    fecha: new Date().toISOString().split('T')[0],
+    autor_id: STATE.user.id,
+    nota,
+    progreso: parseInt(document.getElementById('ciProgreso').value) || kr.progreso || 0,
+  });
+
+  kr.progreso = parseInt(document.getElementById('ciProgreso').value) || kr.progreso;
+  kr.actual = document.getElementById('ciActual').value || kr.actual;
+  kr.confianza = document.getElementById('ciConfianza').value;
+
+  // Recalculate obj score
+  const avgProg = obj.krs.reduce((a, k) => a + (k.progreso||0), 0) / obj.krs.length;
+  obj.score = Math.round(avgProg);
+
+  await apiCall('saveOKR', obj);
+  closeModal();
+  renderOKR();
+  showToast('✅ Check-in registrado', 'success');
 }
 
 // ═══════════════════════════════════════════
@@ -1833,8 +2789,9 @@ function renderAdmin() {
   document.getElementById('periodStatus').value = STATE.periodo.estado||'open';
   document.getElementById('periodStart').value = STATE.periodo.inicio||'';
   document.getElementById('periodEnd').value = STATE.periodo.fin||'';
-  document.getElementById('pesoComp').value = STATE.periodo.peso_comp||60;
-  document.getElementById('pesoMetas').value = STATE.periodo.peso_metas||40;
+  document.getElementById('pesoComp').value = STATE.periodo.peso_comp||50;
+  document.getElementById('pesoMetas').value = STATE.periodo.peso_metas||30;
+  document.getElementById('pesoOKR').value = STATE.periodo.peso_okr||20;
   setTimeout(renderAdminCharts, 150);
 }
 
@@ -1999,22 +2956,100 @@ async function savePeriod() {
     estado: document.getElementById('periodStatus').value,
     inicio: document.getElementById('periodStart').value,
     fin: document.getElementById('periodEnd').value,
-    peso_comp: parseInt(document.getElementById('pesoComp').value)||60,
-    peso_metas: parseInt(document.getElementById('pesoMetas').value)||40,
+    peso_comp:  parseInt(document.getElementById('pesoComp').value)||50,
+    peso_metas: parseInt(document.getElementById('pesoMetas').value)||30,
+    peso_okr:   parseInt(document.getElementById('pesoOKR').value)||20,
   };
-  const sumPesos = data.peso_comp + data.peso_metas;
-  if (sumPesos !== 100) { showToast(`Los pesos deben sumar 100% (actualmente: ${sumPesos}%)`, 'error'); return; }
+  const sumPesos = data.peso_comp + data.peso_metas + data.peso_okr;
+  if (sumPesos !== 100) {
+    showToast(`Los pesos deben sumar 100% (actualmente: ${sumPesos}%)`, 'error');
+    document.getElementById('pesosTotal').textContent = `Total: ${sumPesos}% ⚠️`;
+    document.getElementById('pesosTotal').style.color = '#e53935';
+    return;
+  }
+  document.getElementById('pesosTotal').textContent = 'Total: 100% ✓';
+  document.getElementById('pesosTotal').style.color = '#43a047';
   Object.assign(STATE.periodo, data);
   await apiCall('savePeriodo', data);
   showToast('Periodo guardado exitosamente', 'success');
 }
 
+function previewAsignaciones() {
+  const periodo = document.getElementById('asigPeriodo').value.trim() || '2025';
+  const colaboradores = STATE.users.filter(u => u.rol === 'colaborador' && u.activo);
+  const wrap = document.getElementById('asignacionesTableWrap');
+
+  const rows = colaboradores.map(colab => {
+    const jefe = getUserById(colab.jefe_id);
+    const evalJefe = STATE.evaluaciones.find(e =>
+      e.evaluado_id === colab.id && e.tipo === 'jefe' && e.periodo === periodo
+    );
+    const evalAuto = STATE.evaluaciones.find(e =>
+      e.evaluado_id === colab.id && e.tipo === 'auto' && e.periodo === periodo
+    );
+    const stateJefe = evalJefe
+      ? `<span class="status-pill ${evalJefe.estado === 'enviado' ? 'pill-done' : 'pill-progress'}">${evalJefe.estado}</span>`
+      : `<span class="status-pill pill-pending">Sin asignar</span>`;
+    const stateAuto = evalAuto
+      ? `<span class="status-pill ${evalAuto.estado === 'enviado' ? 'pill-done' : 'pill-progress'}">${evalAuto.estado}</span>`
+      : `<span class="status-pill pill-pending">Sin asignar</span>`;
+    return `<tr>
+      <td><strong>${colab.nombre}</strong></td>
+      <td>${colab.cargo}</td>
+      <td>${jefe?.nombre || '<span style="color:#aaa">Sin jefe asignado</span>'}</td>
+      <td>${stateJefe}</td>
+      <td>${stateAuto}</td>
+    </tr>`;
+  });
+
+  wrap.innerHTML = `
+    <div style="font-weight:600;font-size:.85rem;color:var(--gray);margin-bottom:8px">
+      Periodo: <strong>${periodo}</strong> — ${colaboradores.length} colaboradores
+    </div>
+    <div class="table-wrap">
+      <table>
+        <thead><tr><th>Colaborador</th><th>Cargo</th><th>Jefe asignado</th><th>Evaluación Jefe</th><th>Autoevaluación</th></tr></thead>
+        <tbody>${rows.join('')}</tbody>
+      </table>
+    </div>`;
+}
+
+async function ejecutarAsignaciones() {
+  const periodo = document.getElementById('asigPeriodo').value.trim() || '2025';
+  const colaboradores = STATE.users.filter(u => u.rol === 'colaborador' && u.activo);
+
+  const sinJefe = colaboradores.filter(c => !c.jefe_id);
+  if (sinJefe.length) {
+    showToast(`⚠️ ${sinJefe.length} colaborador(es) sin jefe asignado: ${sinJefe.map(c=>c.nombre).join(', ')}`, 'error');
+  }
+
+  const asignaciones = colaboradores
+    .filter(c => c.jefe_id)
+    .map(c => ({ colab_id: c.id, jefe_id: c.jefe_id }));
+
+  if (!asignaciones.length) {
+    showToast('No hay colaboradores con jefe asignado para generar evaluaciones', 'error');
+    return;
+  }
+
+  if (!confirm(`¿Confirmas generar evaluaciones para ${asignaciones.length} colaboradores en el periodo ${periodo}?\n\nSolo se crearán las que no existan aún.`)) return;
+
+  await apiCall('asignarEvaluaciones', { asignaciones, periodo });
+  // Reload evaluaciones from state
+  const res = await apiCall('getEvaluaciones');
+  STATE.evaluaciones = res.data || STATE.evaluaciones;
+
+  previewAsignaciones();
+  showToast(`✅ Evaluaciones generadas para el periodo ${periodo}`, 'success');
+}
+
 function switchAdminTab(tab, btn) {
-  document.querySelectorAll('.admin-tab').forEach(t=>t.classList.remove('active'));
-  document.querySelectorAll('.admin-tab-content').forEach(t=>t.classList.remove('active'));
+  document.querySelectorAll('.admin-tab').forEach(t => t.classList.remove('active'));
+  document.querySelectorAll('.admin-tab-content').forEach(t => t.classList.remove('active'));
   btn.classList.add('active');
-  document.getElementById('adminTab-'+tab).classList.add('active');
+  document.getElementById('adminTab-' + tab).classList.add('active');
   if (tab === 'reportes') setTimeout(renderAdminCharts, 100);
+  if (tab === 'asignaciones') previewAsignaciones();
 }
 
 function exportReport() {
