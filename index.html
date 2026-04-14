@@ -871,7 +871,7 @@
 // ═══════════════════════════════════════════
 //  CONFIG — Reemplaza con tu URL de Google Apps Script
 // ═══════════════════════════════════════════
-const SCRIPT_URL = 'https://script.google.com/macros/s/AKfycbyfEde78HwDGj49PHUPxUXDHtpjHGbS4udjJmpoDW3CwK_T4-cJNGrFCjCosnX5VkP3/exec';
+const SCRIPT_URL = 'https://script.google.com/macros/s/AKfycbyDOXDnjRITx3lh4fvB2Xu8EFryXdIzzw8tqorrSQtmmBbkaA1YtcEhVabXzgyeDpyF/exec';
 
 // ═══════════════════════════════════════════
 //  STATE
@@ -1566,8 +1566,24 @@ function renderBehaviors(val, compId) {
   const b = BEHAVIORS[val];
   const comp = compId ? STATE.competencias.find(c => c.id === compId) : null;
   const customText = comp?.['comportamiento_' + val];
-  return `<strong style="color:${b.color}">★ ${val} — ${b.label}</strong>
-    <p style="margin-top:5px;font-size:.83rem;line-height:1.5">${customText || b.desc}</p>`;
+
+  let contenido = '';
+  if (customText && customText.trim()) {
+    // Cada línea no vacía es un comportamiento
+    const lineas = customText.split('\n').map(l => l.trim()).filter(l => l.length > 0);
+    if (lineas.length === 1) {
+      contenido = `<p style="margin-top:5px;font-size:.83rem;line-height:1.5">${lineas[0]}</p>`;
+    } else {
+      contenido = `<ul style="margin-top:5px;padding-left:16px">
+        ${lineas.map(l => `<li style="font-size:.83rem;line-height:1.6;margin-bottom:2px">${l}</li>`).join('')}
+      </ul>`;
+    }
+  } else {
+    // Fallback genérico
+    contenido = `<p style="margin-top:5px;font-size:.83rem;line-height:1.5;color:#888">${b.desc}</p>`;
+  }
+
+  return `<strong style="color:${b.color}">★ ${val} — ${b.label}</strong>${contenido}`;
 }
 
 function rateComp(compId, val) {
@@ -2903,8 +2919,8 @@ function openCompModal(compId) {
       <label style="display:flex;align-items:center;gap:8px;margin-bottom:5px">
         <span style="background:${b.color};color:white;border-radius:6px;padding:2px 10px;font-size:.72rem;font-weight:700;white-space:nowrap">${n} — ${b.label}</span>
       </label>
-      <textarea id="cBeh${n}" rows="2"
-        placeholder="Describe cómo se ve este nivel en la competencia..."
+      <textarea id="cBeh${n}" rows="3"
+        placeholder="Escribe uno o varios comportamientos. Para agregar más de uno, usa una línea por cada comportamiento."
         style="width:100%;padding:8px 10px;border:1.5px solid var(--gray-mid);border-radius:8px;font-family:Asap,sans-serif;font-size:.84rem;resize:vertical;outline:none"
         onfocus="this.style.borderColor='var(--red)'" onblur="this.style.borderColor='var(--gray-mid)'"
       >${val}</textarea>
@@ -2921,10 +2937,6 @@ function openCompModal(compId) {
     <hr style="border:none;border-top:1px solid var(--gray-light);margin:14px 0">
     <div style="font-size:.82rem;font-weight:700;color:var(--gray);text-transform:uppercase;letter-spacing:.06em;margin-bottom:10px">
       Comportamientos por nivel de calificación
-    </div>
-    <div class="info-banner" style="margin-bottom:12px;font-size:.8rem">
-      <svg width="13" height="13" viewBox="0 0 24 24" fill="currentColor"><path d="M12 2C6.48 2 2 6.48 2 12s4.48 10 10 10 10-4.48 10-10S17.52 2 12 2zm1 15h-2v-6h2v6zm0-8h-2V7h2v2z"/></svg>
-      Puedes editarlos aquí o directamente en la pestaña <strong>"competencias"</strong> del Google Sheets (columnas comportamiento_1 a comportamiento_4). Ambos métodos sincronizan.
     </div>
     ${behFields}
   `, [
