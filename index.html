@@ -675,7 +675,7 @@
       <div class="page" id="page-okr">
         <div class="page-header">
           <h2>OKR — Objetivos y Resultados Clave</h2>
-          <p id="okrSubtitle">Gestiona y haz seguimiento a los OKR del equipo</p>
+          <p id="okrSubtitle">Crea y gestiona los OKR de tu equipo en conjunto con cada colaborador</p>
         </div>
         <!-- Barra de resumen -->
         <div class="okr-summary-bar" id="okrSummaryBar"></div>
@@ -818,7 +818,7 @@
         </div>
         <div class="admin-tab-content" id="adminTab-reportes">
           <div class="card">
-            <div class="card-title" style="margin-bottom:16px">Reportes Consolidados</div>
+            <div class="card-title" style="margin-bottom:16px">Reportes Consolidados — Evaluaciones</div>
             <div style="display:grid;grid-template-columns:1fr 1fr;gap:20px">
               <div>
                 <div class="chart-container"><canvas id="chartAdminDist"></canvas></div>
@@ -836,6 +836,16 @@
             </div>
             <div style="margin-top:14px;display:flex;gap:10px">
               <button class="btn btn-secondary btn-sm" onclick="exportReport()">📥 Exportar CSV</button>
+            </div>
+          </div>
+
+          <!-- OKR RESUMEN ADMIN -->
+          <div class="card" style="margin-top:0">
+            <div class="card-title" style="margin-bottom:16px">📊 Estado General de OKR por Equipo</div>
+            <div id="adminOKRSummary">
+              <div class="empty-state" style="padding:20px">
+                <p style="color:#aaa;font-size:.88rem">Cargando resumen de OKR...</p>
+              </div>
             </div>
           </div>
         </div>
@@ -1248,7 +1258,6 @@ function buildSidebar() {
       { id:'dashboard', icon:'chart', label:'Dashboard' },
       { id:'admin', icon:'settings', label:'Administración' },
       { id:'mis-evaluaciones', icon:'eval', label:'Evaluaciones del equipo' },
-      { id:'okr', icon:'okr', label:'OKR' },
       { id:'pdi', icon:'pdi', label:'PDI Equipos' },
     ],
     jefe: [
@@ -1952,22 +1961,21 @@ const CONF_CONFIG = {
 
 function getMyOKRs() {
   const u = STATE.user;
+  if (u.rol === 'jefe') {
+    return STATE.okr.filter(obj => obj.jefe_id === u.id);
+  }
   if (u.rol === 'colaborador') {
-    // Individual OKRs assigned to me + team OKRs where I have KRs
     return STATE.okr.filter(obj =>
       (obj.tipo === 'individual' && obj.colaborador_id === u.id) ||
       (obj.tipo === 'equipo' && obj.krs && obj.krs.some(kr => kr.responsable_id === u.id))
     );
   }
-  if (u.rol === 'jefe') {
-    return STATE.okr.filter(obj => obj.jefe_id === u.id);
-  }
-  return STATE.okr; // admin ve todos
+  return []; // admin no gestiona OKR directamente
 }
 
 function renderOKR() {
   const u = STATE.user;
-  const isReadOnly = u.rol === 'colaborador';
+  const isReadOnly = u.rol !== 'jefe'; // Solo el jefe crea y edita OKR
 
   // Populate filter dropdowns
   const periods = [...new Set(STATE.okr.map(o => o.periodo).filter(Boolean))];
@@ -2161,11 +2169,50 @@ function toggleOKRExpand(objId) {
 }
 
 // ─── MODAL: NUEVO / EDITAR OBJETIVO ───
+// Genera el nombre del periodo basado en fecha inicio y fin
+function actualizarPeriodoOKR() {
+  const inicio = document.getElementById('okrFechaInicio')?.value;
+  const fin    = document.getElementById('okrFechaFin')?.value;
+  const campo  = document.getElementById('okrPeriodo');
+  if (!campo) return;
+  if (!inicio) return;
+
+  const d = new Date(inicio + 'T00:00:00');
+  const year = d.getFullYear();
+  const mes  = d.getMonth() + 1; // 1-12
+
+  let periodo = '';
+  if (fin) {
+    const df = new Date(fin + 'T00:00:00');
+    const mesFin = df.getMonth() + 1;
+    const yearFin = df.getFullYear();
+    const diffMeses = (yearFin - year) * 12 + (mesFin - mes);
+
+    if (diffMeses <= 3) {
+      // Trimestral → Q1-Q4
+      const q = Math.ceil(mes / 3);
+      periodo = `Q${q}-${year}`;
+    } else if (diffMeses <= 6) {
+      // Semestral → H1 o H2
+      const h = mes <= 6 ? 1 : 2;
+      periodo = `H${h}-${year}`;
+    } else {
+      // Anual
+      periodo = year === yearFin ? `Anual-${year}` : `${year}-${yearFin}`;
+    }
+  } else {
+    // Sin fecha fin, usar trimestre de inicio
+    const q = Math.ceil(mes / 3);
+    periodo = `Q${q}-${year}`;
+  }
+
+  campo.value = periodo;
+}
+
 function openOKRModal(objId) {
   const obj = objId ? STATE.okr.find(o => o.id === objId) : null;
   const newId = 'OBJ' + Date.now();
-  const periods = ['Q1-2025','Q2-2025','Q3-2025','Q4-2025','H1-2025','H2-2025','Anual-2025','Q1-2026'];
-  const team = STATE.users.filter(x => x.jefe_id === STATE.user.id || STATE.user.rol === 'admin');
+  const team = STATE.users.filter(x => x.jefe_id === STATE.user.id);
 
   openModal(obj ? 'Editar Objetivo' : 'Nuevo Objetivo', `
     <div class="form-row">
@@ -2192,11 +2239,13 @@ function openOKRModal(objId) {
       <textarea id="okrDesc" rows="2" placeholder="¿Por qué este objetivo es importante?">${obj?.descripcion||''}</textarea>
     </div>
     <div class="form-row">
+      <div class="form-field"><label>Fecha inicio *</label><input type="date" id="okrFechaInicio" value="${obj?.fecha_inicio||''}" onchange="actualizarPeriodoOKR()"></div>
+      <div class="form-field"><label>Fecha fin *</label><input type="date" id="okrFechaFin" value="${obj?.fecha_fin||''}" onchange="actualizarPeriodoOKR()"></div>
+    </div>
+    <div class="form-row">
       <div class="form-field">
-        <label>Periodo</label>
-        <select id="okrPeriodo">
-          ${periods.map(p => `<option value="${p}" ${obj?.periodo===p?'selected':''}>${p}</option>`).join('')}
-        </select>
+        <label>Periodo <small style="color:#aaa;font-weight:400">(se calcula automáticamente según las fechas)</small></label>
+        <input type="text" id="okrPeriodo" value="${obj?.periodo||''}" placeholder="Ej: Q1-2026 · se genera al seleccionar fechas" style="background:var(--gray-light);color:var(--gray)">
       </div>
       <div class="form-field">
         <label>Estado</label>
@@ -2206,10 +2255,6 @@ function openOKRModal(objId) {
           ).join('')}
         </select>
       </div>
-    </div>
-    <div class="form-row">
-      <div class="form-field"><label>Fecha inicio</label><input type="date" id="okrFechaInicio" value="${obj?.fecha_inicio||''}"></div>
-      <div class="form-field"><label>Fecha fin</label><input type="date" id="okrFechaFin" value="${obj?.fecha_fin||''}"></div>
     </div>
     <div class="form-field">
       <label>Score OKR (0–100) <small style="color:#aaa">— Actualiza al cierre del periodo</small></label>
@@ -2263,7 +2308,7 @@ function openEditKRModal(objId, krId) {
   if (!obj) return;
   const kr = krId ? (obj.krs || []).find(k => k.id === krId) : null;
   const newKRId = 'KR' + Date.now();
-  const team = STATE.users.filter(x => x.jefe_id === STATE.user.id || STATE.user.rol === 'admin');
+  const team = STATE.users.filter(x => x.jefe_id === STATE.user.id);
   team.push(STATE.user); // include self
 
   openModal(kr ? 'Editar Resultado Clave' : 'Agregar Resultado Clave (KR)', `
@@ -2880,7 +2925,7 @@ function openCompModal(compId) {
     ` : `
     <div class="info-banner" style="margin-top:12px;font-size:.82rem">
       <svg width="14" height="14" viewBox="0 0 24 24" fill="currentColor"><path d="M12 2C6.48 2 2 6.48 2 12s4.48 10 10 10 10-4.48 10-10S17.52 2 12 2zm1 15h-2v-6h2v6zm0-8h-2V7h2v2z"/></svg>
-      Después de crear la competencia, agrega los 4 comportamientos directamente en la pestaña <strong>competencias</strong> de tu Google Sheets (columnas comportamiento_1 a comportamiento_4).
+      Después de crear la competencia, agrega los 4 comportamientos directamente en la pestaña <strong>"competencias"</strong> de tu Google Sheets (columnas: comportamiento_1, comportamiento_2, comportamiento_3, comportamiento_4).
     </div>
     `}
   `, [
@@ -2952,6 +2997,85 @@ function renderAdminCharts() {
       <td><span class="status-pill pill-done" style="background:${cat.color}20;color:${cat.color}">${cat.label}</span></td>
     </tr>`;
   }).join('') || '<tr><td colspan="7" style="text-align:center;color:#aaa;padding:20px">Sin evaluaciones completadas</td></tr>';
+
+  // ── OKR RESUMEN POR EQUIPO ──────────────────────────────
+  renderAdminOKRSummary();
+}
+
+function renderAdminOKRSummary() {
+  const cont = document.getElementById('adminOKRSummary');
+  if (!cont) return;
+
+  // Agrupar OKR por jefe
+  const jefes = STATE.users.filter(u => u.rol === 'jefe');
+  if (!STATE.okr.length) {
+    cont.innerHTML = `<div class="empty-state" style="padding:24px"><p>Aún no hay OKR registrados. Los jefes los crean desde su módulo OKR.</p></div>`;
+    return;
+  }
+
+  let html = '';
+  jefes.forEach(jefe => {
+    const jefeOKRs = STATE.okr.filter(o => o.jefe_id === jefe.id);
+    if (!jefeOKRs.length) return;
+
+    const totalObjs = jefeOKRs.length;
+    const equipoObjs = jefeOKRs.filter(o => o.tipo === 'equipo').length;
+    const indivObjs  = jefeOKRs.filter(o => o.tipo === 'individual').length;
+    const avgScore   = Math.round(jefeOKRs.reduce((a,o) => a+(o.score||0), 0) / totalObjs);
+    const allKRs     = jefeOKRs.flatMap(o => o.krs || []);
+    const avgKR      = allKRs.length ? Math.round(allKRs.reduce((a,k)=>a+(k.progreso||0),0)/allKRs.length) : 0;
+    const scoreColor = avgScore >= 70 ? '#2e7d32' : avgScore >= 40 ? '#f57c00' : '#e53935';
+
+    html += `<div style="border:1.5px solid var(--gray-mid);border-radius:var(--radius);margin-bottom:14px;overflow:hidden">
+      <div style="background:var(--gray-light);padding:12px 18px;display:flex;align-items:center;justify-content:space-between;flex-wrap:wrap;gap:10px">
+        <div>
+          <span style="font-weight:700;color:var(--gray)">${jefe.nombre}</span>
+          <span style="color:#888;font-size:.82rem;margin-left:8px">${jefe.cargo}</span>
+        </div>
+        <div style="display:flex;gap:16px;align-items:center;flex-wrap:wrap">
+          <span style="font-size:.82rem;color:#888">${totalObjs} objetivo(s) · ${equipoObjs} equipo / ${indivObjs} individual</span>
+          <div style="text-align:center">
+            <div style="font-size:1.3rem;font-weight:700;color:${scoreColor}">${avgScore}%</div>
+            <div style="font-size:.7rem;color:#aaa">Score prom.</div>
+          </div>
+          <div style="text-align:center">
+            <div style="font-size:1.3rem;font-weight:700;color:${scoreColor}">${avgKR}%</div>
+            <div style="font-size:.7rem;color:#aaa">Avance KRs</div>
+          </div>
+        </div>
+      </div>
+      <div style="padding:0 18px 14px">
+        ${jefeOKRs.map(obj => {
+          const st = OKR_STATUS[obj.estado] || OKR_STATUS.on_track;
+          const krs = obj.krs || [];
+          const objProg = krs.length ? Math.round(krs.reduce((a,k)=>a+(k.progreso||0),0)/krs.length) : 0;
+          const progColor = objProg >= 70 ? '#43a047' : objProg >= 40 ? '#f57c00' : '#e53935';
+          const tipoBadge = obj.tipo === 'individual'
+            ? `<span style="background:#e3f2fd;color:#1565c0;border-radius:8px;padding:1px 7px;font-size:.7rem">Individual${obj.colaborador_id ? ' · ' + (getUserById(obj.colaborador_id)?.nombre?.split(' ')[0]||'') : ''}</span>`
+            : `<span style="background:#e8f5e9;color:#2e7d32;border-radius:8px;padding:1px 7px;font-size:.7rem">Equipo</span>`;
+          return `<div style="display:flex;align-items:center;gap:12px;padding:10px 0;border-bottom:1px solid var(--gray-light)">
+            <div style="flex:1">
+              <div style="display:flex;align-items:center;gap:8px;margin-bottom:4px">
+                ${tipoBadge}
+                <span style="font-size:.88rem;font-weight:600;color:var(--gray)">${obj.titulo}</span>
+                <span class="okr-period-badge" style="font-size:.7rem">${obj.periodo||'—'}</span>
+                <span class="status-pill" style="background:${st.bg};color:${st.color};font-size:.7rem">${st.label}</span>
+              </div>
+              <div class="progress-bar-wrap" style="height:6px">
+                <div class="progress-bar" style="width:${objProg}%;background:${progColor}"></div>
+              </div>
+            </div>
+            <div style="text-align:right;min-width:50px">
+              <strong style="color:${progColor}">${objProg}%</strong>
+              <div style="font-size:.7rem;color:#aaa">${krs.length} KR${krs.length!==1?'s':''}</div>
+            </div>
+          </div>`;
+        }).join('')}
+      </div>
+    </div>`;
+  });
+
+  cont.innerHTML = html || `<div class="empty-state" style="padding:24px"><p>Ningún jefe tiene OKR registrados aún.</p></div>`;
 }
 
 async function savePeriod() {
