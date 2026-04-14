@@ -2976,7 +2976,7 @@ async function savePeriod() {
 
 function previewAsignaciones() {
   const periodo = document.getElementById('asigPeriodo').value.trim() || '2025';
-  const colaboradores = STATE.users.filter(u => u.rol === 'colaborador' && u.activo);
+  const colaboradores = STATE.users.filter(u => u.rol === 'colaborador' && String(u.activo) !== 'false');
   const wrap = document.getElementById('asignacionesTableWrap');
 
   const rows = colaboradores.map(colab => {
@@ -2987,24 +2987,36 @@ function previewAsignaciones() {
     const evalAuto = STATE.evaluaciones.find(e =>
       e.evaluado_id === colab.id && e.tipo === 'auto' && e.periodo === periodo
     );
+    const estadoLabel = { pendiente:'Pendiente', borrador:'En borrador', enviado:'Enviado' };
+    const estadoCls   = { pendiente:'pill-progress', borrador:'pill-progress', enviado:'pill-done' };
     const stateJefe = evalJefe
-      ? `<span class="status-pill ${evalJefe.estado === 'enviado' ? 'pill-done' : 'pill-progress'}">${evalJefe.estado}</span>`
+      ? `<span class="status-pill ${estadoCls[evalJefe.estado]||'pill-progress'}">${estadoLabel[evalJefe.estado]||evalJefe.estado}</span>`
       : `<span class="status-pill pill-pending">Sin asignar</span>`;
     const stateAuto = evalAuto
-      ? `<span class="status-pill ${evalAuto.estado === 'enviado' ? 'pill-done' : 'pill-progress'}">${evalAuto.estado}</span>`
+      ? `<span class="status-pill ${estadoCls[evalAuto.estado]||'pill-progress'}">${estadoLabel[evalAuto.estado]||evalAuto.estado}</span>`
       : `<span class="status-pill pill-pending">Sin asignar</span>`;
+    const jefeNombre = jefe
+      ? jefe.nombre
+      : `<span style="color:#e53935;font-size:.8rem">⚠️ Sin jefe asignado</span>`;
     return `<tr>
       <td><strong>${colab.nombre}</strong></td>
       <td>${colab.cargo}</td>
-      <td>${jefe?.nombre || '<span style="color:#aaa">Sin jefe asignado</span>'}</td>
+      <td>${jefeNombre}</td>
       <td>${stateJefe}</td>
       <td>${stateAuto}</td>
     </tr>`;
   });
 
+  const asignados = colaboradores.filter(c =>
+    STATE.evaluaciones.find(e => e.evaluado_id === c.id && e.tipo === 'jefe' && e.periodo === periodo)
+  ).length;
+
   wrap.innerHTML = `
-    <div style="font-weight:600;font-size:.85rem;color:var(--gray);margin-bottom:8px">
-      Periodo: <strong>${periodo}</strong> — ${colaboradores.length} colaboradores
+    <div style="display:flex;align-items:center;gap:14px;margin-bottom:10px;flex-wrap:wrap">
+      <span style="font-weight:600;font-size:.88rem;color:var(--gray)">Periodo: <strong>${periodo}</strong></span>
+      <span class="status-pill ${asignados === colaboradores.length && colaboradores.length > 0 ? 'pill-done' : 'pill-pending'}" style="font-size:.78rem">
+        ${asignados}/${colaboradores.length} con evaluación asignada
+      </span>
     </div>
     <div class="table-wrap">
       <table>
@@ -3016,31 +3028,69 @@ function previewAsignaciones() {
 
 async function ejecutarAsignaciones() {
   const periodo = document.getElementById('asigPeriodo').value.trim() || '2025';
-  const colaboradores = STATE.users.filter(u => u.rol === 'colaborador' && u.activo);
+  const colaboradores = STATE.users.filter(u => u.rol === 'colaborador' && String(u.activo) !== 'false');
 
   const sinJefe = colaboradores.filter(c => !c.jefe_id);
   if (sinJefe.length) {
-    showToast(`⚠️ ${sinJefe.length} colaborador(es) sin jefe asignado: ${sinJefe.map(c=>c.nombre).join(', ')}`, 'error');
+    showToast(`⚠️ ${sinJefe.map(c=>c.nombre).join(', ')} no tienen jefe asignado`, 'error');
   }
 
-  const asignaciones = colaboradores
-    .filter(c => c.jefe_id)
-    .map(c => ({ colab_id: c.id, jefe_id: c.jefe_id }));
-
-  if (!asignaciones.length) {
-    showToast('No hay colaboradores con jefe asignado para generar evaluaciones', 'error');
+  const conJefe = colaboradores.filter(c => c.jefe_id);
+  if (!conJefe.length) {
+    showToast('No hay colaboradores con jefe asignado', 'error');
     return;
   }
 
-  if (!confirm(`¿Confirmas generar evaluaciones para ${asignaciones.length} colaboradores en el periodo ${periodo}?\n\nSolo se crearán las que no existan aún.`)) return;
+  if (!confirm(`¿Confirmas generar evaluaciones para ${conJefe.length} colaborador(es) en el periodo "${periodo}"?\n\nSolo se crearán las que no existan aún.`)) return;
 
-  await apiCall('asignarEvaluaciones', { asignaciones, periodo });
-  // Reload evaluaciones from state
-  const res = await apiCall('getEvaluaciones');
-  STATE.evaluaciones = res.data || STATE.evaluaciones;
+  let creadas = 0;
+  conJefe.forEach(colab => {
+    // Evaluación jefe → colaborador
+    const yaJefe = STATE.evaluaciones.find(e =>
+      e.evaluado_id === colab.id && e.tipo === 'jefe' && e.periodo === periodo
+    );
+    if (!yaJefe) {
+      const nueva = {
+        id: 'E' + Date.now() + Math.floor(Math.random()*9999),
+        evaluado_id: colab.id,
+        evaluador_id: colab.jefe_id,
+        tipo: 'jefe',
+        periodo,
+        estado: 'pendiente',
+        score_comp: null, score_metas: null, score_okr: null, score_final: null,
+        comp_scores: {}, metas: [], fortalezas: '', mejoras: '', comentario: '', fecha_envio: null
+      };
+      STATE.evaluaciones.push(nueva);
+      apiCall('saveEval', nueva);
+      creadas++;
+    }
+    // Autoevaluación
+    const yaAuto = STATE.evaluaciones.find(e =>
+      e.evaluado_id === colab.id && e.tipo === 'auto' && e.periodo === periodo
+    );
+    if (!yaAuto) {
+      const autoEval = {
+        id: 'E' + Date.now() + Math.floor(Math.random()*9999) + 'a',
+        evaluado_id: colab.id,
+        evaluador_id: colab.id,
+        tipo: 'auto',
+        periodo,
+        estado: 'pendiente',
+        score_comp: null, score_metas: null, score_okr: null, score_final: null,
+        comp_scores: {}, metas: [], fortalezas: '', mejoras: '', comentario: '', fecha_envio: null
+      };
+      STATE.evaluaciones.push(autoEval);
+      apiCall('saveEval', autoEval);
+      creadas++;
+    }
+  });
 
   previewAsignaciones();
-  showToast(`✅ Evaluaciones generadas para el periodo ${periodo}`, 'success');
+  if (creadas > 0) {
+    showToast(`✅ ${creadas} evaluación(es) generadas para el periodo "${periodo}"`, 'success');
+  } else {
+    showToast(`ℹ️ Todas las evaluaciones ya existían para el periodo "${periodo}"`, '');
+  }
 }
 
 function switchAdminTab(tab, btn) {
