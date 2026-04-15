@@ -28,8 +28,8 @@
 
   /* ─── LOGIN ─── */
   #loginScreen {
-    display: flex; align-items: center; justify-content: center;
-    min-height: 100vh;
+    display: flex; flex-direction: column; align-items: center; justify-content: center;
+    min-height: 100vh; padding: 32px 16px;
     background: linear-gradient(135deg, #ba0020 0%, #4e4e4e 100%);
   }
   .login-card {
@@ -527,16 +527,28 @@
     <p class="login-error" id="loginError">Usuario o contraseña incorrectos</p>
   </div>
 
-  <!-- Métricas de uso públicas -->
+  <!-- Indicadores de impacto -->
   <div id="loginMetrics" style="width:100%;max-width:720px;margin:28px auto 0;padding:0 16px">
-    <div style="text-align:center;margin-bottom:16px">
-      <p id="loginFrase" style="font-size:.95rem;color:rgba(255,255,255,.75);font-style:italic;margin:0"></p>
+    <div style="text-align:center;margin-bottom:20px">
+      <p id="loginFrase" style="font-size:.95rem;color:rgba(255,255,255,.8);font-style:italic;margin:0;line-height:1.6"></p>
     </div>
     <div style="display:grid;grid-template-columns:repeat(4,1fr);gap:12px">
-      <div class="login-metric-card" id="lm1"><div class="lm-val">—</div><div class="lm-label">Usuarios activos</div></div>
-      <div class="login-metric-card" id="lm2"><div class="lm-val">—</div><div class="lm-label">Evaluados este ciclo</div></div>
-      <div class="login-metric-card" id="lm3"><div class="lm-val">—</div><div class="lm-label">PDI activos</div></div>
-      <div class="login-metric-card" id="lm4"><div class="lm-val">—</div><div class="lm-label">OKR completados</div></div>
+      <div class="login-metric-card">
+        <div class="lm-val" id="lmv1">—</div>
+        <div class="lm-label">personas<br>en desarrollo</div>
+      </div>
+      <div class="login-metric-card">
+        <div class="lm-val" id="lmv2">—</div>
+        <div class="lm-label">evaluaciones<br>completadas</div>
+      </div>
+      <div class="login-metric-card">
+        <div class="lm-val" id="lmv3">—</div>
+        <div class="lm-label">reconocimientos<br>entregados</div>
+      </div>
+      <div class="login-metric-card">
+        <div class="lm-val" id="lmv4">—</div>
+        <div class="lm-label">insignias<br>otorgadas</div>
+      </div>
     </div>
   </div>
 </div>
@@ -843,7 +855,6 @@
           <button class="admin-tab active" onclick="switchAdminTab('usuarios',this)">Usuarios</button>
           <button class="admin-tab" onclick="switchAdminTab('asignaciones',this)">Asignar Evaluaciones</button>
           <button class="admin-tab" onclick="switchAdminTab('competencias',this)">Competencias</button>
-          <button class="admin-tab" onclick="switchAdminTab('potencial-config',this)">Potencial (Nine Box)</button>
           <button class="admin-tab" onclick="switchAdminTab('periodo',this)">Periodo</button>
           <button class="admin-tab" onclick="switchAdminTab('reportes',this)">Reportes</button>
         </div>
@@ -916,19 +927,6 @@
           </div>
         </div>
         <!-- ── POTENCIAL CONFIG ── -->
-        <div class="admin-tab-content" id="adminTab-potencial-config">
-          <div class="card">
-            <div class="card-header">
-              <div>
-                <div class="card-title">Comportamientos de Potencial por Cargo</div>
-                <div class="card-subtitle">Define qué comportamientos observables corresponden a cada nivel de potencial para cada cargo. Se muestran al jefe al evaluar.</div>
-              </div>
-              <button class="btn btn-primary btn-sm" onclick="openPotencialConfigModal()">+ Agregar cargo</button>
-            </div>
-            <div id="potencialConfigContent" style="margin-top:4px"></div>
-          </div>
-        </div>
-
         <div class="admin-tab-content" id="adminTab-periodo">
           <div class="card">
             <div class="card-header">
@@ -1016,7 +1014,7 @@
 // ═══════════════════════════════════════════
 //  CONFIG — Reemplaza con tu URL de Google Apps Script
 // ═══════════════════════════════════════════
-const SCRIPT_URL = 'https://script.google.com/macros/s/AKfycby_sPjVCB-uGMI2KBri05-KSZd1CKQ7WuQ0uSsu9jklBE9c2IBAkUxyXzGUA-KEghDE/exec';
+const SCRIPT_URL = 'https://script.google.com/macros/s/AKfycbx29WWhuQqqi3OwkPoM5I-oHnrqe9yVxRbqelwtJiplWY3hVjX-Wbwtu88rHJgqRDbJ/exec';
 
 // ═══════════════════════════════════════════
 //  STATE
@@ -1439,7 +1437,6 @@ function demoBridge(action, data) {
     case 'getOKR':         return { ok:true, data: DEMO_OKR };
     case 'getPares':       return { ok:true, data: DEMO_PARES };
     case 'getPotencial':   return { ok:true, data: DEMO_POTENCIAL };
-    case 'getPotencialConfig': return { ok:true, data: DEMO_POTENCIAL_CONFIG };
     case 'getCiclos':    return { ok:true, data: DEMO_CICLOS };
     case 'getRevisiones':return { ok:true, data: [] };
     case 'getBitacora':  return { ok:true, data: [] };
@@ -1481,11 +1478,6 @@ function demoBridge(action, data) {
       const potIdx = DEMO_POTENCIAL.findIndex(p => p.id === data.id);
       if (potIdx >= 0) Object.assign(DEMO_POTENCIAL[potIdx], data);
       else DEMO_POTENCIAL.push(data);
-      return { ok:true };
-    }
-    case 'savePotencialConfig': {
-      Object.assign(DEMO_POTENCIAL_CONFIG, data);
-      STATE.potencial_config = DEMO_POTENCIAL_CONFIG;
       return { ok:true };
     }
     case 'saveCiclo': {
@@ -1551,11 +1543,11 @@ function handleLogout() {
 //  DATA LOAD
 // ═══════════════════════════════════════════
 async function loadAllData() {
-  const [ru, rc, re, rp, rper, rokr, rpares, rpot, rpotcfg, rciclos, rrev, rbit] = await Promise.all([
+  const [ru, rc, re, rp, rper, rokr, rpares, rpot, rciclos, rrev, rbit] = await Promise.all([
     apiCall('getUsers'), apiCall('getCompetencias'),
     apiCall('getEvaluaciones'), apiCall('getPDI'), apiCall('getPeriodo'),
     apiCall('getOKR'), apiCall('getPares'), apiCall('getPotencial'),
-    apiCall('getPotencialConfig'), apiCall('getCiclos'), apiCall('getRevisiones'),
+    apiCall('getCiclos'), apiCall('getRevisiones'),
     apiCall('getBitacora')
   ]);
   STATE.users = ru.data || [];
@@ -1566,7 +1558,6 @@ async function loadAllData() {
   STATE.okr = rokr.data || [];
   STATE.pares = rpares.data || [];
   STATE.potencial = rpot.data || [];
-  STATE.potencial_config = rpotcfg.data || DEMO_POTENCIAL_CONFIG;
   STATE.ciclos = rciclos.data || [];
   STATE.revisiones = rrev.data || [];
   STATE.bitacora = rbit.data || [];
@@ -4459,116 +4450,6 @@ async function ejecutarAsignaciones() {
 }
 
 // ═══════════════════════════════════════════
-//  ADMIN — POTENCIAL CONFIG
-// ═══════════════════════════════════════════
-function renderAdminPotencialConfig() {
-  const cont = document.getElementById('potencialConfigContent');
-  if (!cont) return;
-  const cfg = STATE.potencial_config || {};
-  const cargos = Object.keys(cfg);
-
-  if (!cargos.length) {
-    cont.innerHTML = `<div class="empty-state" style="padding:24px"><p>No hay cargos configurados. Agrega el primero.</p></div>`;
-    return;
-  }
-
-  const COLORS = {'1':'#e53935','2':'#f57c00','3':'#2e7d32'};
-  const LABELS = {'1':'1 — Potencial Bajo','2':'2 — Potencial Medio','3':'3 — Potencial Alto'};
-
-  cont.innerHTML = cargos.map(cargo => {
-    const nivelesHtml = [1,2,3].map(n => {
-      const nivel = cfg[cargo]?.[n] || {};
-      const beh = (nivel.comportamientos || []).join('\n');
-      return `<div style="margin-bottom:10px">
-        <div style="display:inline-flex;align-items:center;gap:8px;margin-bottom:6px">
-          <span style="background:${COLORS[n]};color:white;border-radius:6px;padding:2px 10px;font-size:.72rem;font-weight:700">${LABELS[n]}</span>
-          ${nivel.desc ? `<span style="font-size:.78rem;color:#888;font-style:italic">${nivel.desc}</span>` : ''}
-        </div>
-        ${beh ? `<ul style="margin:0;padding-left:16px">${(nivel.comportamientos||[]).map(c=>`<li style="font-size:.82rem;color:var(--gray);line-height:1.5">${c}</li>`).join('')}</ul>` : '<span style="font-size:.8rem;color:#aaa">Sin comportamientos definidos</span>'}
-      </div>`;
-    }).join('');
-
-    return `<div style="border:1.5px solid var(--gray-mid);border-radius:var(--radius);margin-bottom:12px;overflow:hidden">
-      <div style="background:var(--gray-light);padding:12px 18px;display:flex;align-items:center;justify-content:space-between">
-        <strong style="color:var(--gray)">${cargo}</strong>
-        <button class="btn btn-secondary btn-sm" onclick="openPotencialConfigModal('${cargo.replace(/'/g,"\\'")}')">Editar</button>
-      </div>
-      <div style="padding:14px 18px">${nivelesHtml}</div>
-    </div>`;
-  }).join('');
-}
-
-function openPotencialConfigModal(cargo) {
-  const isNew = !cargo;
-  const cfg = STATE.potencial_config || {};
-  const cargoCfg = cargo ? (cfg[cargo] || {}) : {};
-  const allCargos = [...new Set(STATE.users.map(u => u.cargo).filter(Boolean))].sort();
-
-  const nivelFields = [1,2,3].map(n => {
-    const nivel = cargoCfg[n] || {};
-    const beh = (nivel.comportamientos || []).join('\n');
-    const COLORS = {1:'#e53935',2:'#f57c00',3:'#2e7d32'};
-    const LABELS = {1:'1 — Potencial Bajo',2:'2 — Potencial Medio',3:'3 — Potencial Alto'};
-    return `<div style="margin-bottom:12px">
-      <label style="display:flex;align-items:center;gap:8px;margin-bottom:6px">
-        <span style="background:${COLORS[n]};color:white;border-radius:6px;padding:2px 10px;font-size:.73rem;font-weight:700">${LABELS[n]}</span>
-      </label>
-      <div class="form-field" style="margin-bottom:6px">
-        <label style="font-size:.78rem">Descripción del nivel</label>
-        <input type="text" id="potCfgDesc${n}" value="${nivel.desc||''}" placeholder="Describe en una frase qué caracteriza este nivel..." style="width:100%;padding:7px 10px;border:1.5px solid var(--gray-mid);border-radius:8px;font-family:Asap,sans-serif;font-size:.84rem;outline:none">
-      </div>
-      <div class="form-field" style="margin-bottom:0">
-        <label style="font-size:.78rem">Comportamientos observables (uno por línea)</label>
-        <textarea id="potCfgBeh${n}" rows="3" placeholder="Escribe un comportamiento por línea..." style="width:100%;padding:7px 10px;border:1.5px solid var(--gray-mid);border-radius:8px;font-family:Asap,sans-serif;font-size:.83rem;resize:vertical;outline:none">${beh}</textarea>
-      </div>
-    </div>`;
-  }).join('<hr style="border:none;border-top:1px solid var(--gray-light);margin:10px 0">');
-
-  const cargoSelector = isNew
-    ? `<div class="form-field" style="margin-bottom:14px">
-        <label>Cargo *</label>
-        <select id="potCfgCargo" style="width:100%;padding:9px 12px;border:1.5px solid var(--gray-mid);border-radius:8px;font-family:Asap,sans-serif;font-size:.88rem;outline:none">
-          <option value="">— Seleccionar cargo —</option>
-          <option value="Todos">Todos (aplica a cargos sin configuración propia)</option>
-          ${allCargos.map(c=>`<option value="${c}">${c}</option>`).join('')}
-        </select>
-      </div>`
-    : `<div style="font-size:.82rem;color:#888;margin-bottom:14px">Editando: <strong>${cargo}</strong></div>`;
-
-  openModal(
-    isNew ? 'Agregar configuración de potencial' : `Editar potencial — ${cargo}`,
-    cargoSelector + nivelFields,
-    [
-      { label:'Cancelar', cls:'btn-secondary', action:'closeModal()' },
-      { label:'Guardar', cls:'btn-primary', action:`savePotencialConfigModal('${cargo||''}')` }
-    ]
-  );
-}
-
-async function savePotencialConfigModal(cargoOriginal) {
-  const cargo = cargoOriginal || document.getElementById('potCfgCargo')?.value;
-  if (!cargo) { showToast('Selecciona un cargo', 'error'); return; }
-
-  const cfg = STATE.potencial_config || {};
-  cfg[cargo] = {};
-
-  [1,2,3].forEach(n => {
-    const desc = document.getElementById(`potCfgDesc${n}`)?.value?.trim() || '';
-    const behText = document.getElementById(`potCfgBeh${n}`)?.value || '';
-    const comportamientos = behText.split('\n').map(l=>l.trim()).filter(l=>l.length > 0);
-    const LABELS = {1:'Potencial Bajo',2:'Potencial Medio',3:'Potencial Alto'};
-    const COLORS = {1:'#e53935',2:'#f57c00',3:'#2e7d32'};
-    cfg[cargo][n] = { label: LABELS[n], color: COLORS[n], desc, comportamientos };
-  });
-
-  STATE.potencial_config = cfg;
-  await apiCall('savePotencialConfig', cfg);
-  closeModal();
-  renderAdminPotencialConfig();
-  showToast(`✅ Configuración de potencial guardada para: ${cargo}`, 'success');
-}
-
-// ═══════════════════════════════════════════
 //  CICLOS DE EVALUACIÓN (ADMIN)
 // ═══════════════════════════════════════════
 function renderCiclos() {
@@ -5022,7 +4903,6 @@ function switchAdminTab(tab, btn) {
   document.getElementById('adminTab-' + tab).classList.add('active');
   if (tab === 'reportes') setTimeout(renderAdminCharts, 100);
   if (tab === 'asignaciones') { previewAsignaciones(); renderGradosPorCargo(); }
-  if (tab === 'potencial-config') renderAdminPotencialConfig();
   if (tab === 'periodo') renderCiclos();
 }
 
@@ -5060,35 +4940,53 @@ document.addEventListener('keydown', e => {
 
 // ── LOGIN METRICS & FRASES ────────────────────────────────────────────
 const FRASES_LOGIN = [
-  '"El talento se gana con trabajo. El desempeño se demuestra con resultados."',
-  '"Desarrollar personas es la inversión más rentable que puede hacer una organización."',
-  '"La retroalimentación honesta es el regalo más valioso que un líder puede dar."',
-  '"El crecimiento personal y el éxito organizacional siempre van de la mano."',
-  '"Una evaluación justa no juzga el pasado — construye el futuro."',
+  '"Cada evaluación es una conversación que transforma personas y organizaciones."',
+  '"El desarrollo del talento no es un gasto — es la inversión con mayor retorno."',
+  '"Las personas que se conocen a sí mismas, crecen. Las organizaciones que las conocen, prosperan."',
+  '"Un reconocimiento a tiempo vale más que mil incentivos tardíos."',
+  '"El feedback honesto hoy construye el liderazgo de mañana."',
+  '"Crecer profesionalmente no es un destino — es el camino que recorremos juntos."',
 ];
 
 (function initLoginMetrics() {
-  // Frase rotativa
   const fraseEl = document.getElementById('loginFrase');
   if (fraseEl) fraseEl.textContent = FRASES_LOGIN[Math.floor(Math.random() * FRASES_LOGIN.length)];
 
-  // Metrics from DEMO data (in real mode, these load from Apps Script)
-  const totalUsers   = DEMO_USERS.filter(u => u.activo).length;
-  const totalColabs  = DEMO_EVALUACIONES.filter(e => e.tipo==='jefe').length;
-  const evaluated    = DEMO_EVALUACIONES.filter(e => e.tipo==='jefe' && e.estado==='enviado').length;
-  const pctEval      = totalColabs > 0 ? Math.round((evaluated/totalColabs)*100) : 0;
-  const pdiActivos   = DEMO_PDI.filter(p => p.estado==='en_progreso').length;
-  const totalPdi     = DEMO_PDI.length;
-  const pctPDI       = totalPdi > 0 ? Math.round((pdiActivos/totalPdi)*100) : 0;
-  const allKRs       = DEMO_OKR.flatMap(o => o.krs||[]);
-  const completedKRs = allKRs.filter(k => (k.progreso||0) >= 100).length;
-  const pctOKR       = allKRs.length > 0 ? Math.round((completedKRs/allKRs.length)*100) : 0;
+  // 1. Personas en desarrollo (PDI activo o pendiente)
+  const enDesarrollo = new Set(
+    DEMO_PDI.filter(p => ['en_progreso','pendiente'].includes(p.estado)).map(p => p.colaborador_id)
+  ).size || DEMO_USERS.filter(u => u.rol === 'colaborador').length;
 
-  const set = (id, val) => { const el=document.querySelector(`#${id} .lm-val`); if(el) el.textContent=val; };
-  set('lm1', totalUsers);
-  set('lm2', pctEval + '%');
-  set('lm3', pctPDI + '%');
-  set('lm4', pctOKR + '%');
+  // 2. Evaluaciones completadas (todas las fuentes)
+  const evalCompletadas = DEMO_EVALUACIONES.filter(e => e.estado === 'enviado').length
+    || DEMO_USERS.filter(u => u.rol === 'colaborador').length;
+
+  // 3. Reconocimientos entregados (entradas de bitácora tipo reconocimiento)
+  //    En demo usamos: evaluaciones enviadas con fortalezas + colaboradores activos como proxy positivo
+  const reconocimientos = DEMO_EVALUACIONES.filter(e => e.estado === 'enviado' && e.fortalezas).length
+    || DEMO_USERS.filter(u => u.rol === 'colaborador' && u.activo).length;
+
+  // 4. Insignias otorgadas (criterios cumplidos por todos los colaboradores en demo)
+  const colabs = DEMO_USERS.filter(u => u.rol === 'colaborador');
+  const totalInsignias = colabs.reduce((acc, colab) => acc + evaluarInsignias(colab.id).length, 0);
+
+  function countUp(id, target) {
+    const el = document.getElementById(id);
+    if (!el) return;
+    if (!target) { el.textContent = '0'; return; }
+    let current = 0;
+    const step = Math.max(1, Math.floor(target / 25));
+    const timer = setInterval(() => {
+      current = Math.min(current + step, target);
+      el.textContent = current;
+      if (current >= target) clearInterval(timer);
+    }, 45);
+  }
+
+  countUp('lmv1', enDesarrollo);
+  countUp('lmv2', evalCompletadas);
+  countUp('lmv3', reconocimientos);
+  countUp('lmv4', totalInsignias);
 })();
 
 // ── INSIGNIAS en Mis Resultados ────────────────────────────────────────
