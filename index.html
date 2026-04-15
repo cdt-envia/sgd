@@ -992,7 +992,7 @@
 // ═══════════════════════════════════════════
 //  CONFIG — Reemplaza con tu URL de Google Apps Script
 // ═══════════════════════════════════════════
-const SCRIPT_URL = 'https://script.google.com/macros/s/AKfycbz6OHJ981WRQTIlK1vyJIRn7d7kh5eO64s8q9u526HnUal_mPR-RJS-PWRAkVdz8_Ur/exec';
+const SCRIPT_URL = 'https://script.google.com/macros/s/AKfycbzPtOfMKfRB0eGo5ycXDMVX54OirmSMKOezrO65khCvCcNZeZ4JlhgxEzRj4bMcie0O/exec';
 
 // ═══════════════════════════════════════════
 //  STATE
@@ -1122,12 +1122,12 @@ const DEMO_COMPETENCIAS = [
 ];
 
 const DEMO_EVALUACIONES = [
-  { id:'E001', evaluado_id:'U003', evaluador_id:'U002', tipo:'jefe', periodo:'2025', estado:'pendiente', score_comp:null, score_metas:null, score_final:null, comp_scores:{}, metas:[], fortalezas:'', mejoras:'', comentario:'', fecha_envio:null },
-  { id:'E002', evaluado_id:'U003', evaluador_id:'U003', tipo:'auto', periodo:'2025', estado:'pendiente', score_comp:null, score_metas:null, score_final:null, comp_scores:{}, metas:[], fortalezas:'', mejoras:'', comentario:'', fecha_envio:null },
-  { id:'E003', evaluado_id:'U004', evaluador_id:'U002', tipo:'jefe', periodo:'2025', estado:'pendiente', score_comp:null, score_metas:null, score_final:null, comp_scores:{}, metas:[], fortalezas:'', mejoras:'', comentario:'', fecha_envio:null },
-  { id:'E004', evaluado_id:'U004', evaluador_id:'U004', tipo:'auto', periodo:'2025', estado:'pendiente', score_comp:null, score_metas:null, score_final:null, comp_scores:{}, metas:[], fortalezas:'', mejoras:'', comentario:'', fecha_envio:null },
-  { id:'E005', evaluado_id:'U005', evaluador_id:'U002', tipo:'jefe', periodo:'2025', estado:'pendiente', score_comp:null, score_metas:null, score_final:null, comp_scores:{}, metas:[], fortalezas:'', mejoras:'', comentario:'', fecha_envio:null },
-  { id:'E006', evaluado_id:'U005', evaluador_id:'U005', tipo:'auto', periodo:'2025', estado:'enviado', score_comp:3.2, score_metas:85, score_final:3.0, comp_scores:{C001:3,C002:3,C003:4,C007:3,C008:3,C009:4}, metas:[{meta:'Reducir rotación 10%',peso:50,resultado:'8%',cumplimiento:80},{meta:'Implementar onboarding',peso:50,resultado:'Completado',cumplimiento:100}], fortalezas:'Excelente gestión del clima', mejoras:'Fortalecer análisis de datos', comentario:'Muy buen desempeño general', fecha_envio:'2025-11-15' },
+  { id:'E001', evaluado_id:'U003', evaluador_id:'U002', tipo:'jefe',  periodo:'2025', estado:'pendiente', score_comp:null, score_okr:null, score_final:null, comp_scores:{}, fortalezas:'', mejoras:'', comentario:'', fecha_envio:null },
+  { id:'E002', evaluado_id:'U003', evaluador_id:'U003', tipo:'auto',  periodo:'2025', estado:'pendiente', score_comp:null, score_okr:null, score_final:null, comp_scores:{}, fortalezas:'', mejoras:'', comentario:'', fecha_envio:null },
+  { id:'E003', evaluado_id:'U004', evaluador_id:'U002', tipo:'jefe',  periodo:'2025', estado:'pendiente', score_comp:null, score_okr:null, score_final:null, comp_scores:{}, fortalezas:'', mejoras:'', comentario:'', fecha_envio:null },
+  { id:'E004', evaluado_id:'U004', evaluador_id:'U004', tipo:'auto',  periodo:'2025', estado:'pendiente', score_comp:null, score_okr:null, score_final:null, comp_scores:{}, fortalezas:'', mejoras:'', comentario:'', fecha_envio:null },
+  { id:'E005', evaluado_id:'U005', evaluador_id:'U002', tipo:'jefe',  periodo:'2025', estado:'pendiente', score_comp:null, score_okr:null, score_final:null, comp_scores:{}, fortalezas:'', mejoras:'', comentario:'', fecha_envio:null },
+  { id:'E006', evaluado_id:'U005', evaluador_id:'U005', tipo:'auto',  periodo:'2025', estado:'enviado',  score_comp:3.2,  score_okr:80,   score_final:3.0,  comp_scores:{C001:3,C002:3,C003:4,C007:3,C008:3,C009:4}, fortalezas:'Excelente gestión del clima', mejoras:'Fortalecer análisis de datos', comentario:'Muy buen desempeño general', fecha_envio:'2025-11-15' },
 ];
 
 const DEMO_PARES = [
@@ -1335,14 +1335,14 @@ function demoBridge(action, data) {
       else DEMO_USERS.push(data);
       return { ok:true };
     }
-    case 'asignarEvaluaciones': {
-      // Genera evaluaciones jefe→colab y auto para cada colaborador
-      data.asignaciones.forEach(a => {
-        const yaJefe = DEMO_EVALUACIONES.find(e => e.evaluado_id === a.colab_id && e.evaluador_id === a.jefe_id && e.tipo === 'jefe');
-        const yaAuto = DEMO_EVALUACIONES.find(e => e.evaluado_id === a.colab_id && e.tipo === 'auto');
-        if (!yaJefe) DEMO_EVALUACIONES.push({ id:'E'+Date.now()+Math.random(), evaluado_id:a.colab_id, evaluador_id:a.jefe_id, tipo:'jefe', periodo:data.periodo||'2025', estado:'pendiente', score_comp:null, score_metas:null, score_okr:null, score_final:null, comp_scores:{}, metas:[], fortalezas:'', mejoras:'', comentario:'', fecha_envio:null });
-        if (!yaAuto) DEMO_EVALUACIONES.push({ id:'E'+Date.now()+Math.random()+'a', evaluado_id:a.colab_id, evaluador_id:a.colab_id, tipo:'auto', periodo:data.periodo||'2025', estado:'pendiente', score_comp:null, score_metas:null, score_okr:null, score_final:null, comp_scores:{}, metas:[], fortalezas:'', mejoras:'', comentario:'', fecha_envio:null });
-      });
+    case 'saveComp': {
+      const cidx = DEMO_COMPETENCIAS.findIndex(c => c.id === data.id);
+      if (cidx >= 0) Object.assign(DEMO_COMPETENCIAS[cidx], data);
+      else DEMO_COMPETENCIAS.push(data);
+      return { ok:true };
+    }
+    case 'savePeriodo': {
+      Object.assign(STATE.periodo, data);
       return { ok:true };
     }
     default: return { ok:true };
@@ -2279,17 +2279,25 @@ function renderResultados() {
           <div class="cat">${cat.label}</div>
         </div>
         <div class="card" style="margin-top:16px">
-          <div class="card-title" style="margin-bottom:10px">Desglose de Puntaje</div>
-          <div style="display:flex;justify-content:space-between;padding:8px 0;border-bottom:1px solid var(--gray-light)">
-            <span>Competencias (${STATE.periodo.peso_comp||60}%)</span>
+          <div class="card-title" style="margin-bottom:10px">Desglose de Puntaje 360°</div>
+          <div style="display:flex;justify-content:space-between;padding:7px 0;border-bottom:1px solid var(--gray-light)">
+            <span>Evaluación jefe (${STATE.periodo.peso_jefe||40}%)</span>
             <strong>${evalJefe.score_comp?.toFixed(2)||'—'} / 4</strong>
           </div>
-          <div style="display:flex;justify-content:space-between;padding:8px 0;border-bottom:1px solid var(--gray-light)">
-            <span>🎯 OKR (${STATE.periodo.peso_okr||40}%)</span>
+          <div style="display:flex;justify-content:space-between;padding:7px 0;border-bottom:1px solid var(--gray-light)">
+            <span>Autoevaluación (${STATE.periodo.peso_auto||20}%)</span>
+            <strong>${evalAuto?.score_comp?.toFixed(2)||'—'} / 4</strong>
+          </div>
+          <div style="display:flex;justify-content:space-between;padding:7px 0;border-bottom:1px solid var(--gray-light)">
+            <span>Pares (${STATE.periodo.peso_pares||25}%)</span>
+            <strong>${(() => { const evPar = STATE.evaluaciones.filter(e => e.evaluado_id === u.id && e.tipo === 'par' && e.estado === 'enviado'); return evPar.length ? (evPar.reduce((a,e)=>a+(e.score_comp||0),0)/evPar.length).toFixed(2)+' / 4 ('+evPar.length+')' : '—'; })()}</strong>
+          </div>
+          <div style="display:flex;justify-content:space-between;padding:7px 0;border-bottom:1px solid var(--gray-light)">
+            <span>🎯 OKR (${STATE.periodo.peso_okr||15}%)</span>
             <strong>${evalJefe.score_okr != null ? evalJefe.score_okr + '%' : '—'}</strong>
           </div>
           <div style="display:flex;justify-content:space-between;padding:8px 0">
-            <span><strong>Calificación Final</strong></span>
+            <span><strong>Calificación Final 360°</strong></span>
             <strong style="color:var(--red);font-size:1.1rem">${evalJefe.score_final?.toFixed(2)||'—'}</strong>
           </div>
         </div>
