@@ -591,6 +591,8 @@
             </table>
           </div>
         </div>
+        <!-- Revisiones ligeras (solo visible cuando el ciclo activo es tipo 'revision') -->
+        <div id="revisionEquipoSection" style="display:none"></div>
       </div>
 
       <!-- ─── PÁGINA: FORMULARIO EVALUACIÓN ─── -->
@@ -663,25 +665,39 @@
           </div>
           <!-- POTENCIAL — solo visible cuando el jefe evalúa a un colaborador -->
           <div id="potencialSection" style="display:none;margin-top:16px;padding-top:16px;border-top:1px solid var(--gray-light)">
-            <div style="font-size:.88rem;font-weight:700;color:var(--gray);margin-bottom:12px">🎯 Evaluación de Potencial (Nine Box)</div>
-            <div class="info-banner" style="margin-bottom:12px;font-size:.82rem">
-              <svg width="13" height="13" viewBox="0 0 24 24" fill="currentColor"><path d="M12 2C6.48 2 2 6.48 2 12s4.48 10 10 10 10-4.48 10-10S17.52 2 12 2zm1 15h-2v-6h2v6zm0-8h-2V7h2v2z"/></svg>
-              El potencial define la posición vertical en el Nine Box. Evalúa la capacidad de crecimiento futuro, no el desempeño actual.
+            <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:12px;flex-wrap:wrap;gap:8px">
+              <div style="font-size:.88rem;font-weight:700;color:var(--gray)">🎯 Evaluación de Potencial (Nine Box)</div>
+              <button class="btn btn-secondary btn-sm" onclick="savePotencialStandalone()" id="btnSavePotencial" style="display:none">
+                💾 Guardar potencial
+              </button>
             </div>
-            <div class="form-row">
-              <div class="form-field">
+            <p style="font-size:.82rem;color:#888;margin-bottom:14px">
+              El potencial define la posición vertical en el Nine Box. Evalúa la capacidad de crecimiento futuro, no el desempeño actual. Puedes actualizarlo en cualquier momento.
+            </p>
+            <div class="form-row" style="align-items:flex-start">
+              <div class="form-field" style="flex:0 0 280px">
                 <label>Nivel de Potencial</label>
-                <select id="evalPotencial" style="width:100%;padding:9px 12px;border:1.5px solid var(--gray-mid);border-radius:8px;font-family:Asap,sans-serif;font-size:.88rem;outline:none">
+                <select id="evalPotencial" onchange="onPotencialChange(this.value)"
+                  style="width:100%;padding:9px 12px;border:1.5px solid var(--gray-mid);border-radius:8px;font-family:Asap,sans-serif;font-size:.88rem;outline:none">
                   <option value="">— Seleccionar —</option>
-                  <option value="1">1 — Potencial Bajo (rol actual es su techo)</option>
-                  <option value="2">2 — Potencial Medio (puede crecer 1 nivel)</option>
-                  <option value="3">3 — Potencial Alto (liderazgo futuro)</option>
+                  <option value="1">1 — Potencial Bajo</option>
+                  <option value="2">2 — Potencial Medio</option>
+                  <option value="3">3 — Potencial Alto</option>
                 </select>
               </div>
-              <div class="form-field">
-                <label>Justificación del potencial</label>
-                <textarea id="evalPotencialNota" rows="2" style="width:100%;padding:8px 10px;border:1.5px solid var(--gray-mid);border-radius:8px;font-family:Asap,sans-serif;font-size:.85rem;outline:none" placeholder="¿Por qué asignas este nivel de potencial?"></textarea>
+              <div class="form-field" style="flex:1">
+                <label>Justificación</label>
+                <textarea id="evalPotencialNota" rows="2"
+                  style="width:100%;padding:8px 10px;border:1.5px solid var(--gray-mid);border-radius:8px;font-family:Asap,sans-serif;font-size:.85rem;outline:none;resize:vertical"
+                  placeholder="¿Por qué asignas este nivel? Menciona evidencias concretas observadas..."></textarea>
               </div>
+            </div>
+            <!-- Comportamientos observables del nivel seleccionado -->
+            <div id="potencialBehaviors" style="display:none;margin-top:10px;border-radius:8px;padding:14px 16px">
+              <div style="font-size:.8rem;font-weight:700;margin-bottom:8px;text-transform:uppercase;letter-spacing:.05em" id="potBehLabel"></div>
+              <div style="font-size:.82rem;color:#555;margin-bottom:8px;font-style:italic" id="potBehDesc"></div>
+              <div style="font-size:.82rem;font-weight:600;margin-bottom:6px;color:var(--gray)">Comportamientos observables en este nivel:</div>
+              <ul id="potBehList" style="margin:0;padding-left:18px;display:grid;gap:4px"></ul>
             </div>
           </div>
         </div>
@@ -826,6 +842,7 @@
           <button class="admin-tab active" onclick="switchAdminTab('usuarios',this)">Usuarios</button>
           <button class="admin-tab" onclick="switchAdminTab('asignaciones',this)">Asignar Evaluaciones</button>
           <button class="admin-tab" onclick="switchAdminTab('competencias',this)">Competencias</button>
+          <button class="admin-tab" onclick="switchAdminTab('potencial-config',this)">Potencial (Nine Box)</button>
           <button class="admin-tab" onclick="switchAdminTab('periodo',this)">Periodo</button>
           <button class="admin-tab" onclick="switchAdminTab('reportes',this)">Reportes</button>
         </div>
@@ -881,60 +898,50 @@
             </div>
           </div>
         </div>
+        <!-- ── POTENCIAL CONFIG ── -->
+        <div class="admin-tab-content" id="adminTab-potencial-config">
+          <div class="card">
+            <div class="card-header">
+              <div>
+                <div class="card-title">Comportamientos de Potencial por Cargo</div>
+                <div class="card-subtitle">Define qué comportamientos observables corresponden a cada nivel de potencial para cada cargo. Se muestran al jefe al evaluar.</div>
+              </div>
+              <button class="btn btn-primary btn-sm" onclick="openPotencialConfigModal()">+ Agregar cargo</button>
+            </div>
+            <div id="potencialConfigContent" style="margin-top:4px"></div>
+          </div>
+        </div>
+
         <div class="admin-tab-content" id="adminTab-periodo">
           <div class="card">
-            <div class="card-title" style="margin-bottom:16px">Configuración del Periodo de Evaluación</div>
+            <div class="card-header">
+              <div>
+                <div class="card-title">Ciclos de Evaluación</div>
+                <div class="card-subtitle">El admin define cada ciclo (Q, semestral, anual). Puede haber uno activo a la vez.</div>
+              </div>
+              <button class="btn btn-primary btn-sm" onclick="openCicloModal()">+ Nuevo ciclo</button>
+            </div>
+            <div id="ciclosTableWrap" class="table-wrap">
+              <table>
+                <thead><tr><th>Ciclo</th><th>Tipo</th><th>Inicio</th><th>Fin</th><th>Estado</th><th>Pesos 360°</th><th>Acciones</th></tr></thead>
+                <tbody id="ciclosTableBody"></tbody>
+              </table>
+            </div>
+          </div>
+          <!-- Ciclo activo: pesos -->
+          <div class="card" id="cicloActivoConfig" style="display:none">
+            <div class="card-title" style="margin-bottom:14px">⚙️ Configurar ciclo activo</div>
+            <div id="cicloActivoNombre" style="font-size:.88rem;color:#888;margin-bottom:16px"></div>
             <div class="form-row">
-              <div class="form-field">
-                <label>Nombre del periodo</label>
-                <input type="text" id="periodName" placeholder="Ej: Evaluación Anual 2025">
-              </div>
-              <div class="form-field">
-                <label>Estado</label>
-                <select id="periodStatus">
-                  <option value="open">Abierto</option>
-                  <option value="calibration">En Calibración</option>
-                  <option value="closed">Cerrado</option>
-                </select>
-              </div>
+              <div class="form-field"><label>Peso Jefe (%)</label><input type="number" id="pesoJefe" value="40" min="0" max="100"></div>
+              <div class="form-field"><label>Peso Autoevaluación (%)</label><input type="number" id="pesoAuto" value="20" min="0" max="100"></div>
             </div>
             <div class="form-row">
-              <div class="form-field">
-                <label>Fecha inicio</label>
-                <input type="date" id="periodStart">
-              </div>
-              <div class="form-field">
-                <label>Fecha cierre</label>
-                <input type="date" id="periodEnd">
-              </div>
+              <div class="form-field"><label>Peso Pares (%)</label><input type="number" id="pesoPares" value="25" min="0" max="100"></div>
+              <div class="form-field"><label>Peso OKR (%)</label><input type="number" id="pesoOKR" value="15" min="0" max="100"></div>
             </div>
-            <div class="form-row">
-              <div class="form-field">
-                <label>Peso Evaluación Jefe (%)</label>
-                <input type="number" id="pesoJefe" value="40" min="0" max="100">
-              </div>
-              <div class="form-field">
-                <label>Peso Autoevaluación (%)</label>
-                <input type="number" id="pesoAuto" value="20" min="0" max="100">
-              </div>
-            </div>
-            <div class="form-row">
-              <div class="form-field">
-                <label>Peso Evaluación Pares (%)</label>
-                <input type="number" id="pesoPares" value="25" min="0" max="100">
-              </div>
-              <div class="form-field">
-                <label>Peso OKR (%)</label>
-                <input type="number" id="pesoOKR" value="15" min="0" max="100">
-              </div>
-            </div>
-            <div class="form-row">
-              <div class="form-field">
-                <label style="color:#888;font-size:.78rem">Los cuatro pesos deben sumar 100%</label>
-                <div id="pesosTotal" style="font-size:1.1rem;font-weight:700;color:var(--gray);margin-top:6px">Total: 100%</div>
-              </div>
-            </div>
-            <button class="btn btn-primary" onclick="savePeriod()">Guardar configuración</button>
+            <div id="pesosTotal" style="font-size:.9rem;font-weight:700;color:var(--gray);margin-bottom:16px">Total: 100%</div>
+            <button class="btn btn-primary btn-sm" onclick="savePeriod()">Guardar pesos</button>
           </div>
         </div>
         <div class="admin-tab-content" id="adminTab-reportes">
@@ -992,7 +999,7 @@
 // ═══════════════════════════════════════════
 //  CONFIG — Reemplaza con tu URL de Google Apps Script
 // ═══════════════════════════════════════════
-const SCRIPT_URL = 'https://script.google.com/macros/s/AKfycbzPtOfMKfRB0eGo5ycXDMVX54OirmSMKOezrO65khCvCcNZeZ4JlhgxEzRj4bMcie0O/exec';
+const SCRIPT_URL = 'https://script.google.com/macros/s/AKfycbxKNrJeJFds8Joa6D_DB_aXVs-xeVaS15pMbLvpzqzIUH3QsitaaZnU52GBTsGulJlZ/exec';
 
 // ═══════════════════════════════════════════
 //  STATE
@@ -1006,6 +1013,9 @@ let STATE = {
   okr: [],
   pares: [],     // [{id, evaluado_id, evaluador_id, periodo}]
   potencial: [], // [{id, colaborador_id, jefe_id, periodo, nivel, nota}]
+  potencial_config: {}, // {cargo: {1:{...},2:{...},3:{...}}}
+  ciclos: [],    // [{id, nombre, tipo, inicio, fin, estado, peso_jefe, peso_auto, peso_pares, peso_okr}]
+  revisiones: [], // [{id, colaborador_id, jefe_id, ciclo_id, periodo, okr_avance, comentario, fecha}]
   periodo: {},
   currentEval: null,
   charts: {}
@@ -1145,11 +1155,81 @@ const DEMO_PARES = [
   { id:'PAR008', evaluado_id:'U006', evaluador_id:'U005', periodo:'2025' },
 ];
 
+// Configuración de comportamientos observables de potencial (3 niveles)
+// Configuración de comportamientos de potencial por CARGO y nivel (1/2/3)
+// Estructura: { "Nombre del cargo": { 1:{label,color,desc,comportamientos[]}, 2:{...}, 3:{...} } }
+// "Todos" es el fallback que aplica a cualquier cargo sin config propia
+const DEMO_POTENCIAL_CONFIG = {
+  'Todos': {
+    1: { label:'Potencial Bajo',  color:'#e53935', desc:'Ha alcanzado el techo de su rol. Sólido en lo que hace, sin señales claras de crecimiento.',
+      comportamientos:['Domina su rol pero no muestra interés por nuevas responsabilidades.','Sus soluciones se limitan a lo conocido; no propone enfoques nuevos.','No busca aprender fuera de lo estrictamente necesario para su cargo.'] },
+    2: { label:'Potencial Medio', color:'#f57c00', desc:'Con acompañamiento, puede crecer hacia roles de mayor responsabilidad en el mediano plazo.',
+      comportamientos:['Toma iniciativa ocasionalmente, aunque necesita respaldo para sostenerla.','Muestra disposición para aprender nuevas habilidades cuando se presenta la oportunidad.','Se adapta a cambios y puede asumir tareas más complejas con orientación.'] },
+    3: { label:'Potencial Alto',  color:'#2e7d32', desc:'Preparado o en camino de prepararse para roles de liderazgo o mayor impacto estratégico.',
+      comportamientos:['Anticipa problemas, propone soluciones innovadoras y actúa sin esperar instrucciones.','Aprende con rapidez y aplica nuevos conocimientos de forma autónoma.','Influye positivamente más allá de su rol; genera cultura y moviliza equipos.'] }
+  },
+  'Analista de Selección': {
+    1: { label:'Potencial Bajo',  color:'#e53935', desc:'Opera bien en procesos estándar pero sin señales de evolución hacia mayor complejidad.',
+      comportamientos:['Gestiona requisiciones habituales pero no busca mejorar sus metodologías.','No propone mejoras a los procesos de atracción aunque identifique oportunidades.','Tiene dificultades para adaptarse a nuevos perfiles fuera de su experiencia.'] },
+    2: { label:'Potencial Medio', color:'#f57c00', desc:'Puede evolucionar hacia coordinación de selección o especializarse en assessment.',
+      comportamientos:['Propone ajustes a los procesos cuando identifica ineficiencias.','Aprende herramientas de evaluación psicométrica o entrevistas por competencias.','Muestra interés por comprender las necesidades de talento del negocio.'] },
+    3: { label:'Potencial Alto',  color:'#2e7d32', desc:'Potencial para liderar adquisición de talento o convertirse en HR Business Partner.',
+      comportamientos:['Diseña estrategias de atracción alineadas con los objetivos del negocio.','Asesora a líderes en decisiones de selección con criterio y datos.','Identifica tendencias del mercado laboral y las incorpora proactivamente.'] }
+  },
+  'Analista de Bienestar': {
+    1: { label:'Potencial Bajo',  color:'#e53935', desc:'Ejecuta programas existentes pero sin visión para innovar o escalar el área.',
+      comportamientos:['Aplica programas de bienestar establecidos sin cuestionarlos ni mejorarlos.','No mide el impacto de sus iniciativas en el clima.','Tiene dificultades para conectar el bienestar con resultados del negocio.'] },
+    2: { label:'Potencial Medio', color:'#f57c00', desc:'Puede crecer hacia coordinación de clima o cultura organizacional.',
+      comportamientos:['Propone iniciativas basadas en diagnósticos de necesidades del equipo.','Empieza a medir impacto de los programas con indicadores básicos.','Construye alianzas internas para ampliar el alcance de sus programas.'] },
+    3: { label:'Potencial Alto',  color:'#2e7d32', desc:'Capacidad para liderar la estrategia de cultura y experiencia del colaborador.',
+      comportamientos:['Diseña estrategias integrales de bienestar y cultura con foco en retención.','Usa datos para demostrar el ROI de las iniciativas ante dirección.','Es referente en gestión del clima y construcción de cultura organizacional.'] }
+  },
+  'Coordinador de Nómina': {
+    1: { label:'Potencial Bajo',  color:'#e53935', desc:'Opera con precisión técnica pero sin visión de mejora de procesos o liderazgo.',
+      comportamientos:['Procesa la nómina correctamente pero no busca automatizar ni mejorar.','Depende totalmente de los sistemas actuales sin proponer actualizaciones.','No muestra interés por el marco laboral y legal más allá de su operación.'] },
+    2: { label:'Potencial Medio', color:'#f57c00', desc:'Puede crecer hacia la gestión de compensación, beneficios o liderazgo del área.',
+      comportamientos:['Identifica errores sistemáticos y propone correcciones estructurales.','Aprende sobre normatividad laboral más allá de los procesos actuales.','Empieza a automatizar tareas repetitivas para aumentar su eficiencia.'] },
+    3: { label:'Potencial Alto',  color:'#2e7d32', desc:'Capacidad para liderar la estrategia de compensación y beneficios de la organización.',
+      comportamientos:['Diseña modelos de compensación competitivos basados en mercado y equidad interna.','Garantiza cumplimiento legal con visión estratégica, no solo operativa.','Lidera proyectos de transformación digital en los procesos de nómina.'] }
+  },
+  'Analista de Formación': {
+    1: { label:'Potencial Bajo',  color:'#e53935', desc:'Ejecuta la logística de formación pero sin visión del impacto en el desempeño.',
+      comportamientos:['Coordina capacitaciones según calendario sin analizar su efectividad.','No relaciona los programas de formación con las brechas de competencias reales.','Depende de proveedores externos sin buscar desarrollar capacidad interna.'] },
+    2: { label:'Potencial Medio', color:'#f57c00', desc:'Puede evolucionar hacia el diseño instruccional o la gestión del aprendizaje organizacional.',
+      comportamientos:['Diseña evaluaciones de aprendizaje básicas para medir retención del conocimiento.','Identifica brechas de competencias y propone programas específicos.','Explora tecnologías de e-learning para ampliar el alcance de la formación.'] },
+    3: { label:'Potencial Alto',  color:'#2e7d32', desc:'Capacidad para liderar la universidad corporativa o la estrategia de desarrollo organizacional.',
+      comportamientos:['Diseña la arquitectura de aprendizaje organizacional con visión estratégica.','Mide el impacto de la formación en indicadores de desempeño y negocio.','Crea ecosistemas de aprendizaje continuo que trascienden los programas formales.'] }
+  },
+  'Gerente Comercial': {
+    1: { label:'Potencial Bajo',  color:'#e53935', desc:'Cumple con las metas del área pero sin capacidad para expandir su influencia o nivel.',
+      comportamientos:['Gestiona su equipo siguiendo procesos establecidos sin cuestionarlos.','No desarrolla a los miembros de su equipo de forma sistemática.','Reacciona a los cambios del mercado sin anticiparlos.'] },
+    2: { label:'Potencial Medio', color:'#f57c00', desc:'Puede crecer hacia la dirección de una unidad de negocio o asumir mayor responsabilidad regional.',
+      comportamientos:['Desarrolla a al menos uno o dos miembros de su equipo hacia roles de mayor responsabilidad.','Propone estrategias comerciales con visión de 12-18 meses.','Construye relaciones estratégicas con clientes clave de forma proactiva.'] },
+    3: { label:'Potencial Alto',  color:'#2e7d32', desc:'Perfil para dirección general, expansión de negocio o cargos de C-Level.',
+      comportamientos:['Define la visión comercial de largo plazo y alinea al equipo en torno a ella.','Identifica oportunidades de mercado no exploradas y las convierte en negocio.','Forma líderes dentro de su equipo y construye cultura de alto desempeño.'] }
+  },
+  'Directora de Talento Humano': {
+    1: { label:'Potencial Bajo',  color:'#e53935', desc:'Administra bien la función de RRHH operativa pero sin visión estratégica.',
+      comportamientos:['Ejecuta los procesos de RRHH sin conectarlos con la estrategia del negocio.','No lidera la transformación cultural de la organización.','Gestiona reactivamente sin anticipar necesidades de talento.'] },
+    2: { label:'Potencial Medio', color:'#f57c00', desc:'Puede evolucionar hacia CHRO o VP de Capital Humano con mentoreo estratégico.',
+      comportamientos:['Conecta los indicadores de personas con los resultados del negocio.','Lidera iniciativas de cambio cultural con impacto measurable.','Construye el employer branding y posiciona la organización como empleador de elección.'] },
+    3: { label:'Potencial Alto',  color:'#2e7d32', desc:'Perfil para CHRO, VP de Personas o rol en Junta Directiva.',
+      comportamientos:['Define la estrategia de personas alineada al plan de negocio de 3-5 años.','Influye en la alta dirección con datos y visión de largo plazo.','Crea ventaja competitiva sostenible a través de la gestión del talento.'] }
+  }
+};
+
 const DEMO_POTENCIAL = [
-  { id:'POT001', colaborador_id:'U003', jefe_id:'U002', periodo:'2025', nivel:3, nota:'Excelente potencial de liderazgo' },
-  { id:'POT002', colaborador_id:'U004', jefe_id:'U002', periodo:'2025', nivel:2, nota:'Buen potencial, en desarrollo' },
-  { id:'POT003', colaborador_id:'U005', jefe_id:'U002', periodo:'2025', nivel:2, nota:'Sólido en su rol actual' },
-  { id:'POT004', colaborador_id:'U006', jefe_id:'U002', periodo:'2025', nivel:1, nota:'Aún en proceso de adaptación' },
+  { id:'POT001', colaborador_id:'U003', jefe_id:'U002', periodo:'Q1-2026', nivel:3, nota:'Excelente potencial de liderazgo' },
+  { id:'POT002', colaborador_id:'U004', jefe_id:'U002', periodo:'Q1-2026', nivel:2, nota:'Buen potencial, en desarrollo' },
+  { id:'POT003', colaborador_id:'U005', jefe_id:'U002', periodo:'Q1-2026', nivel:2, nota:'Sólido en su rol actual' },
+  { id:'POT004', colaborador_id:'U006', jefe_id:'U002', periodo:'Q1-2026', nivel:1, nota:'Aún en proceso de adaptación' },
+];
+
+// Ciclos de evaluación: cada ciclo puede ser 360° completo o revisión ligera
+// tipo: 'completo' (360° full) | 'revision' (OKR + retroalimentación ligera)
+const DEMO_CICLOS = [
+  { id:'CIC001', nombre:'Q1-2026', tipo:'completo', inicio:'2026-01-15', fin:'2026-03-31', estado:'open',
+    peso_jefe:40, peso_auto:20, peso_pares:25, peso_okr:15 },
 ];
 
 const DEMO_PDI = [
@@ -1295,6 +1375,9 @@ function demoBridge(action, data) {
     case 'getOKR':         return { ok:true, data: DEMO_OKR };
     case 'getPares':       return { ok:true, data: DEMO_PARES };
     case 'getPotencial':   return { ok:true, data: DEMO_POTENCIAL };
+    case 'getPotencialConfig': return { ok:true, data: DEMO_POTENCIAL_CONFIG };
+    case 'getCiclos':    return { ok:true, data: DEMO_CICLOS };
+    case 'getRevisiones':return { ok:true, data: [] };
     case 'getPeriodo':     return { ok:true, data: { nombre:'Evaluación Anual 2025', estado:'open', inicio:'2025-10-01', fin:'2025-12-31', peso_jefe:40, peso_auto:20, peso_pares:25, peso_okr:15 } };
     case 'saveEval': {
       const idx = DEMO_EVALUACIONES.findIndex(e => e.id === data.id);
@@ -1328,6 +1411,21 @@ function demoBridge(action, data) {
       if (potIdx >= 0) Object.assign(DEMO_POTENCIAL[potIdx], data);
       else DEMO_POTENCIAL.push(data);
       return { ok:true };
+    }
+    case 'savePotencialConfig': {
+      Object.assign(DEMO_POTENCIAL_CONFIG, data);
+      STATE.potencial_config = DEMO_POTENCIAL_CONFIG;
+      return { ok:true };
+    }
+    case 'saveCiclo': {
+      const ci = DEMO_CICLOS.findIndex(c => c.id === data.id);
+      // Si se marca como activo (open), cerrar los demás
+      if (data.estado === 'open') DEMO_CICLOS.forEach(c => { if (c.id !== data.id) c.estado = 'closed'; });
+      if (ci >= 0) Object.assign(DEMO_CICLOS[ci], data); else DEMO_CICLOS.push(data);
+      return { ok:true };
+    }
+    case 'saveRevision': {
+      return { ok:true }; // In demo, revisions are not persisted between sessions
     }
     case 'saveUser': {
       const uidx = DEMO_USERS.findIndex(u => u.id === data.id);
@@ -1371,7 +1469,7 @@ function showError(msg) {
   setTimeout(() => e.style.display = 'none', 3000);
 }
 function handleLogout() {
-  STATE = { user:null, users:[], competencias:[], evaluaciones:[], pdi:[], okr:[], pares:[], potencial:[], periodo:{}, currentEval:null, charts:{} };
+  STATE = { user:null, users:[], competencias:[], evaluaciones:[], pdi:[], okr:[], pares:[], potencial:[], potencial_config:{}, ciclos:[], revisiones:[], periodo:{}, currentEval:null, charts:{} };
   document.getElementById('appShell').style.display = 'none';
   document.getElementById('loginScreen').style.display = 'flex';
   document.getElementById('loginUser').value = '';
@@ -1382,10 +1480,11 @@ function handleLogout() {
 //  DATA LOAD
 // ═══════════════════════════════════════════
 async function loadAllData() {
-  const [ru, rc, re, rp, rper, rokr, rpares, rpot] = await Promise.all([
+  const [ru, rc, re, rp, rper, rokr, rpares, rpot, rpotcfg, rciclos, rrev] = await Promise.all([
     apiCall('getUsers'), apiCall('getCompetencias'),
     apiCall('getEvaluaciones'), apiCall('getPDI'), apiCall('getPeriodo'),
-    apiCall('getOKR'), apiCall('getPares'), apiCall('getPotencial')
+    apiCall('getOKR'), apiCall('getPares'), apiCall('getPotencial'),
+    apiCall('getPotencialConfig'), apiCall('getCiclos'), apiCall('getRevisiones')
   ]);
   STATE.users = ru.data || [];
   STATE.competencias = rc.data || [];
@@ -1395,6 +1494,14 @@ async function loadAllData() {
   STATE.okr = rokr.data || [];
   STATE.pares = rpares.data || [];
   STATE.potencial = rpot.data || [];
+  STATE.potencial_config = rpotcfg.data || DEMO_POTENCIAL_CONFIG;
+  STATE.ciclos = rciclos.data || [];
+  STATE.revisiones = rrev.data || [];
+  // Sync active ciclo into STATE.periodo for compatibility
+  const cicloActivo = STATE.ciclos.find(c => c.estado === 'open');
+  if (cicloActivo) {
+    STATE.periodo = { ...STATE.periodo, ...cicloActivo, nombre: cicloActivo.nombre };
+  }
 }
 
 // ═══════════════════════════════════════════
@@ -1623,6 +1730,8 @@ function renderTeam() {
       </td>
     </tr>`;
   }).join('');
+  // Show revision section if active ciclo is tipo 'revision' and user is jefe
+  if (u.rol === 'jefe') renderRevisionesEquipo();
 }
 
 async function refreshTeam() {
@@ -1690,12 +1799,17 @@ function openEvalForm(evaluadoId) {
     const potExisting = STATE.potencial.find(p =>
       p.colaborador_id === evaluadoId && p.jefe_id === STATE.user.id
     );
-    document.getElementById('evalPotencial').value = potExisting?.nivel || '';
+    const nivelActual = potExisting?.nivel ? String(potExisting.nivel) : '';
+    document.getElementById('evalPotencial').value = nivelActual;
     document.getElementById('evalPotencialNota').value = potExisting?.nota || '';
-    if (readOnly) {
-      document.getElementById('evalPotencial').disabled = true;
-      document.getElementById('evalPotencialNota').disabled = true;
-    }
+    // Potencial bloqueado si la evaluación ya fue enviada
+    document.getElementById('evalPotencial').disabled = readOnly;
+    document.getElementById('evalPotencialNota').disabled = readOnly;
+    // Botón guardar independiente solo visible si no está enviada
+    const btnSavePot = document.getElementById('btnSavePotencial');
+    if (btnSavePot) btnSavePot.style.display = readOnly ? 'none' : 'inline-flex';
+    // Mostrar comportamientos si ya hay nivel
+    if (nivelActual) onPotencialChange(nivelActual);
   }
 
   navigateTo('form-eval');
@@ -1980,6 +2094,62 @@ async function saveEvalDraft() {
   showToast('Borrador guardado exitosamente', 'success');
 }
 
+function onPotencialChange(nivel) {
+  const box = document.getElementById('potencialBehaviors');
+  if (!box) return;
+  if (!nivel) { box.style.display = 'none'; return; }
+
+  // Get cargo from the current evaluado
+  const cargo = STATE.currentEval?._evaluado?.cargo || '';
+  const config = STATE.potencial_config || DEMO_POTENCIAL_CONFIG;
+  // Use cargo-specific config, fallback to 'Todos'
+  const cargoConfig = config[cargo] || config['Todos'] || {};
+  const cfg = cargoConfig[parseInt(nivel)];
+
+  if (!cfg) { box.style.display = 'none'; return; }
+
+  box.style.display = 'block';
+  box.style.background = cfg.color + '15';
+  box.style.border = '1.5px solid ' + cfg.color + '55';
+  box.style.borderRadius = '8px';
+  box.style.padding = '12px 16px';
+
+  document.getElementById('potBehLabel').textContent = `Nivel ${nivel} — ${cfg.label}`;
+  document.getElementById('potBehLabel').style.color = cfg.color;
+  document.getElementById('potBehDesc').textContent = cfg.desc;
+  document.getElementById('potBehList').innerHTML = (cfg.comportamientos || [])
+    .map(c => `<li style="margin-bottom:4px;font-size:.82rem;color:#444;line-height:1.5">${c}</li>`)
+    .join('');
+}
+
+async function savePotencialStandalone() {
+  const e = STATE.currentEval;
+  if (!e) return;
+  const evaluadoId = e.evaluado_id || e._evaluado?.id;
+  if (!evaluadoId) return;
+
+  const nivelPot = document.getElementById('evalPotencial')?.value;
+  if (!nivelPot) { showToast('Selecciona un nivel de potencial antes de guardar', 'error'); return; }
+
+  const potData = {
+    id: 'POT_' + evaluadoId + '_' + (STATE.periodo.nombre || '2025').replace(/\s/g, ''),
+    colaborador_id: evaluadoId,
+    jefe_id: STATE.user.id,
+    periodo: e.periodo || STATE.periodo.nombre || '2025',
+    nivel: parseInt(nivelPot),
+    nota: document.getElementById('evalPotencialNota')?.value || '',
+  };
+
+  await apiCall('savePotencial', potData);
+  const potIdx = STATE.potencial.findIndex(p =>
+    p.colaborador_id === evaluadoId && p.jefe_id === STATE.user.id
+  );
+  if (potIdx >= 0) Object.assign(STATE.potencial[potIdx], potData);
+  else STATE.potencial.push(potData);
+
+  showToast(`✅ Potencial guardado: Nivel ${nivelPot} — ${STATE.potencial_config[parseInt(nivelPot)]?.label || ''}`, 'success');
+}
+
 async function submitEval() {
   const e = STATE.currentEval;
   const comps = getCompsByRole(e._evaluado.cargo);
@@ -1998,25 +2168,9 @@ async function submitEval() {
   const idx = STATE.evaluaciones.findIndex(ev => ev.id === STATE.currentEval.id);
   if (idx >= 0) Object.assign(STATE.evaluaciones[idx], data);
 
-  // Guardar potencial si es evaluación del jefe
+  // Guardar potencial si es evaluación del jefe (puede actualizarse independientemente también)
   if (e.tipo === 'jefe') {
-    const nivelPot = document.getElementById('evalPotencial')?.value;
-    if (nivelPot) {
-      const potData = {
-        id: 'POT_' + e.evaluado_id + '_' + (STATE.periodo.nombre || '2025').replace(/\s/g,''),
-        colaborador_id: e.evaluado_id,
-        jefe_id: STATE.user.id,
-        periodo: e.periodo,
-        nivel: parseInt(nivelPot),
-        nota: document.getElementById('evalPotencialNota')?.value || '',
-      };
-      await apiCall('savePotencial', potData);
-      const potIdx = STATE.potencial.findIndex(p =>
-        p.colaborador_id === e.evaluado_id && p.jefe_id === STATE.user.id
-      );
-      if (potIdx >= 0) Object.assign(STATE.potencial[potIdx], potData);
-      else STATE.potencial.push(potData);
-    }
+    await savePotencialStandalone();
   }
 
   showToast('✅ Evaluación enviada exitosamente', 'success');
@@ -2324,6 +2478,11 @@ function renderResultados() {
         <p style="background:var(--gray-light);padding:12px;border-radius:8px;font-size:.9rem">${evalJefe.comentario || 'Sin comentarios'}</p>
       </div>
     </div>
+    <!-- HISTORIAL DE EVOLUCIÓN -->
+    <div class="card" style="margin-top:0" id="evolucionCard">
+      <div class="card-title" style="margin-bottom:14px">📈 Evolución por ciclo</div>
+      <div id="evolucionContent"><p style="color:#aaa;font-size:.88rem">Cargando historial...</p></div>
+    </div>
   `;
 
   setTimeout(() => {
@@ -2340,7 +2499,148 @@ function renderResultados() {
         options: { responsive:true, maintainAspectRatio:false, scales: { r: { min:0, max:4, ticks:{ stepSize:1, font:{family:'Asap',size:10} }, pointLabels:{ font:{family:'Asap',size:10} } } }, plugins: { legend: { labels: { font:{family:'Asap'} } } } }
       });
     }
+
+    // Render evolution history chart
+    renderEvolucionHistorial(u.id);
   }, 150);
+}
+
+function renderEvolucionHistorial(colabId) {
+  const cont = document.getElementById('evolucionContent');
+  if (!cont) return;
+
+  // Gather all sent jefe evaluations for this collaborator, sorted by ciclo order
+  const histEvals = STATE.evaluaciones
+    .filter(e => e.evaluado_id === colabId && e.tipo === 'jefe' && e.estado === 'enviado' && e.score_final != null)
+    .sort((a, b) => (a.fecha_envio || a.periodo || '').localeCompare(b.fecha_envio || b.periodo || ''));
+
+  // Gather revisiones ligeras
+  const histRevs = STATE.revisiones
+    .filter(r => r.colaborador_id === colabId)
+    .sort((a, b) => (a.fecha || '').localeCompare(b.fecha || ''));
+
+  if (!histEvals.length && !histRevs.length) {
+    cont.innerHTML = `<p style="color:#aaa;font-size:.88rem;padding:8px 0">No hay historial de ciclos anteriores todavía. Aparecerá aquí a medida que se completen los ciclos de evaluación.</p>`;
+    return;
+  }
+
+  // Get potencial history
+  const potHist = STATE.potencial.filter(p => p.colaborador_id === colabId);
+
+  // ── TIMELINE ─────────────────────────────────────────────────────────
+  const NINEBOX_COLORS = ['#c62828','#e53935','#43a047','#388e3c','#1976d2','#0097a7','#5c6bc0','#f57c00','#fbc02d'];
+  const allEvents = [
+    ...histEvals.map(e => ({ tipo:'eval', periodo:e.periodo, score:e.score_final, fecha:e.fecha_envio, okr:e.score_okr })),
+    ...histRevs.map(r => ({ tipo:'rev', periodo:r.periodo, okr:r.okr_avance, fecha:r.fecha, fortalezas:r.fortalezas, mejoras:r.mejoras, comentario:r.comentario })),
+  ].sort((a,b) => (a.fecha||a.periodo||'').localeCompare(b.fecha||b.periodo||''));
+
+  const timelineHtml = `
+    <div style="position:relative;padding-left:32px;margin-bottom:24px">
+      <div style="position:absolute;left:14px;top:0;bottom:0;width:2px;background:var(--gray-mid)"></div>
+      ${allEvents.map((ev, i) => {
+        const isEval = ev.tipo === 'eval';
+        const cat = isEval ? getCategory(ev.score) : null;
+        const potObj = potHist.find(p => p.periodo === ev.periodo);
+        const potNivel = potObj?.nivel;
+        return `<div style="position:relative;margin-bottom:20px">
+          <div style="position:absolute;left:-24px;top:4px;width:16px;height:16px;border-radius:50%;background:${isEval ? (cat?.color||'#ba0020') : '#1976d2'};border:2px solid white;box-shadow:0 0 0 2px ${isEval ? (cat?.color||'#ba0020') : '#1976d2'}"></div>
+          <div style="background:var(--gray-light);border-radius:8px;padding:12px 14px">
+            <div style="display:flex;align-items:center;gap:8px;margin-bottom:6px;flex-wrap:wrap">
+              <strong style="font-size:.88rem;color:var(--gray)">${ev.periodo}</strong>
+              ${isEval
+                ? `<span style="background:${cat?.color||'#ba0020'};color:white;border-radius:8px;padding:1px 8px;font-size:.72rem;font-weight:700">${ev.score?.toFixed(2)} — ${cat?.label||''}</span>`
+                : `<span style="background:#e3f2fd;color:#1565c0;border-radius:8px;padding:1px 8px;font-size:.72rem;font-weight:700">Revisión ligera</span>`
+              }
+              ${isEval && potNivel
+                ? `<span style="background:${['','#e53935','#f57c00','#2e7d32'][potNivel]};color:white;border-radius:8px;padding:1px 8px;font-size:.72rem">P${potNivel}</span>`
+                : ''}
+              ${ev.okr != null ? `<span style="font-size:.78rem;color:#888">OKR: ${isEval ? ev.okr+'%' : ev.okr+'%'}</span>` : ''}
+            </div>
+            ${isEval && ev.score
+              ? `<div style="display:flex;align-items:center;gap:8px"><div style="height:6px;border-radius:3px;background:${cat?.color||'#ba0020'};width:${Math.round((ev.score/4)*100)}%;max-width:200px;min-width:4px"></div><span style="font-size:.78rem;color:#888">${Math.round((ev.score/4)*100)}%</span></div>`
+              : ''
+            }
+            ${!isEval && ev.fortalezas ? `<div style="font-size:.8rem;color:var(--gray);margin-top:4px"><strong>Fortalezas:</strong> ${ev.fortalezas}</div>` : ''}
+            ${!isEval && ev.comentario  ? `<div style="font-size:.8rem;color:#888;margin-top:2px">${ev.comentario}</div>` : ''}
+          </div>
+        </div>`;
+      }).join('')}
+    </div>`;
+
+  // ── COMPARATIVE TABLE ──────────────────────────────────────────────────
+  const tableHtml = histEvals.length > 0 ? `
+    <div style="margin-top:4px">
+      <div style="font-size:.82rem;font-weight:700;color:var(--gray);margin-bottom:8px;text-transform:uppercase;letter-spacing:.05em">Tabla comparativa — ciclos 360° completos</div>
+      <div class="table-wrap">
+        <table>
+          <thead>
+            <tr>
+              <th>Ciclo</th><th>Score Jefe</th><th>Score Auto</th><th>Score Pares</th><th>OKR</th><th>Score Final</th><th>Categoría</th><th>Potencial</th>
+            </tr>
+          </thead>
+          <tbody>
+            ${histEvals.map(e => {
+              const evalAutoH = STATE.evaluaciones.find(a => a.evaluado_id === colabId && a.tipo === 'auto' && a.periodo === e.periodo && a.estado === 'enviado');
+              const evalParesH = STATE.evaluaciones.filter(a => a.evaluado_id === colabId && a.tipo === 'par' && a.periodo === e.periodo && a.estado === 'enviado');
+              const avgPares = evalParesH.length ? (evalParesH.reduce((a,p) => a+(p.score_comp||0),0)/evalParesH.length).toFixed(2) : '—';
+              const cat = getCategory(e.score_final);
+              const potObj = potHist.find(p => p.periodo === e.periodo);
+              const potNivel = potObj?.nivel;
+              const potColor = potNivel ? ['','#e53935','#f57c00','#2e7d32'][potNivel] : null;
+              return `<tr>
+                <td><strong>${e.periodo}</strong></td>
+                <td>${e.score_comp?.toFixed(2)||'—'}</td>
+                <td>${evalAutoH?.score_comp?.toFixed(2)||'—'}</td>
+                <td>${avgPares}</td>
+                <td>${e.score_okr != null ? e.score_okr+'%' : '—'}</td>
+                <td><strong style="color:${cat?.color||'#ba0020'}">${e.score_final?.toFixed(2)||'—'}</strong></td>
+                <td><span style="background:${cat?.color||'#888'}20;color:${cat?.color||'#888'};padding:2px 8px;border-radius:8px;font-size:.78rem;font-weight:600">${cat?.label||'—'}</span></td>
+                <td>${potNivel ? `<span style="background:${potColor};color:white;padding:2px 8px;border-radius:8px;font-size:.78rem">P${potNivel}</span>` : '<span style="color:#aaa">—</span>'}</td>
+              </tr>`;
+            }).join('')}
+          </tbody>
+        </table>
+      </div>
+    </div>` : '';
+
+  // ── EVOLUTION CHART ──────────────────────────────────────────────────
+  const chartHtml = histEvals.length > 1 ? `
+    <div style="margin-top:20px">
+      <div style="font-size:.82rem;font-weight:700;color:var(--gray);margin-bottom:8px;text-transform:uppercase;letter-spacing:.05em">Tendencia del score final</div>
+      <div style="height:160px"><canvas id="chartEvolucion"></canvas></div>
+    </div>` : '';
+
+  cont.innerHTML = timelineHtml + tableHtml + chartHtml;
+
+  // Render evolution line chart if enough data
+  if (histEvals.length > 1) {
+    setTimeout(() => {
+      if (STATE.charts['chartEvolucion']) STATE.charts['chartEvolucion'].destroy();
+      const ctx2 = document.getElementById('chartEvolucion')?.getContext('2d');
+      if (ctx2) {
+        STATE.charts['chartEvolucion'] = new Chart(ctx2, {
+          type: 'line',
+          data: {
+            labels: histEvals.map(e => e.periodo),
+            datasets: [{
+              label: 'Score Final 360°',
+              data: histEvals.map(e => e.score_final),
+              borderColor: '#ba0020', backgroundColor: 'rgba(186,0,32,.1)',
+              pointBackgroundColor: '#ba0020', tension: 0.3, fill: true,
+            }]
+          },
+          options: {
+            responsive: true, maintainAspectRatio: false,
+            scales: {
+              y: { min: 0, max: 4, ticks: { stepSize: 1, font: { family:'Asap', size:10 } } },
+              x: { ticks: { font: { family:'Asap', size:10 } } }
+            },
+            plugins: { legend: { labels: { font: { family:'Asap' } } } }
+          }
+        });
+      }
+    }, 200);
+  }
 }
 
 function viewColabResults(colabId) {
@@ -3571,6 +3871,7 @@ function renderAdmin() {
   document.getElementById('pesoAuto').value  = STATE.periodo.peso_auto  || 20;
   document.getElementById('pesoPares').value = STATE.periodo.peso_pares || 25;
   document.getElementById('pesoOKR').value   = STATE.periodo.peso_okr   || 15;
+  renderCiclos();
   setTimeout(renderAdminCharts, 150);
 }
 
@@ -4052,6 +4353,356 @@ async function ejecutarAsignaciones() {
   }
 }
 
+// ═══════════════════════════════════════════
+//  ADMIN — POTENCIAL CONFIG
+// ═══════════════════════════════════════════
+function renderAdminPotencialConfig() {
+  const cont = document.getElementById('potencialConfigContent');
+  if (!cont) return;
+  const cfg = STATE.potencial_config || {};
+  const cargos = Object.keys(cfg);
+
+  if (!cargos.length) {
+    cont.innerHTML = `<div class="empty-state" style="padding:24px"><p>No hay cargos configurados. Agrega el primero.</p></div>`;
+    return;
+  }
+
+  const COLORS = {'1':'#e53935','2':'#f57c00','3':'#2e7d32'};
+  const LABELS = {'1':'1 — Potencial Bajo','2':'2 — Potencial Medio','3':'3 — Potencial Alto'};
+
+  cont.innerHTML = cargos.map(cargo => {
+    const nivelesHtml = [1,2,3].map(n => {
+      const nivel = cfg[cargo]?.[n] || {};
+      const beh = (nivel.comportamientos || []).join('\n');
+      return `<div style="margin-bottom:10px">
+        <div style="display:inline-flex;align-items:center;gap:8px;margin-bottom:6px">
+          <span style="background:${COLORS[n]};color:white;border-radius:6px;padding:2px 10px;font-size:.72rem;font-weight:700">${LABELS[n]}</span>
+          ${nivel.desc ? `<span style="font-size:.78rem;color:#888;font-style:italic">${nivel.desc}</span>` : ''}
+        </div>
+        ${beh ? `<ul style="margin:0;padding-left:16px">${(nivel.comportamientos||[]).map(c=>`<li style="font-size:.82rem;color:var(--gray);line-height:1.5">${c}</li>`).join('')}</ul>` : '<span style="font-size:.8rem;color:#aaa">Sin comportamientos definidos</span>'}
+      </div>`;
+    }).join('');
+
+    return `<div style="border:1.5px solid var(--gray-mid);border-radius:var(--radius);margin-bottom:12px;overflow:hidden">
+      <div style="background:var(--gray-light);padding:12px 18px;display:flex;align-items:center;justify-content:space-between">
+        <strong style="color:var(--gray)">${cargo}</strong>
+        <button class="btn btn-secondary btn-sm" onclick="openPotencialConfigModal('${cargo.replace(/'/g,"\\'")}')">Editar</button>
+      </div>
+      <div style="padding:14px 18px">${nivelesHtml}</div>
+    </div>`;
+  }).join('');
+}
+
+function openPotencialConfigModal(cargo) {
+  const isNew = !cargo;
+  const cfg = STATE.potencial_config || {};
+  const cargoCfg = cargo ? (cfg[cargo] || {}) : {};
+  const allCargos = [...new Set(STATE.users.map(u => u.cargo).filter(Boolean))].sort();
+
+  const nivelFields = [1,2,3].map(n => {
+    const nivel = cargoCfg[n] || {};
+    const beh = (nivel.comportamientos || []).join('\n');
+    const COLORS = {1:'#e53935',2:'#f57c00',3:'#2e7d32'};
+    const LABELS = {1:'1 — Potencial Bajo',2:'2 — Potencial Medio',3:'3 — Potencial Alto'};
+    return `<div style="margin-bottom:12px">
+      <label style="display:flex;align-items:center;gap:8px;margin-bottom:6px">
+        <span style="background:${COLORS[n]};color:white;border-radius:6px;padding:2px 10px;font-size:.73rem;font-weight:700">${LABELS[n]}</span>
+      </label>
+      <div class="form-field" style="margin-bottom:6px">
+        <label style="font-size:.78rem">Descripción del nivel</label>
+        <input type="text" id="potCfgDesc${n}" value="${nivel.desc||''}" placeholder="Describe en una frase qué caracteriza este nivel..." style="width:100%;padding:7px 10px;border:1.5px solid var(--gray-mid);border-radius:8px;font-family:Asap,sans-serif;font-size:.84rem;outline:none">
+      </div>
+      <div class="form-field" style="margin-bottom:0">
+        <label style="font-size:.78rem">Comportamientos observables (uno por línea)</label>
+        <textarea id="potCfgBeh${n}" rows="3" placeholder="Escribe un comportamiento por línea..." style="width:100%;padding:7px 10px;border:1.5px solid var(--gray-mid);border-radius:8px;font-family:Asap,sans-serif;font-size:.83rem;resize:vertical;outline:none">${beh}</textarea>
+      </div>
+    </div>`;
+  }).join('<hr style="border:none;border-top:1px solid var(--gray-light);margin:10px 0">');
+
+  const cargoSelector = isNew
+    ? `<div class="form-field" style="margin-bottom:14px">
+        <label>Cargo *</label>
+        <select id="potCfgCargo" style="width:100%;padding:9px 12px;border:1.5px solid var(--gray-mid);border-radius:8px;font-family:Asap,sans-serif;font-size:.88rem;outline:none">
+          <option value="">— Seleccionar cargo —</option>
+          <option value="Todos">Todos (aplica a cargos sin configuración propia)</option>
+          ${allCargos.map(c=>`<option value="${c}">${c}</option>`).join('')}
+        </select>
+      </div>`
+    : `<div style="font-size:.82rem;color:#888;margin-bottom:14px">Editando: <strong>${cargo}</strong></div>`;
+
+  openModal(
+    isNew ? 'Agregar configuración de potencial' : `Editar potencial — ${cargo}`,
+    cargoSelector + nivelFields,
+    [
+      { label:'Cancelar', cls:'btn-secondary', action:'closeModal()' },
+      { label:'Guardar', cls:'btn-primary', action:`savePotencialConfigModal('${cargo||''}')` }
+    ]
+  );
+}
+
+async function savePotencialConfigModal(cargoOriginal) {
+  const cargo = cargoOriginal || document.getElementById('potCfgCargo')?.value;
+  if (!cargo) { showToast('Selecciona un cargo', 'error'); return; }
+
+  const cfg = STATE.potencial_config || {};
+  cfg[cargo] = {};
+
+  [1,2,3].forEach(n => {
+    const desc = document.getElementById(`potCfgDesc${n}`)?.value?.trim() || '';
+    const behText = document.getElementById(`potCfgBeh${n}`)?.value || '';
+    const comportamientos = behText.split('\n').map(l=>l.trim()).filter(l=>l.length > 0);
+    const LABELS = {1:'Potencial Bajo',2:'Potencial Medio',3:'Potencial Alto'};
+    const COLORS = {1:'#e53935',2:'#f57c00',3:'#2e7d32'};
+    cfg[cargo][n] = { label: LABELS[n], color: COLORS[n], desc, comportamientos };
+  });
+
+  STATE.potencial_config = cfg;
+  await apiCall('savePotencialConfig', cfg);
+  closeModal();
+  renderAdminPotencialConfig();
+  showToast(`✅ Configuración de potencial guardada para: ${cargo}`, 'success');
+}
+
+// ═══════════════════════════════════════════
+//  CICLOS DE EVALUACIÓN (ADMIN)
+// ═══════════════════════════════════════════
+function renderCiclos() {
+  const tbody = document.getElementById('ciclosTableBody');
+  if (!tbody) return;
+  const cicloActivo = document.getElementById('cicloActivoConfig');
+  const ciclos = STATE.ciclos || [];
+
+  if (!ciclos.length) {
+    tbody.innerHTML = '<tr><td colspan="7" style="text-align:center;color:#aaa;padding:20px">No hay ciclos creados aún</td></tr>';
+    if (cicloActivo) cicloActivo.style.display = 'none';
+    return;
+  }
+
+  const tipoLabel = { completo:'360° Completo', revision:'Revisión ligera' };
+  const estadoInfo = {
+    open:        { label:'Activo',       cls:'pill-done' },
+    closed:      { label:'Cerrado',      cls:'pill-pending' },
+    calibration: { label:'Calibración',  cls:'pill-progress' },
+  };
+
+  tbody.innerHTML = ciclos.map(c => {
+    const st = estadoInfo[c.estado] || estadoInfo.closed;
+    const pesos = `J:${c.peso_jefe||40}% A:${c.peso_auto||20}% P:${c.peso_pares||25}% O:${c.peso_okr||15}%`;
+    return `<tr>
+      <td><strong>${c.nombre}</strong></td>
+      <td><span class="status-pill" style="background:#e3f2fd;color:#1565c0;font-size:.75rem">${tipoLabel[c.tipo]||c.tipo}</span></td>
+      <td style="font-size:.82rem">${c.inicio||'—'}</td>
+      <td style="font-size:.82rem">${c.fin||'—'}</td>
+      <td><span class="status-pill ${st.cls}">${st.label}</span></td>
+      <td style="font-size:.75rem;color:#888">${c.tipo==='completo' ? pesos : '—'}</td>
+      <td style="display:flex;gap:6px;flex-wrap:wrap">
+        <button class="btn btn-secondary btn-sm" onclick="openCicloModal('${c.id}')">Editar</button>
+        ${c.estado !== 'open'
+          ? `<button class="btn btn-primary btn-sm" onclick="activarCiclo('${c.id}')">Activar</button>`
+          : `<button class="btn btn-secondary btn-sm" onclick="activarCiclo('${c.id}',true)">Cerrar</button>`}
+      </td>
+    </tr>`;
+  }).join('');
+
+  // Show/hide pesos config for active ciclo
+  const activo = ciclos.find(c => c.estado === 'open');
+  if (cicloActivo) {
+    cicloActivo.style.display = activo ? 'block' : 'none';
+    if (activo) {
+      document.getElementById('cicloActivoNombre').textContent = `Ciclo activo: ${activo.nombre} (${tipoLabel[activo.tipo]||activo.tipo})`;
+      if (activo.tipo === 'completo') {
+        document.getElementById('pesoJefe').value  = activo.peso_jefe  || 40;
+        document.getElementById('pesoAuto').value  = activo.peso_auto  || 20;
+        document.getElementById('pesoPares').value = activo.peso_pares || 25;
+        document.getElementById('pesoOKR').value   = activo.peso_okr   || 15;
+      }
+    }
+  }
+}
+
+function openCicloModal(cicloId) {
+  const c = cicloId ? STATE.ciclos.find(x => x.id === cicloId) : null;
+  const newId = 'CIC' + Date.now();
+  openModal(c ? 'Editar ciclo' : 'Nuevo ciclo de evaluación', `
+    <div class="form-row">
+      <div class="form-field">
+        <label>Nombre del ciclo *</label>
+        <input type="text" id="cicloNombre" value="${c?.nombre||''}" placeholder="Ej: Q1-2026, Semestre 1-2026, Anual 2026">
+      </div>
+      <div class="form-field">
+        <label>Tipo</label>
+        <select id="cicloTipo">
+          <option value="completo" ${c?.tipo==='completo'||!c?'selected':''}>360° Completo (competencias + OKR + pares)</option>
+          <option value="revision" ${c?.tipo==='revision'?'selected':''}>Revisión ligera (OKR + retroalimentación del jefe)</option>
+        </select>
+      </div>
+    </div>
+    <div class="form-row">
+      <div class="form-field"><label>Fecha inicio</label><input type="date" id="cicloInicio" value="${c?.inicio||''}"></div>
+      <div class="form-field"><label>Fecha fin</label><input type="date" id="cicloFin" value="${c?.fin||''}"></div>
+    </div>
+    <div class="form-field">
+      <label>Estado</label>
+      <select id="cicloEstado">
+        <option value="open" ${c?.estado==='open'?'selected':''}>Activo — los usuarios pueden evaluar</option>
+        <option value="calibration" ${c?.estado==='calibration'?'selected':''}>Calibración — solo admin/jefe</option>
+        <option value="closed" ${c?.estado==='closed'||!c?'selected':''}>Cerrado</option>
+      </select>
+    </div>
+    <div class="info-banner" style="margin-top:10px;font-size:.8rem">
+      <svg width="13" height="13" viewBox="0 0 24 24" fill="currentColor"><path d="M12 2C6.48 2 2 6.48 2 12s4.48 10 10 10 10-4.48 10-10S17.52 2 12 2zm1 15h-2v-6h2v6zm0-8h-2V7h2v2z"/></svg>
+      Solo puede haber un ciclo Activo a la vez. Si activas este, el actual se cierra automáticamente.
+    </div>
+  `, [
+    { label:'Cancelar', cls:'btn-secondary', action:'closeModal()' },
+    { label: c ? 'Guardar' : 'Crear ciclo', cls:'btn-primary', action:`saveCicloModal('${c?.id||newId}')` }
+  ]);
+}
+
+async function saveCicloModal(id) {
+  const nombre = document.getElementById('cicloNombre').value.trim();
+  if (!nombre) { showToast('El nombre es obligatorio', 'error'); return; }
+  const estado = document.getElementById('cicloEstado').value;
+  // Auto-close other active ciclos
+  if (estado === 'open') STATE.ciclos.forEach(c => { if (c.id !== id) c.estado = 'closed'; });
+  const data = {
+    id, nombre,
+    tipo:   document.getElementById('cicloTipo').value,
+    inicio: document.getElementById('cicloInicio').value,
+    fin:    document.getElementById('cicloFin').value,
+    estado,
+    peso_jefe:40, peso_auto:20, peso_pares:25, peso_okr:15
+  };
+  const idx = STATE.ciclos.findIndex(c => c.id === id);
+  if (idx >= 0) Object.assign(STATE.ciclos[idx], data); else STATE.ciclos.push(data);
+  // Sync to STATE.periodo if active
+  if (estado === 'open') STATE.periodo = { ...STATE.periodo, ...data, nombre: data.nombre };
+  await apiCall('saveCiclo', data);
+  closeModal(); renderCiclos();
+  showToast(`✅ Ciclo "${nombre}" guardado`, 'success');
+}
+
+async function activarCiclo(id, cerrar = false) {
+  const c = STATE.ciclos.find(x => x.id === id);
+  if (!c) return;
+  if (!cerrar && !confirm(`¿Activar el ciclo "${c.nombre}"? El ciclo activo actual se cerrará.`)) return;
+  if (cerrar && !confirm(`¿Cerrar el ciclo "${c.nombre}"?`)) return;
+  if (!cerrar) STATE.ciclos.forEach(x => { x.estado = x.id === id ? 'open' : 'closed'; });
+  else c.estado = 'closed';
+  if (!cerrar) STATE.periodo = { ...STATE.periodo, ...c, nombre: c.nombre };
+  await apiCall('saveCiclo', { ...c });
+  renderCiclos();
+  showToast(cerrar ? `Ciclo "${c.nombre}" cerrado` : `Ciclo "${c.nombre}" activado`, 'success');
+}
+
+// ═══════════════════════════════════════════
+//  REVISIONES LIGERAS (JEFE → COLABORADOR)
+// ═══════════════════════════════════════════
+function renderRevisionesEquipo() {
+  // Called from renderTeam area when ciclo is tipo='revision'
+  const cicloActivo = STATE.ciclos.find(c => c.estado === 'open');
+  if (!cicloActivo || cicloActivo.tipo !== 'revision') return;
+  const u = STATE.user;
+  const team = STATE.users.filter(x => x.jefe_id === u.id && x.rol === 'colaborador');
+  const cont = document.getElementById('revisionEquipoSection');
+  if (!cont) return;
+  cont.style.display = 'block';
+  cont.innerHTML = `
+    <div class="card">
+      <div class="card-header">
+        <div>
+          <div class="card-title">📋 Revisión ligera — ${cicloActivo.nombre}</div>
+          <div class="card-subtitle">Registra el avance de OKR y retroalimentación para cada colaborador</div>
+        </div>
+      </div>
+      <div class="table-wrap"><table>
+        <thead><tr><th>Colaborador</th><th>Estado revisión</th><th>Avance OKR</th><th>Acción</th></tr></thead>
+        <tbody>
+          ${team.map(colab => {
+            const rev = STATE.revisiones.find(r =>
+              r.colaborador_id === colab.id && r.ciclo_id === cicloActivo.id
+            );
+            return `<tr>
+              <td><strong>${colab.nombre}</strong><br><small style="color:#888">${colab.cargo}</small></td>
+              <td><span class="status-pill ${rev ? 'pill-done' : 'pill-pending'}">${rev ? 'Completada' : 'Pendiente'}</span></td>
+              <td>${rev ? rev.okr_avance + '%' : '—'}</td>
+              <td><button class="btn btn-primary btn-sm" onclick="openRevisionModal('${colab.id}','${cicloActivo.id}')">
+                ${rev ? 'Ver / Editar' : 'Registrar'}
+              </button></td>
+            </tr>`;
+          }).join('')}
+        </tbody>
+      </table></div>
+    </div>`;
+}
+
+function openRevisionModal(colaboradorId, cicloId) {
+  const colab = STATE.users.find(u => u.id === colaboradorId);
+  const ciclo = STATE.ciclos.find(c => c.id === cicloId);
+  const rev = STATE.revisiones.find(r =>
+    r.colaborador_id === colaboradorId && r.ciclo_id === cicloId
+  );
+  const newId = 'REV' + Date.now();
+
+  // OKR del colaborador para este ciclo
+  const colabOKRs = STATE.okr.filter(o =>
+    (o.tipo === 'individual' && o.colaborador_id === colaboradorId) ||
+    (o.tipo === 'equipo' && o.krs && o.krs.some(kr => kr.responsable_id === colaboradorId))
+  );
+  const avgOKR = colabOKRs.length
+    ? Math.round(colabOKRs.flatMap(o => o.krs||[]).reduce((a,k) => a+(k.progreso||0), 0) /
+        Math.max(1, colabOKRs.flatMap(o => o.krs||[]).length))
+    : 0;
+
+  openModal(`Revisión ${ciclo?.nombre||''} — ${colab?.nombre||''}`, `
+    <div style="background:var(--gray-light);border-radius:8px;padding:12px 16px;margin-bottom:16px">
+      <div style="font-size:.82rem;color:#888;margin-bottom:4px">Avance OKR actual (calculado de KRs)</div>
+      <div style="font-size:1.6rem;font-weight:700;color:var(--red)">${avgOKR}%</div>
+    </div>
+    <div class="form-field">
+      <label>Avance OKR registrado (%) *</label>
+      <input type="number" id="revOKR" min="0" max="100" value="${rev?.okr_avance ?? avgOKR}" placeholder="0–100">
+    </div>
+    <div class="form-field">
+      <label>Fortalezas observadas este ciclo</label>
+      <textarea id="revFortalezas" rows="2" placeholder="¿Qué hizo bien?">${rev?.fortalezas||''}</textarea>
+    </div>
+    <div class="form-field">
+      <label>Oportunidades de mejora</label>
+      <textarea id="revMejoras" rows="2" placeholder="¿En qué debe mejorar?">${rev?.mejoras||''}</textarea>
+    </div>
+    <div class="form-field">
+      <label>Comentario general del jefe</label>
+      <textarea id="revComentario" rows="2" placeholder="Retroalimentación general...">${rev?.comentario||''}</textarea>
+    </div>
+  `, [
+    { label:'Cancelar', cls:'btn-secondary', action:'closeModal()' },
+    { label:'Guardar revisión', cls:'btn-primary', action:`saveRevisionModal('${rev?.id||newId}','${colaboradorId}','${cicloId}')` }
+  ]);
+}
+
+async function saveRevisionModal(id, colaboradorId, cicloId) {
+  const okrVal = parseInt(document.getElementById('revOKR')?.value) || 0;
+  const data = {
+    id,
+    colaborador_id: colaboradorId,
+    jefe_id: STATE.user.id,
+    ciclo_id: cicloId,
+    periodo: STATE.ciclos.find(c => c.id === cicloId)?.nombre || cicloId,
+    okr_avance: okrVal,
+    fortalezas: document.getElementById('revFortalezas')?.value || '',
+    mejoras:    document.getElementById('revMejoras')?.value || '',
+    comentario: document.getElementById('revComentario')?.value || '',
+    fecha: new Date().toISOString().split('T')[0],
+  };
+  await apiCall('saveRevision', data);
+  const idx = STATE.revisiones.findIndex(r => r.id === id);
+  if (idx >= 0) Object.assign(STATE.revisiones[idx], data); else STATE.revisiones.push(data);
+  closeModal();
+  renderRevisionesEquipo();
+  showToast('✅ Revisión guardada', 'success');
+}
+
 function switchAdminTab(tab, btn) {
   document.querySelectorAll('.admin-tab').forEach(t => t.classList.remove('active'));
   document.querySelectorAll('.admin-tab-content').forEach(t => t.classList.remove('active'));
@@ -4059,6 +4710,8 @@ function switchAdminTab(tab, btn) {
   document.getElementById('adminTab-' + tab).classList.add('active');
   if (tab === 'reportes') setTimeout(renderAdminCharts, 100);
   if (tab === 'asignaciones') previewAsignaciones();
+  if (tab === 'potencial-config') renderAdminPotencialConfig();
+  if (tab === 'periodo') renderCiclos();
 }
 
 function exportReport() {
