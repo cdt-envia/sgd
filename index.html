@@ -427,6 +427,49 @@
     .okr-kr-row { grid-template-columns: 1fr; }
     .okr-summary-bar { grid-template-columns: 1fr 1fr; }
   }
+  /* ─── NINE BOX ─── */
+  .ninebox-grid {
+    display: grid; grid-template-columns: 40px repeat(3,1fr); grid-template-rows: repeat(3,1fr) 40px;
+    gap: 4px; height: 520px; width: 100%;
+  }
+  .ninebox-cell {
+    border-radius: 8px; padding: 10px; cursor: default;
+    display: flex; flex-direction: column; gap: 4px; position: relative; overflow: hidden;
+  }
+  .ninebox-cell-label {
+    font-size: .72rem; font-weight: 700; color: white; line-height: 1.2; text-align: center;
+  }
+  .ninebox-avatars { display: flex; flex-wrap: wrap; gap: 4px; justify-content: center; margin-top: 4px; }
+  .ninebox-avatar {
+    width: 32px; height: 32px; border-radius: 50%; background: rgba(255,255,255,.25);
+    display: flex; align-items: center; justify-content: center;
+    font-size: .7rem; font-weight: 700; color: white; cursor: pointer;
+    border: 2px solid rgba(255,255,255,.5); transition: transform .15s;
+    position: relative;
+  }
+  .ninebox-avatar:hover { transform: scale(1.2); z-index: 2; }
+  .ninebox-avatar[title]:hover::after {
+    content: attr(title); position: absolute; bottom: 110%; left: 50%; transform: translateX(-50%);
+    background: rgba(0,0,0,.8); color: white; padding: 3px 8px; border-radius: 4px;
+    font-size: .7rem; white-space: nowrap; pointer-events: none;
+  }
+  .ninebox-axis-y {
+    writing-mode: vertical-rl; transform: rotate(180deg);
+    font-size: .75rem; font-weight: 700; color: var(--gray); text-align: center;
+    display: flex; align-items: center; justify-content: center;
+  }
+  .ninebox-axis-x {
+    font-size: .75rem; font-weight: 700; color: var(--gray); text-align: center;
+    display: flex; align-items: center; justify-content: center;
+  }
+  .ninebox-legend {
+    display: grid; grid-template-columns: repeat(auto-fill, minmax(200px, 1fr)); gap: 8px; margin-top: 16px;
+  }
+  .ninebox-legend-item {
+    display: flex; align-items: center; gap: 8px; font-size: .82rem; color: var(--gray);
+  }
+  .ninebox-legend-dot { width: 14px; height: 14px; border-radius: 4px; flex-shrink: 0; }
+
   @media (max-width: 900px) {
     .sidebar { width: 200px; }
     .results-grid { grid-template-columns: 1fr; }
@@ -603,7 +646,7 @@
 
         <!-- SECCIÓN COMENTARIOS -->
         <div class="card">
-          <div class="card-title" style="margin-bottom:14px">💬 Comentarios y Fortalezas</div>
+          <div class="card-title" style="margin-bottom:14px">💬 Comentarios y Retroalimentación</div>
           <div class="form-row">
             <div class="form-field">
               <label>Fortalezas identificadas</label>
@@ -618,6 +661,29 @@
             <label>Comentario general del evaluador</label>
             <textarea class="comp-comment" id="evalComentario" rows="3" placeholder="Comentario general sobre el desempeño..."></textarea>
           </div>
+          <!-- POTENCIAL — solo visible cuando el jefe evalúa a un colaborador -->
+          <div id="potencialSection" style="display:none;margin-top:16px;padding-top:16px;border-top:1px solid var(--gray-light)">
+            <div style="font-size:.88rem;font-weight:700;color:var(--gray);margin-bottom:12px">🎯 Evaluación de Potencial (Nine Box)</div>
+            <div class="info-banner" style="margin-bottom:12px;font-size:.82rem">
+              <svg width="13" height="13" viewBox="0 0 24 24" fill="currentColor"><path d="M12 2C6.48 2 2 6.48 2 12s4.48 10 10 10 10-4.48 10-10S17.52 2 12 2zm1 15h-2v-6h2v6zm0-8h-2V7h2v2z"/></svg>
+              El potencial define la posición vertical en el Nine Box. Evalúa la capacidad de crecimiento futuro, no el desempeño actual.
+            </div>
+            <div class="form-row">
+              <div class="form-field">
+                <label>Nivel de Potencial</label>
+                <select id="evalPotencial" style="width:100%;padding:9px 12px;border:1.5px solid var(--gray-mid);border-radius:8px;font-family:Asap,sans-serif;font-size:.88rem;outline:none">
+                  <option value="">— Seleccionar —</option>
+                  <option value="1">1 — Potencial Bajo (rol actual es su techo)</option>
+                  <option value="2">2 — Potencial Medio (puede crecer 1 nivel)</option>
+                  <option value="3">3 — Potencial Alto (liderazgo futuro)</option>
+                </select>
+              </div>
+              <div class="form-field">
+                <label>Justificación del potencial</label>
+                <textarea id="evalPotencialNota" rows="2" style="width:100%;padding:8px 10px;border:1.5px solid var(--gray-mid);border-radius:8px;font-family:Asap,sans-serif;font-size:.85rem;outline:none" placeholder="¿Por qué asignas este nivel de potencial?"></textarea>
+              </div>
+            </div>
+          </div>
         </div>
 
         <div style="display:flex;gap:12px;justify-content:flex-end;margin-bottom:20px" id="evalButtons">
@@ -626,6 +692,24 @@
             <svg width="16" height="16" viewBox="0 0 24 24" fill="currentColor"><path d="M2.01 21L23 12 2.01 3 2 10l15 2-15 2z"/></svg>
             Enviar evaluación
           </button>
+        </div>
+      </div>
+
+      <!-- ─── PÁGINA: EVALUAR AL JEFE (COLABORADOR) ─── -->
+      <div class="page" id="page-eval-jefe">
+        <div class="page-header">
+          <h2>Evaluar a mi Jefe</h2>
+          <p>Evalúa el desempeño y liderazgo de tu jefe directo</p>
+        </div>
+        <div class="card" id="evalJefeCard">
+          <div class="card-header">
+            <div class="card-title">Estado de la evaluación</div>
+            <span class="status-pill" id="evalJefeStatus">Pendiente</span>
+          </div>
+          <p style="color:#888;font-size:.9rem;margin-bottom:16px">
+            Tu evaluación a tu jefe es parte del proceso de 360°. Responde con objetividad y constructividad.
+          </p>
+          <button class="btn btn-primary" id="btnOpenEvalJefe" onclick="openEvalJefeForm()">Iniciar evaluación</button>
         </div>
       </div>
 
@@ -703,6 +787,33 @@
         </div>
         <!-- Lista de objetivos -->
         <div id="okrList"></div>
+      </div>
+
+      <!-- ─── PÁGINA: ASIGNAR PARES (JEFE) ─── -->
+      <div class="page" id="page-pares">
+        <div class="page-header">
+          <h2>Asignar Evaluadores Pares</h2>
+          <p>Define quiénes evaluarán a cada colaborador de tu equipo (evaluación 360°)</p>
+        </div>
+        <div id="paresContent"></div>
+      </div>
+
+      <!-- ─── PÁGINA: EVALUAR PARES (COLABORADOR) ─── -->
+      <div class="page" id="page-evaluar-pares">
+        <div class="page-header">
+          <h2>Evaluar a mis pares</h2>
+          <p>Evalúa a los compañeros que tu jefe te asignó como par</p>
+        </div>
+        <div id="evaluarParesContent"></div>
+      </div>
+
+      <!-- ─── PÁGINA: NINE BOX ─── -->
+      <div class="page" id="page-ninebox">
+        <div class="page-header">
+          <h2>Nine Box — Matriz de Talento</h2>
+          <p>Visualización de desempeño vs. potencial del equipo</p>
+        </div>
+        <div id="nineboxContent"></div>
       </div>
 
       <!-- ─── PÁGINA: ADMIN - USUARIOS ─── -->
@@ -799,17 +910,27 @@
             </div>
             <div class="form-row">
               <div class="form-field">
-                <label>Peso Competencias (%)</label>
-                <input type="number" id="pesoComp" value="60" min="0" max="100">
+                <label>Peso Evaluación Jefe (%)</label>
+                <input type="number" id="pesoJefe" value="40" min="0" max="100">
               </div>
               <div class="form-field">
-                <label>Peso OKR (%)</label>
-                <input type="number" id="pesoOKR" value="40" min="0" max="100">
+                <label>Peso Autoevaluación (%)</label>
+                <input type="number" id="pesoAuto" value="20" min="0" max="100">
               </div>
             </div>
             <div class="form-row">
               <div class="form-field">
-                <label style="color:#888;font-size:.78rem">Los dos pesos deben sumar 100%</label>
+                <label>Peso Evaluación Pares (%)</label>
+                <input type="number" id="pesoPares" value="25" min="0" max="100">
+              </div>
+              <div class="form-field">
+                <label>Peso OKR (%)</label>
+                <input type="number" id="pesoOKR" value="15" min="0" max="100">
+              </div>
+            </div>
+            <div class="form-row">
+              <div class="form-field">
+                <label style="color:#888;font-size:.78rem">Los cuatro pesos deben sumar 100%</label>
                 <div id="pesosTotal" style="font-size:1.1rem;font-weight:700;color:var(--gray);margin-top:6px">Total: 100%</div>
               </div>
             </div>
@@ -871,7 +992,7 @@
 // ═══════════════════════════════════════════
 //  CONFIG — Reemplaza con tu URL de Google Apps Script
 // ═══════════════════════════════════════════
-const SCRIPT_URL = 'https://script.google.com/macros/s/AKfycbyP_LZuP0emafHlCpyJunIGNdjUUWTyrJEk826Z6NVdKYRNWaPQQok-h2Qn4gE57T08/exec';
+const SCRIPT_URL = 'https://script.google.com/macros/s/AKfycbz6OHJ981WRQTIlK1vyJIRn7d7kh5eO64s8q9u526HnUal_mPR-RJS-PWRAkVdz8_Ur/exec';
 
 // ═══════════════════════════════════════════
 //  STATE
@@ -883,6 +1004,8 @@ let STATE = {
   evaluaciones: [],
   pdi: [],
   okr: [],
+  pares: [],     // [{id, evaluado_id, evaluador_id, periodo}]
+  potencial: [], // [{id, colaborador_id, jefe_id, periodo, nivel, nota}]
   periodo: {},
   currentEval: null,
   charts: {}
@@ -1005,6 +1128,28 @@ const DEMO_EVALUACIONES = [
   { id:'E004', evaluado_id:'U004', evaluador_id:'U004', tipo:'auto', periodo:'2025', estado:'pendiente', score_comp:null, score_metas:null, score_final:null, comp_scores:{}, metas:[], fortalezas:'', mejoras:'', comentario:'', fecha_envio:null },
   { id:'E005', evaluado_id:'U005', evaluador_id:'U002', tipo:'jefe', periodo:'2025', estado:'pendiente', score_comp:null, score_metas:null, score_final:null, comp_scores:{}, metas:[], fortalezas:'', mejoras:'', comentario:'', fecha_envio:null },
   { id:'E006', evaluado_id:'U005', evaluador_id:'U005', tipo:'auto', periodo:'2025', estado:'enviado', score_comp:3.2, score_metas:85, score_final:3.0, comp_scores:{C001:3,C002:3,C003:4,C007:3,C008:3,C009:4}, metas:[{meta:'Reducir rotación 10%',peso:50,resultado:'8%',cumplimiento:80},{meta:'Implementar onboarding',peso:50,resultado:'Completado',cumplimiento:100}], fortalezas:'Excelente gestión del clima', mejoras:'Fortalecer análisis de datos', comentario:'Muy buen desempeño general', fecha_envio:'2025-11-15' },
+];
+
+const DEMO_PARES = [
+  // Sebastián es evaluado por Valentina y Juliana (pares)
+  { id:'PAR001', evaluado_id:'U003', evaluador_id:'U004', periodo:'2025' },
+  { id:'PAR002', evaluado_id:'U003', evaluador_id:'U006', periodo:'2025' },
+  // Valentina es evaluada por Sebastián y Andrés
+  { id:'PAR003', evaluado_id:'U004', evaluador_id:'U003', periodo:'2025' },
+  { id:'PAR004', evaluado_id:'U004', evaluador_id:'U005', periodo:'2025' },
+  // Andrés es evaluado por Valentina y Juliana
+  { id:'PAR005', evaluado_id:'U005', evaluador_id:'U004', periodo:'2025' },
+  { id:'PAR006', evaluado_id:'U005', evaluador_id:'U006', periodo:'2025' },
+  // Juliana es evaluada por Sebastián y Andrés
+  { id:'PAR007', evaluado_id:'U006', evaluador_id:'U003', periodo:'2025' },
+  { id:'PAR008', evaluado_id:'U006', evaluador_id:'U005', periodo:'2025' },
+];
+
+const DEMO_POTENCIAL = [
+  { id:'POT001', colaborador_id:'U003', jefe_id:'U002', periodo:'2025', nivel:3, nota:'Excelente potencial de liderazgo' },
+  { id:'POT002', colaborador_id:'U004', jefe_id:'U002', periodo:'2025', nivel:2, nota:'Buen potencial, en desarrollo' },
+  { id:'POT003', colaborador_id:'U005', jefe_id:'U002', periodo:'2025', nivel:2, nota:'Sólido en su rol actual' },
+  { id:'POT004', colaborador_id:'U006', jefe_id:'U002', periodo:'2025', nivel:1, nota:'Aún en proceso de adaptación' },
 ];
 
 const DEMO_PDI = [
@@ -1148,7 +1293,9 @@ function demoBridge(action, data) {
     case 'getEvaluaciones':return { ok:true, data: DEMO_EVALUACIONES };
     case 'getPDI':         return { ok:true, data: DEMO_PDI };
     case 'getOKR':         return { ok:true, data: DEMO_OKR };
-    case 'getPeriodo':     return { ok:true, data: { nombre:'Evaluación Anual 2025', estado:'open', inicio:'2025-10-01', fin:'2025-12-31', peso_comp:60, peso_okr:40 } };
+    case 'getPares':       return { ok:true, data: DEMO_PARES };
+    case 'getPotencial':   return { ok:true, data: DEMO_POTENCIAL };
+    case 'getPeriodo':     return { ok:true, data: { nombre:'Evaluación Anual 2025', estado:'open', inicio:'2025-10-01', fin:'2025-12-31', peso_jefe:40, peso_auto:20, peso_pares:25, peso_okr:15 } };
     case 'saveEval': {
       const idx = DEMO_EVALUACIONES.findIndex(e => e.id === data.id);
       if (idx >= 0) Object.assign(DEMO_EVALUACIONES[idx], data);
@@ -1165,6 +1312,21 @@ function demoBridge(action, data) {
       const oidx = DEMO_OKR.findIndex(o => o.id === data.id);
       if (oidx >= 0) Object.assign(DEMO_OKR[oidx], data);
       else DEMO_OKR.push(data);
+      return { ok:true };
+    }
+    case 'savePares': {
+      // data.pares = [{id,evaluado_id,evaluador_id,periodo}]
+      (data.pares || []).forEach(p => {
+        const pidx = DEMO_PARES.findIndex(x => x.id === p.id);
+        if (pidx >= 0) Object.assign(DEMO_PARES[pidx], p);
+        else DEMO_PARES.push(p);
+      });
+      return { ok:true };
+    }
+    case 'savePotencial': {
+      const potIdx = DEMO_POTENCIAL.findIndex(p => p.id === data.id);
+      if (potIdx >= 0) Object.assign(DEMO_POTENCIAL[potIdx], data);
+      else DEMO_POTENCIAL.push(data);
       return { ok:true };
     }
     case 'saveUser': {
@@ -1209,7 +1371,7 @@ function showError(msg) {
   setTimeout(() => e.style.display = 'none', 3000);
 }
 function handleLogout() {
-  STATE = { user:null, users:[], competencias:[], evaluaciones:[], pdi:[], okr:[], periodo:{}, currentEval:null, charts:{} };
+  STATE = { user:null, users:[], competencias:[], evaluaciones:[], pdi:[], okr:[], pares:[], potencial:[], periodo:{}, currentEval:null, charts:{} };
   document.getElementById('appShell').style.display = 'none';
   document.getElementById('loginScreen').style.display = 'flex';
   document.getElementById('loginUser').value = '';
@@ -1220,10 +1382,10 @@ function handleLogout() {
 //  DATA LOAD
 // ═══════════════════════════════════════════
 async function loadAllData() {
-  const [ru, rc, re, rp, rper, rokr] = await Promise.all([
+  const [ru, rc, re, rp, rper, rokr, rpares, rpot] = await Promise.all([
     apiCall('getUsers'), apiCall('getCompetencias'),
     apiCall('getEvaluaciones'), apiCall('getPDI'), apiCall('getPeriodo'),
-    apiCall('getOKR')
+    apiCall('getOKR'), apiCall('getPares'), apiCall('getPotencial')
   ]);
   STATE.users = ru.data || [];
   STATE.competencias = rc.data || [];
@@ -1231,6 +1393,8 @@ async function loadAllData() {
   STATE.pdi = rp.data || [];
   STATE.periodo = rper.data || {};
   STATE.okr = rokr.data || [];
+  STATE.pares = rpares.data || [];
+  STATE.potencial = rpot.data || [];
 }
 
 // ═══════════════════════════════════════════
@@ -1258,17 +1422,22 @@ function buildSidebar() {
       { id:'dashboard', icon:'chart', label:'Dashboard' },
       { id:'admin', icon:'settings', label:'Administración' },
       { id:'mis-evaluaciones', icon:'eval', label:'Evaluaciones del equipo' },
+      { id:'ninebox', icon:'ninebox', label:'Nine Box' },
       { id:'pdi', icon:'pdi', label:'PDI Equipos' },
     ],
     jefe: [
       { id:'dashboard', icon:'chart', label:'Dashboard' },
       { id:'mis-evaluaciones', icon:'eval', label:'Evaluar equipo' },
+      { id:'pares', icon:'pares', label:'Asignar evaluadores pares' },
+      { id:'ninebox', icon:'ninebox', label:'Nine Box' },
       { id:'okr', icon:'okr', label:'OKR del equipo' },
       { id:'pdi', icon:'pdi', label:'PDI del equipo' },
     ],
     colaborador: [
       { id:'dashboard', icon:'chart', label:'Mi panel' },
       { id:'autoevaluacion', icon:'self', label:'Mi Autoevaluación' },
+      { id:'eval-jefe', icon:'eval', label:'Evaluar a mi jefe' },
+      { id:'evaluar-pares', icon:'pares', label:'Evaluar a mis pares' },
       { id:'resultados', icon:'results', label:'Mis Resultados' },
       { id:'okr', icon:'okr', label:'Mis OKR' },
       { id:'pdi', icon:'pdi', label:'Mi PDI' },
@@ -1282,6 +1451,8 @@ function buildSidebar() {
     self: '<path d="M12 12c2.21 0 4-1.79 4-4s-1.79-4-4-4-4 1.79-4 4 1.79 4 4 4zm0 2c-2.67 0-8 1.34-8 4v2h16v-2c0-2.66-5.33-4-8-4z"/>',
     results: '<path d="M19 3H5c-1.1 0-2 .9-2 2v14c0 1.1.9 2 2 2h14c1.1 0 2-.9 2-2V5c0-1.1-.9-2-2-2zM9 17H7v-7h2v7zm4 0h-2V7h2v10zm4 0h-2v-4h2v4z"/>',
     okr: '<path d="M19 3H5c-1.1 0-2 .9-2 2v14c0 1.1.9 2 2 2h14c1.1 0 2-.9 2-2V5c0-1.1-.9-2-2-2zm-7 14l-5-5 1.41-1.41L12 14.17l7.59-7.59L21 8l-9 9z"/>',
+    pares: '<path d="M16 11c1.66 0 2.99-1.34 2.99-3S17.66 5 16 5c-1.66 0-3 1.34-3 3s1.34 3 3 3zm-8 0c1.66 0 2.99-1.34 2.99-3S9.66 5 8 5C6.34 5 5 6.34 5 8s1.34 3 3 3zm0 2c-2.33 0-7 1.17-7 3.5V19h14v-2.5c0-2.33-4.67-3.5-7-3.5zm8 0c-.29 0-.62.02-.97.05 1.16.84 1.97 1.97 1.97 3.45V19h6v-2.5c0-2.33-4.67-3.5-7-3.5z"/>',
+    ninebox: '<path d="M3 3h7v7H3zm0 9h7v7H3zm9-9h7v7h-7zm0 9h7v7h-7z"/>',
   };
   const list = items[rol] || items.colaborador;
   let html = '<div class="sidebar-section"><div class="sidebar-label">Menú principal</div>';
@@ -1311,9 +1482,13 @@ function navigateTo(pageId) {
     case 'dashboard': renderDashboard(); break;
     case 'mis-evaluaciones': renderTeam(); break;
     case 'autoevaluacion': renderAutoEval(); break;
+    case 'eval-jefe': renderEvalJefe(); break;
     case 'resultados': renderResultados(); break;
     case 'pdi': renderPDI(); break;
     case 'okr': renderOKR(); break;
+    case 'pares': renderPares(); break;
+    case 'evaluar-pares': renderEvaluarPares(); break;
+    case 'ninebox': renderNineBox(); break;
     case 'admin': renderAdmin(); break;
   }
 }
@@ -1459,43 +1634,16 @@ function openEvalForm(evaluadoId) {
   const evaluado = getUserById(evaluadoId);
   if (!evaluado) { showToast('Colaborador no encontrado', 'error'); return; }
 
-  // Buscar evaluación existente
-  let evalObj = STATE.evaluaciones.find(e =>
+  // Solo abrir si el admin ya asignó la evaluación
+  const evalObj = STATE.evaluaciones.find(e =>
     e.evaluado_id === evaluadoId &&
     e.evaluador_id === STATE.user.id &&
     e.tipo === 'jefe'
   );
 
-  // Si no existe, crearla automáticamente
   if (!evalObj) {
-    evalObj = {
-      id: 'E' + Date.now(),
-      evaluado_id: evaluadoId,
-      evaluador_id: STATE.user.id,
-      tipo: 'jefe',
-      periodo: STATE.periodo.nombre || '2025',
-      estado: 'pendiente',
-      score_comp: null, score_metas: null, score_okr: null, score_final: null,
-      comp_scores: {}, metas: [], fortalezas: '', mejoras: '', comentario: '', fecha_envio: null
-    };
-    STATE.evaluaciones.push(evalObj);
-    // También crear autoevaluación si no existe
-    const yaAuto = STATE.evaluaciones.find(e =>
-      e.evaluado_id === evaluadoId && e.tipo === 'auto'
-    );
-    if (!yaAuto) {
-      STATE.evaluaciones.push({
-        id: 'E' + Date.now() + 'a',
-        evaluado_id: evaluadoId,
-        evaluador_id: evaluadoId,
-        tipo: 'auto',
-        periodo: STATE.periodo.nombre || '2025',
-        estado: 'pendiente',
-        score_comp: null, score_metas: null, score_okr: null, score_final: null,
-        comp_scores: {}, metas: [], fortalezas: '', mejoras: '', comentario: '', fecha_envio: null
-      });
-    }
-    apiCall('saveEval', evalObj); // guardar en backend sin bloquear
+    showToast('⚠️ Esta evaluación aún no ha sido asignada. El administrador debe generarla primero desde Admin → Asignar Evaluaciones.', 'error');
+    return;
   }
 
   STATE.currentEval = { ...evalObj, _evaluado: evaluado };
@@ -1528,6 +1676,22 @@ function openEvalForm(evaluadoId) {
   document.getElementById('evalComentario').value = evalObj.comentario || '';
   if (readOnly) {
     ['evalFortalezas','evalMejoras','evalComentario'].forEach(id => document.getElementById(id).disabled = true);
+  }
+
+  // Mostrar sección de potencial solo cuando el jefe evalúa a un colaborador
+  const potSection = document.getElementById('potencialSection');
+  if (potSection) {
+    potSection.style.display = 'block';
+    // Cargar potencial existente
+    const potExisting = STATE.potencial.find(p =>
+      p.colaborador_id === evaluadoId && p.jefe_id === STATE.user.id
+    );
+    document.getElementById('evalPotencial').value = potExisting?.nivel || '';
+    document.getElementById('evalPotencialNota').value = potExisting?.nota || '';
+    if (readOnly) {
+      document.getElementById('evalPotencial').disabled = true;
+      document.getElementById('evalPotencialNota').disabled = true;
+    }
   }
 
   navigateTo('form-eval');
@@ -1754,14 +1918,52 @@ function updateOKRScore(val) {
 }
 
 
+function calcFinalScore360(colaboradorId) {
+  // Recopila calificaciones de todas las fuentes para un colaborador
+  const w = STATE.periodo;
+  const pJefe  = (w.peso_jefe  || 40) / 100;
+  const pAuto  = (w.peso_auto  || 20) / 100;
+  const pPares = (w.peso_pares || 25) / 100;
+  const pOKR   = (w.peso_okr   || 15) / 100;
+
+  const evalJefe = STATE.evaluaciones.find(e =>
+    e.evaluado_id === colaboradorId && e.tipo === 'jefe' && e.estado === 'enviado'
+  );
+  const evalAuto = STATE.evaluaciones.find(e =>
+    e.evaluado_id === colaboradorId && e.tipo === 'auto' && e.estado === 'enviado'
+  );
+  const evalPares = STATE.evaluaciones.filter(e =>
+    e.evaluado_id === colaboradorId && e.tipo === 'par' && e.estado === 'enviado'
+  );
+
+  const scoreJefe  = evalJefe?.score_comp || 0;
+  const scoreAuto  = evalAuto?.score_comp || 0;
+  const scorePares = evalPares.length
+    ? evalPares.reduce((a, e) => a + (e.score_comp || 0), 0) / evalPares.length
+    : 0;
+  const scoreOKR = (evalJefe?.score_okr || 0) / 25;  // % → 0-4
+
+  // Si no hay score de una fuente, redistribuir su peso
+  let total = 0, pesoTotal = 0;
+  if (scoreJefe  > 0) { total += scoreJefe  * pJefe;  pesoTotal += pJefe;  }
+  if (scoreAuto  > 0) { total += scoreAuto  * pAuto;  pesoTotal += pAuto;  }
+  if (scorePares > 0) { total += scorePares * pPares; pesoTotal += pPares; }
+  if (scoreOKR   > 0) { total += scoreOKR   * pOKR;   pesoTotal += pOKR;   }
+
+  return pesoTotal > 0 ? parseFloat((total / pesoTotal * (pJefe+pAuto+pPares+pOKR)).toFixed(2)) : 0;
+}
+
 function calcFinalScore() {
+  // Versión para evaluación en curso (usa STATE.currentEval)
   const e = STATE.currentEval;
   const w = STATE.periodo;
-  const pComp = (w.peso_comp || 60) / 100;
-  const pOKR  = (w.peso_okr  || 40) / 100;
+  const pJefe = (w.peso_jefe || 40) / 100;
+  const pOKR  = (w.peso_okr  || 15) / 100;
   const compScore = e.score_comp || 0;
-  const okrScore  = (e.score_okr  || 0) / 25;  // % → 0-4
-  return ((compScore * pComp) + (okrScore * pOKR)).toFixed(2);
+  const okrScore  = (e.score_okr || 0) / 25;
+  // Score parcial jefe+OKR (se ajustará al consolidar con pares y auto)
+  const pesoUsado = pJefe + pOKR;
+  return ((compScore * pJefe + okrScore * pOKR) / pesoUsado).toFixed(2);
 }
 
 async function saveEvalDraft() {
@@ -1791,8 +1993,40 @@ async function submitEval() {
   await apiCall('saveEval', data);
   const idx = STATE.evaluaciones.findIndex(ev => ev.id === STATE.currentEval.id);
   if (idx >= 0) Object.assign(STATE.evaluaciones[idx], data);
+
+  // Guardar potencial si es evaluación del jefe
+  if (e.tipo === 'jefe') {
+    const nivelPot = document.getElementById('evalPotencial')?.value;
+    if (nivelPot) {
+      const potData = {
+        id: 'POT_' + e.evaluado_id + '_' + (STATE.periodo.nombre || '2025').replace(/\s/g,''),
+        colaborador_id: e.evaluado_id,
+        jefe_id: STATE.user.id,
+        periodo: e.periodo,
+        nivel: parseInt(nivelPot),
+        nota: document.getElementById('evalPotencialNota')?.value || '',
+      };
+      await apiCall('savePotencial', potData);
+      const potIdx = STATE.potencial.findIndex(p =>
+        p.colaborador_id === e.evaluado_id && p.jefe_id === STATE.user.id
+      );
+      if (potIdx >= 0) Object.assign(STATE.potencial[potIdx], potData);
+      else STATE.potencial.push(potData);
+    }
+  }
+
   showToast('✅ Evaluación enviada exitosamente', 'success');
-  navigateTo('mis-evaluaciones');
+
+  // Redirigir según tipo de evaluación
+  if (e.tipo === 'colab_a_jefe') {
+    navigateTo('eval-jefe');
+  } else if (e.tipo === 'auto') {
+    navigateTo('autoevaluacion');
+  } else if (e.tipo === 'par') {
+    navigateTo('evaluar-pares');
+  } else {
+    navigateTo('mis-evaluaciones');
+  }
 }
 
 function buildEvalPayload(estado) {
@@ -1858,24 +2092,117 @@ function renderAutoEval() {
 
 function openAutoEval() { openAutoEvalForm(false); }
 
+// ═══════════════════════════════════════════
+//  EVALUACIÓN DEL COLABORADOR A SU JEFE
+// ═══════════════════════════════════════════
+function renderEvalJefe() {
+  const u = STATE.user;
+  const jefe = getUserById(u.jefe_id);
+  const pill = document.getElementById('evalJefeStatus');
+  const btn  = document.getElementById('btnOpenEvalJefe');
+  const card = document.getElementById('evalJefeCard');
+
+  if (!jefe) {
+    card.innerHTML = `<div class="info-banner">
+      <svg width="16" height="16" viewBox="0 0 24 24" fill="currentColor"><path d="M12 2C6.48 2 2 6.48 2 12s4.48 10 10 10 10-4.48 10-10S17.52 2 12 2zm1 15h-2v-6h2v6zm0-8h-2V7h2v2z"/></svg>
+      No tienes un jefe asignado en el sistema. Comunícate con el administrador.
+    </div>`;
+    return;
+  }
+
+  const evalCJ = STATE.evaluaciones.find(e =>
+    e.evaluado_id === jefe.id && e.evaluador_id === u.id && e.tipo === 'colab_a_jefe'
+  );
+
+  if (!evalCJ) {
+    card.innerHTML = `<div class="info-banner">
+      <svg width="16" height="16" viewBox="0 0 24 24" fill="currentColor"><path d="M12 2C6.48 2 2 6.48 2 12s4.48 10 10 10 10-4.48 10-10S17.52 2 12 2zm1 15h-2v-6h2v6zm0-8h-2V7h2v2z"/></svg>
+      Tu evaluación al jefe aún no ha sido habilitada. El administrador debe generarla desde Admin → Asignar Evaluaciones.
+    </div>`;
+    return;
+  }
+
+  // Restaurar card original si fue reemplazado
+  if (!document.getElementById('evalJefeStatus')) {
+    document.getElementById('evalJefeCard').innerHTML = `
+      <div class="card-header">
+        <div><div class="card-title">Evaluar a: <strong>${jefe.nombre}</strong></div>
+        <div class="card-subtitle">${jefe.cargo}</div></div>
+        <span class="status-pill" id="evalJefeStatus">Pendiente</span>
+      </div>
+      <p style="color:#888;font-size:.9rem;margin-bottom:16px">Tu evaluación a tu jefe es parte del proceso de 360°. Responde con objetividad y constructividad.</p>
+      <button class="btn btn-primary" id="btnOpenEvalJefe" onclick="openEvalJefeForm()">Iniciar evaluación</button>`;
+  }
+
+  const pillEl = document.getElementById('evalJefeStatus');
+  const btnEl  = document.getElementById('btnOpenEvalJefe');
+  if (!pillEl || !btnEl) return;
+
+  if (evalCJ.estado === 'enviado') {
+    pillEl.textContent = 'Completada'; pillEl.className = 'status-pill pill-done';
+    btnEl.textContent = 'Ver mi evaluación'; btnEl.onclick = () => openEvalJefeFormFull(true);
+  } else if (evalCJ.estado === 'borrador') {
+    pillEl.textContent = 'En borrador'; pillEl.className = 'status-pill pill-progress';
+    btnEl.textContent = 'Continuar evaluación'; btnEl.onclick = () => openEvalJefeFormFull(false);
+  } else {
+    pillEl.textContent = 'Pendiente'; pillEl.className = 'status-pill pill-pending';
+    btnEl.textContent = 'Iniciar evaluación'; btnEl.onclick = () => openEvalJefeFormFull(false);
+  }
+}
+
+function openEvalJefeForm() { openEvalJefeFormFull(false); }
+
+function openEvalJefeFormFull(readOnly) {
+  const u = STATE.user;
+  const jefe = getUserById(u.jefe_id);
+  if (!jefe) return;
+
+  const evalCJ = STATE.evaluaciones.find(e =>
+    e.evaluado_id === jefe.id && e.evaluador_id === u.id && e.tipo === 'colab_a_jefe'
+  );
+  if (!evalCJ) { showToast('⚠️ Evaluación no asignada aún', 'error'); return; }
+
+  STATE.currentEval = { ...evalCJ, _evaluado: jefe };
+  document.getElementById('evalFormTitle').textContent = 'Evaluando a: ' + jefe.nombre;
+  document.getElementById('evalFormSubtitle').textContent = jefe.cargo + ' | Evaluación del colaborador al jefe';
+  document.getElementById('evalBreadName').textContent = jefe.nombre;
+  document.getElementById('evalReadOnlyBanner').style.display = readOnly ? 'flex' : 'none';
+  document.getElementById('evalButtons').style.display = readOnly ? 'none' : 'flex';
+
+  // Reconstruir comp_scores
+  const scoresRaw = evalCJ.comp_scores || {};
+  const scores = { ...scoresRaw };
+  if (!Object.keys(scores).filter(k => !k.startsWith('comment_')).length) {
+    Object.keys(evalCJ).forEach(k => {
+      if (k.startsWith('comp_C')) {
+        const id = k.replace('comp_', '');
+        const v = Number(evalCJ[k]);
+        if (v > 0) scores[id] = v;
+      }
+    });
+  }
+
+  renderCompetenciasForm(jefe.cargo, scores, readOnly);
+  renderEvalOKRSection(jefe.id, evalCJ.score_okr || 0, true);
+
+  document.getElementById('evalFortalezas').value = evalCJ.fortalezas || '';
+  document.getElementById('evalMejoras').value = evalCJ.mejoras || '';
+  document.getElementById('evalComentario').value = evalCJ.comentario || '';
+  if (readOnly) ['evalFortalezas','evalMejoras','evalComentario'].forEach(id => document.getElementById(id).disabled = true);
+  const potSec = document.getElementById('potencialSection');
+  if (potSec) potSec.style.display = 'none';
+
+  navigateTo('form-eval');
+}
+
 function openAutoEvalForm(readOnly) {
   const u = STATE.user;
-  let evalAuto = STATE.evaluaciones.find(e => e.evaluado_id === u.id && e.tipo === 'auto');
+  const evalAuto = STATE.evaluaciones.find(e => e.evaluado_id === u.id && e.tipo === 'auto');
 
-  // Si no existe, crearla automáticamente
+  // Solo abrir si el admin ya asignó la evaluación
   if (!evalAuto) {
-    evalAuto = {
-      id: 'E' + Date.now() + 'a',
-      evaluado_id: u.id,
-      evaluador_id: u.id,
-      tipo: 'auto',
-      periodo: STATE.periodo.nombre || '2025',
-      estado: 'pendiente',
-      score_comp: null, score_metas: null, score_okr: null, score_final: null,
-      comp_scores: {}, metas: [], fortalezas: '', mejoras: '', comentario: '', fecha_envio: null
-    };
-    STATE.evaluaciones.push(evalAuto);
-    apiCall('saveEval', evalAuto);
+    showToast('⚠️ Tu autoevaluación aún no ha sido asignada. El administrador debe generarla primero desde Admin → Asignar Evaluaciones.', 'error');
+    return;
   }
 
   STATE.currentEval = { ...evalAuto, _evaluado: u };
@@ -1904,6 +2231,8 @@ function openAutoEvalForm(readOnly) {
   document.getElementById('evalMejoras').value = evalAuto.mejoras || '';
   document.getElementById('evalComentario').value = evalAuto.comentario || '';
   if (readOnly) ['evalFortalezas','evalMejoras','evalComentario'].forEach(id => document.getElementById(id).disabled = true);
+  const potSecAuto = document.getElementById('potencialSection');
+  if (potSecAuto) potSecAuto.style.display = 'none';
 
   navigateTo('form-eval');
 }
@@ -2535,6 +2864,374 @@ async function saveCheckin(objId, krId) {
 }
 
 // ═══════════════════════════════════════════
+//  360° — PARES (JEFE ASIGNA)
+// ═══════════════════════════════════════════
+function renderPares() {
+  const u = STATE.user;
+  const cont = document.getElementById('paresContent');
+  const team = STATE.users.filter(x => x.jefe_id === u.id && x.rol === 'colaborador');
+
+  let html = `<div class="card">
+    <div class="card-header">
+      <div>
+        <div class="card-title">Evaluadores pares por colaborador</div>
+        <div class="card-subtitle">Selecciona 2-4 pares para evaluar a cada persona de tu equipo</div>
+      </div>
+      <button class="btn btn-primary" onclick="saveParesTodos()">💾 Guardar asignaciones</button>
+    </div>
+    <div class="info-banner" style="margin-bottom:16px;font-size:.82rem">
+      <svg width="14" height="14" viewBox="0 0 24 24" fill="currentColor"><path d="M12 2C6.48 2 2 6.48 2 12s4.48 10 10 10 10-4.48 10-10S17.52 2 12 2zm1 15h-2v-6h2v6zm0-8h-2V7h2v2z"/></svg>
+      Los pares seleccionados recibirán automáticamente una evaluación de su compañero cuando generes las evaluaciones desde Admin → Asignar Evaluaciones.
+    </div>`;
+
+  if (!team.length) {
+    html += `<div class="empty-state" style="padding:24px"><p>No tienes colaboradores asignados.</p></div>`;
+  } else {
+    team.forEach(colab => {
+      // Pares ya asignados
+      const paresAsignados = STATE.pares
+        .filter(p => p.evaluado_id === colab.id)
+        .map(p => p.evaluador_id);
+
+      // Posibles pares: todos los colaboradores del equipo excepto el propio
+      const posibles = team.filter(x => x.id !== colab.id);
+
+      html += `<div style="border:1.5px solid var(--gray-mid);border-radius:var(--radius);padding:16px 20px;margin-bottom:12px">
+        <div style="font-weight:700;color:var(--gray);margin-bottom:10px">
+          ${colab.nombre} <span style="font-size:.78rem;color:#888;font-weight:400">— ${colab.cargo}</span>
+        </div>
+        <div style="display:flex;flex-wrap:wrap;gap:8px">
+          ${posibles.map(p => {
+            const checked = paresAsignados.includes(p.id);
+            return `<label style="display:flex;align-items:center;gap:6px;padding:6px 12px;border:1.5px solid ${checked ? 'var(--red)' : 'var(--gray-mid)'};border-radius:20px;cursor:pointer;font-size:.85rem;background:${checked ? 'var(--red-light)' : 'white'};color:${checked ? 'var(--red)' : 'var(--gray)'};transition:all .2s" id="par-label-${colab.id}-${p.id}">
+              <input type="checkbox" id="par-${colab.id}-${p.id}" value="${p.id}"
+                data-evaluado="${colab.id}" ${checked ? 'checked' : ''}
+                onchange="updateParLabel('${colab.id}','${p.id}',this.checked)"
+                style="display:none">
+              ${checked ? '✓ ' : ''}${p.nombre.split(' ')[0]}
+            </label>`;
+          }).join('')}
+        </div>
+      </div>`;
+    });
+  }
+  html += '</div>';
+  cont.innerHTML = html;
+}
+
+function updateParLabel(evaluadoId, evaluadorId, checked) {
+  const lbl = document.getElementById(`par-label-${evaluadoId}-${evaluadorId}`);
+  if (!lbl) return;
+  const evaluador = getUserById(evaluadorId);
+  lbl.style.borderColor = checked ? 'var(--red)' : 'var(--gray-mid)';
+  lbl.style.background  = checked ? 'var(--red-light)' : 'white';
+  lbl.style.color       = checked ? 'var(--red)' : 'var(--gray)';
+  lbl.innerHTML = `<input type="checkbox" id="par-${evaluadoId}-${evaluadorId}" value="${evaluadorId}"
+    data-evaluado="${evaluadoId}" ${checked ? 'checked' : ''}
+    onchange="updateParLabel('${evaluadoId}','${evaluadorId}',this.checked)" style="display:none">
+    ${checked ? '✓ ' : ''}${evaluador?.nombre?.split(' ')[0] || ''}`;
+}
+
+async function saveParesTodos() {
+  const u = STATE.user;
+  const team = STATE.users.filter(x => x.jefe_id === u.id && x.rol === 'colaborador');
+  const periodo = STATE.periodo.nombre || '2025';
+  const nuevasPares = [];
+
+  team.forEach(colab => {
+    const checkboxes = document.querySelectorAll(`input[data-evaluado="${colab.id}"]`);
+    checkboxes.forEach(cb => {
+      if (cb.checked) {
+        const yaExiste = STATE.pares.find(p =>
+          p.evaluado_id === colab.id && p.evaluador_id === cb.value && p.periodo === periodo
+        );
+        if (!yaExiste) {
+          const nuevo = {
+            id: 'PAR' + Date.now() + Math.random().toString(36).substr(2,4),
+            evaluado_id: colab.id,
+            evaluador_id: cb.value,
+            periodo
+          };
+          nuevasPares.push(nuevo);
+          STATE.pares.push(nuevo);
+        }
+      } else {
+        // Eliminar si estaba asignado
+        const idx = STATE.pares.findIndex(p =>
+          p.evaluado_id === colab.id && p.evaluador_id === cb.value && p.periodo === periodo
+        );
+        if (idx >= 0) STATE.pares.splice(idx, 1);
+      }
+    });
+  });
+
+  await apiCall('savePares', { pares: STATE.pares.filter(p => p.periodo === periodo) });
+  renderPares();
+  showToast('✅ Asignaciones de pares guardadas', 'success');
+}
+
+// ═══════════════════════════════════════════
+//  360° — EVALUAR PARES (COLABORADOR)
+// ═══════════════════════════════════════════
+function renderEvaluarPares() {
+  const u = STATE.user;
+  const cont = document.getElementById('evaluarParesContent');
+
+  // Evalúa a personas donde yo soy el evaluador par
+  const misParesAsignados = STATE.pares.filter(p => p.evaluador_id === u.id);
+
+  let html = '<div class="card"><div class="card-header"><div class="card-title">Personas que debes evaluar como par</div></div>';
+
+  if (!misParesAsignados.length) {
+    html += `<div class="empty-state" style="padding:24px"><p>Tu jefe aún no te ha asignado como evaluador par de ningún compañero.</p></div>`;
+  } else {
+    const rows = misParesAsignados.map(par => {
+      const evaluado = getUserById(par.evaluado_id);
+      if (!evaluado) return '';
+      const evalPar = STATE.evaluaciones.find(e =>
+        e.evaluado_id === par.evaluado_id && e.evaluador_id === u.id && e.tipo === 'par'
+      );
+      const stateLabel = { pendiente:'Pendiente', borrador:'En borrador', enviado:'Completada' };
+      const stateCls   = { pendiente:'pill-pending', borrador:'pill-progress', enviado:'pill-done' };
+      const estado = evalPar?.estado || 'pendiente';
+      return `<tr>
+        <td><strong>${evaluado.nombre}</strong></td>
+        <td>${evaluado.cargo}</td>
+        <td><span class="status-pill ${stateCls[estado]}">${stateLabel[estado]}</span></td>
+        <td>
+          ${estado === 'pendiente'
+            ? `<span style="font-size:.8rem;color:#aaa">El admin debe generar la evaluación primero</span>`
+            : estado === 'enviado'
+              ? `<button class="btn btn-secondary btn-sm" onclick="openParEvalForm('${evaluado.id}',true)">Ver</button>`
+              : `<button class="btn btn-primary btn-sm" onclick="openParEvalForm('${evaluado.id}',false)">Evaluar</button>`
+          }
+        </td>
+      </tr>`;
+    }).join('');
+
+    html += `<div class="table-wrap"><table>
+      <thead><tr><th>Compañero</th><th>Cargo</th><th>Estado</th><th>Acción</th></tr></thead>
+      <tbody>${rows}</tbody>
+    </table></div>`;
+  }
+  html += '</div>';
+  cont.innerHTML = html;
+}
+
+function openParEvalForm(evaluadoId, readOnly) {
+  const evaluado = getUserById(evaluadoId);
+  const evalPar = STATE.evaluaciones.find(e =>
+    e.evaluado_id === evaluadoId && e.evaluador_id === STATE.user.id && e.tipo === 'par'
+  );
+  if (!evalPar) { showToast('⚠️ Evaluación de par no asignada aún', 'error'); return; }
+
+  STATE.currentEval = { ...evalPar, _evaluado: evaluado };
+  document.getElementById('evalFormTitle').textContent = 'Evaluando par: ' + evaluado.nombre;
+  document.getElementById('evalFormSubtitle').textContent = evaluado.cargo + ' | Evaluación de par (360°)';
+  document.getElementById('evalBreadName').textContent = evaluado.nombre;
+  document.getElementById('evalReadOnlyBanner').style.display = readOnly ? 'flex' : 'none';
+  document.getElementById('evalButtons').style.display = readOnly ? 'none' : 'flex';
+  const potSec = document.getElementById('potencialSection');
+  if (potSec) potSec.style.display = 'none';
+
+  const scoresRaw = evalPar.comp_scores || {};
+  const scores = { ...scoresRaw };
+  if (!Object.keys(scores).filter(k => !k.startsWith('comment_')).length) {
+    Object.keys(evalPar).forEach(k => {
+      if (k.startsWith('comp_C')) { const id = k.replace('comp_', ''); const v = Number(evalPar[k]); if (v > 0) scores[id] = v; }
+    });
+  }
+  renderCompetenciasForm(evaluado.cargo, scores, readOnly);
+  renderEvalOKRSection(evaluadoId, 0, true);
+  document.getElementById('evalFortalezas').value = evalPar.fortalezas || '';
+  document.getElementById('evalMejoras').value = evalPar.mejoras || '';
+  document.getElementById('evalComentario').value = evalPar.comentario || '';
+  if (readOnly) ['evalFortalezas','evalMejoras','evalComentario'].forEach(id => document.getElementById(id).disabled = true);
+  navigateTo('form-eval');
+}
+
+// ═══════════════════════════════════════════
+//  NINE BOX
+// ═══════════════════════════════════════════
+const NINEBOX_CONFIG = [
+  // Fila 3 (potencial alto) — izquierda a derecha
+  { pot:3, des_min:0,    des_max:1.49, label:'Enigma',          color:'#5c6bc0', desc:'Alto potencial, bajo desempeño. Invertir en desarrollo.' },
+  { pot:3, des_min:1.5,  des_max:2.49, label:'Alto Potencial',  color:'#1976d2', desc:'Potencial alto, desempeño en desarrollo.' },
+  { pot:3, des_min:2.5,  des_max:4,    label:'Estrella',        color:'#0097a7', desc:'Top talent. Retener y preparar para liderazgo.' },
+  // Fila 2 (potencial medio)
+  { pot:2, des_min:0,    des_max:1.49, label:'Dilema',          color:'#f57c00', desc:'Requiere intervención urgente.' },
+  { pot:2, des_min:1.5,  des_max:2.49, label:'Trabajador',      color:'#fbc02d', desc:'Sólido en su rol. Clarificar expectativas.' },
+  { pot:2, des_min:2.5,  des_max:4,    label:'Pilar',           color:'#388e3c', desc:'Confiable y de alto desempeño. Reconocer.' },
+  // Fila 1 (potencial bajo)
+  { pot:1, des_min:0,    des_max:1.49, label:'Bajo Rendimiento',color:'#c62828', desc:'Riesgo crítico. Plan de mejora o salida.' },
+  { pot:1, des_min:1.5,  des_max:2.49, label:'Recurso Limitado',color:'#e53935', desc:'Desempeño básico, potencial limitado.' },
+  { pot:1, des_min:2.5,  des_max:4,    label:'Efectivo',        color:'#43a047', desc:'Buen desempeño, ha alcanzado su techo.' },
+];
+
+function getNineBoxCell(desempeno, potencial) {
+  return NINEBOX_CONFIG.find(c =>
+    c.pot === potencial && desempeno >= c.des_min && desempeno <= c.des_max
+  ) || null;
+}
+
+function renderNineBox() {
+  const u = STATE.user;
+  const cont = document.getElementById('nineboxContent');
+
+  // Determinar qué colaboradores mostrar
+  const colabs = u.rol === 'admin'
+    ? STATE.users.filter(x => x.rol === 'colaborador')
+    : STATE.users.filter(x => x.jefe_id === u.id && x.rol === 'colaborador');
+
+  if (!colabs.length) {
+    cont.innerHTML = `<div class="card"><div class="empty-state" style="padding:32px"><p>No hay colaboradores para mostrar en el Nine Box.</p></div></div>`;
+    return;
+  }
+
+  // Calcular score 360 y potencial por colaborador
+  const data = colabs.map(colab => {
+    const score360 = calcFinalScore360(colab.id);
+    const potObj   = STATE.potencial.find(p => p.colaborador_id === colab.id);
+    const potNivel = potObj ? parseInt(potObj.nivel) : null;
+    const cell     = potNivel ? getNineBoxCell(score360, potNivel) : null;
+    return { colab, score360, potNivel, cell };
+  });
+
+  // Separar los que ya tienen potencial asignado
+  const sinPotencial = data.filter(d => !d.potNivel);
+
+  // Construir la matriz 3x3
+  // Orden de celdas: [pot3,des1-2] [pot3,des2-3] [pot3,des3] / [pot2,...] / [pot1,...]
+  const cells3x3 = [
+    [NINEBOX_CONFIG[0], NINEBOX_CONFIG[1], NINEBOX_CONFIG[2]],
+    [NINEBOX_CONFIG[3], NINEBOX_CONFIG[4], NINEBOX_CONFIG[5]],
+    [NINEBOX_CONFIG[6], NINEBOX_CONFIG[7], NINEBOX_CONFIG[8]],
+  ];
+
+  let html = `<div class="card">
+    <div class="card-header">
+      <div>
+        <div class="card-title">Matriz Nine Box — Desempeño vs. Potencial</div>
+        <div class="card-subtitle">Eje X = Calificación 360° (1-4) &nbsp;|&nbsp; Eje Y = Potencial asignado por el jefe (1-3)</div>
+      </div>
+    </div>
+    <div style="display:flex;gap:20px;flex-wrap:wrap;align-items:flex-start">
+      <div style="flex:1;min-width:400px">
+        <div class="ninebox-grid">
+          <!-- Eje Y label -->
+          <div class="ninebox-axis-y" style="grid-column:1;grid-row:1/4">POTENCIAL ↑</div>
+          <!-- 9 celdas -->
+          ${cells3x3.map((row, rowIdx) =>
+            row.map((cell, colIdx) => {
+              const matching = data.filter(d => d.cell === cell);
+              const avatars = matching.map(d =>
+                `<div class="ninebox-avatar" title="${d.colab.nombre} (${d.score360.toFixed(1)} | P${d.potNivel})"
+                  onclick="showNineBoxDetail('${d.colab.id}')" style="background:rgba(255,255,255,.3)">
+                  ${d.colab.nombre.charAt(0)}
+                </div>`
+              ).join('');
+              return `<div class="ninebox-cell" style="background:${cell.color};grid-column:${colIdx+2};grid-row:${rowIdx+1}">
+                <div class="ninebox-cell-label">${cell.label}</div>
+                <div class="ninebox-avatars">${avatars}</div>
+                <div style="font-size:.65rem;color:rgba(255,255,255,.7);text-align:center;margin-top:auto">${matching.length} persona${matching.length!==1?'s':''}</div>
+              </div>`;
+            }).join('')
+          ).join('')}
+          <!-- Eje X label -->
+          <div style="grid-column:1"></div>
+          ${['Bajo (1-1.5)','Medio (1.5-2.5)','Alto (2.5-4)'].map((lbl,i) =>
+            `<div class="ninebox-axis-x" style="grid-column:${i+2};grid-row:4">${lbl}</div>`
+          ).join('')}
+        </div>
+        <div style="text-align:center;font-size:.75rem;color:#888;margin-top:4px">DESEMPEÑO →</div>
+      </div>
+      <div style="min-width:240px">
+        <div style="font-size:.82rem;font-weight:700;color:var(--gray);margin-bottom:10px">Leyenda</div>
+        <div class="ninebox-legend">
+          ${NINEBOX_CONFIG.map(c => `
+            <div class="ninebox-legend-item">
+              <div class="ninebox-legend-dot" style="background:${c.color}"></div>
+              <div><strong>${c.label}</strong><br><span style="font-size:.75rem;color:#888">${c.desc}</span></div>
+            </div>`).join('')}
+        </div>
+      </div>
+    </div>`;
+
+  // Tabla detalle
+  html += `<hr class="divider">
+    <div style="font-size:.88rem;font-weight:700;color:var(--gray);margin-bottom:10px">Detalle por colaborador</div>
+    <div class="table-wrap"><table>
+      <thead><tr><th>Colaborador</th><th>Cargo</th><th>Score 360°</th><th>Potencial</th><th>Cuadrante</th></tr></thead>
+      <tbody>
+        ${data.map(d => {
+          const cellInfo = d.cell;
+          return `<tr>
+            <td><strong>${d.colab.nombre}</strong></td>
+            <td>${d.colab.cargo}</td>
+            <td><strong style="color:${d.score360>=2.5?'#43a047':d.score360>=1.5?'#f57c00':'#e53935'}">${d.score360.toFixed(2)}</strong></td>
+            <td>${d.potNivel ? `<span style="font-weight:600">P${d.potNivel}</span> — ${['','Bajo','Medio','Alto'][d.potNivel]}` : '<span style="color:#aaa">Sin asignar</span>'}</td>
+            <td>${cellInfo
+              ? `<span style="background:${cellInfo.color};color:white;padding:2px 10px;border-radius:10px;font-size:.78rem;font-weight:600">${cellInfo.label}</span>`
+              : `<span style="color:#aaa;font-size:.82rem">Falta potencial</span>`
+            }</td>
+          </tr>`;
+        }).join('')}
+      </tbody>
+    </table></div>`;
+
+  if (sinPotencial.length) {
+    html += `<div class="info-banner" style="margin-top:14px;font-size:.82rem">
+      <svg width="14" height="14" viewBox="0 0 24 24" fill="currentColor"><path d="M12 2C6.48 2 2 6.48 2 12s4.48 10 10 10 10-4.48 10-10S17.52 2 12 2zm1 15h-2v-6h2v6zm0-8h-2V7h2v2z"/></svg>
+      <strong>${sinPotencial.length}</strong> colaborador(es) sin potencial asignado: ${sinPotencial.map(d=>d.colab.nombre).join(', ')}. Asígnalo al finalizar la evaluación de cada uno.
+    </div>`;
+  }
+
+  html += '</div>';
+  cont.innerHTML = html;
+}
+
+function showNineBoxDetail(colabId) {
+  const colab = getUserById(colabId);
+  const potObj = STATE.potencial.find(p => p.colaborador_id === colabId);
+  const score360 = calcFinalScore360(colabId);
+  const cell = potObj ? getNineBoxCell(score360, parseInt(potObj.nivel)) : null;
+
+  // Desglose de fuentes
+  const evalJefe = STATE.evaluaciones.find(e => e.evaluado_id === colabId && e.tipo === 'jefe' && e.estado === 'enviado');
+  const evalAuto = STATE.evaluaciones.find(e => e.evaluado_id === colabId && e.tipo === 'auto' && e.estado === 'enviado');
+  const evalPares = STATE.evaluaciones.filter(e => e.evaluado_id === colabId && e.tipo === 'par' && e.estado === 'enviado');
+  const w = STATE.periodo;
+
+  openModal(`Nine Box — ${colab?.nombre || ''}`, `
+    ${cell ? `<div style="background:${cell.color};color:white;border-radius:8px;padding:12px 16px;margin-bottom:16px;text-align:center">
+      <div style="font-size:1.2rem;font-weight:700">${cell.label}</div>
+      <div style="font-size:.85rem;opacity:.9;margin-top:4px">${cell.desc}</div>
+    </div>` : ''}
+    <div class="form-row" style="margin-bottom:14px">
+      <div style="text-align:center;background:var(--gray-light);border-radius:8px;padding:12px">
+        <div style="font-size:1.8rem;font-weight:700;color:var(--red)">${score360.toFixed(2)}</div>
+        <div style="font-size:.75rem;color:#888">Score 360°</div>
+      </div>
+      <div style="text-align:center;background:var(--gray-light);border-radius:8px;padding:12px">
+        <div style="font-size:1.8rem;font-weight:700;color:#1565c0">P${potObj?.nivel || '—'}</div>
+        <div style="font-size:.75rem;color:#888">Potencial</div>
+      </div>
+    </div>
+    <div style="font-size:.82rem;font-weight:700;color:var(--gray);margin-bottom:8px">Desglose de fuentes 360°</div>
+    ${[
+      { label: `Jefe (${w.peso_jefe||40}%)`, val: evalJefe?.score_comp?.toFixed(2), enviado: !!evalJefe },
+      { label: `Autoevaluación (${w.peso_auto||20}%)`, val: evalAuto?.score_comp?.toFixed(2), enviado: !!evalAuto },
+      { label: `Pares (${w.peso_pares||25}%) — ${evalPares.length} eval.`, val: evalPares.length ? (evalPares.reduce((a,e)=>a+(e.score_comp||0),0)/evalPares.length).toFixed(2) : null, enviado: evalPares.length > 0 },
+      { label: `OKR (${w.peso_okr||15}%)`, val: evalJefe?.score_okr != null ? evalJefe.score_okr+'%' : null, enviado: !!evalJefe },
+    ].map(f => `<div style="display:flex;justify-content:space-between;padding:6px 0;border-bottom:1px solid var(--gray-light)">
+      <span>${f.label}</span>
+      <strong style="color:${f.enviado?'var(--gray)':'#aaa'}">${f.val || '—'}</strong>
+    </div>`).join('')}
+    ${potObj?.nota ? `<div style="margin-top:12px;font-size:.82rem;color:#888;font-style:italic">"${potObj.nota}"</div>` : ''}
+  `, [{ label:'Cerrar', cls:'btn-secondary', action:'closeModal()' }]);
+}
+
+// ═══════════════════════════════════════════
 //  PDI — PLAN DE DESARROLLO INDIVIDUAL (COMPLETO)
 // ═══════════════════════════════════════════
 function renderPDI() {
@@ -2858,8 +3555,10 @@ function renderAdmin() {
   document.getElementById('periodStatus').value = STATE.periodo.estado||'open';
   document.getElementById('periodStart').value = STATE.periodo.inicio||'';
   document.getElementById('periodEnd').value = STATE.periodo.fin||'';
-  document.getElementById('pesoComp').value = STATE.periodo.peso_comp||60;
-  document.getElementById('pesoOKR').value  = STATE.periodo.peso_okr||40;
+  document.getElementById('pesoJefe').value  = STATE.periodo.peso_jefe  || 40;
+  document.getElementById('pesoAuto').value  = STATE.periodo.peso_auto  || 20;
+  document.getElementById('pesoPares').value = STATE.periodo.peso_pares || 25;
+  document.getElementById('pesoOKR').value   = STATE.periodo.peso_okr   || 15;
   setTimeout(renderAdminCharts, 150);
 }
 
@@ -3144,13 +3843,15 @@ async function savePeriod() {
     estado: document.getElementById('periodStatus').value,
     inicio: document.getElementById('periodStart').value,
     fin: document.getElementById('periodEnd').value,
-    peso_comp: parseInt(document.getElementById('pesoComp').value)||60,
-    peso_okr:  parseInt(document.getElementById('pesoOKR').value)||40,
+    peso_jefe:  parseInt(document.getElementById('pesoJefe').value)  || 40,
+    peso_auto:  parseInt(document.getElementById('pesoAuto').value)  || 20,
+    peso_pares: parseInt(document.getElementById('pesoPares').value) || 25,
+    peso_okr:   parseInt(document.getElementById('pesoOKR').value)   || 15,
   };
-  const sumPesos = data.peso_comp + data.peso_okr;
-  if (sumPesos !== 100) {
-    showToast(`Los pesos deben sumar 100% (actualmente: ${sumPesos}%)`, 'error');
-    document.getElementById('pesosTotal').textContent = `Total: ${sumPesos}% ⚠️`;
+  const suma = data.peso_jefe + data.peso_auto + data.peso_pares + data.peso_okr;
+  if (suma !== 100) {
+    showToast(`Los pesos deben sumar 100% (actualmente: ${suma}%)`, 'error');
+    document.getElementById('pesosTotal').textContent = `Total: ${suma}% ⚠️`;
     document.getElementById('pesosTotal').style.color = '#e53935';
     return;
   }
@@ -3174,23 +3875,32 @@ function previewAsignaciones() {
     const evalAuto = STATE.evaluaciones.find(e =>
       e.evaluado_id === colab.id && e.tipo === 'auto' && e.periodo === periodo
     );
+    const evalColabJefe = jefe ? STATE.evaluaciones.find(e =>
+      e.evaluado_id === jefe.id && e.evaluador_id === colab.id && e.tipo === 'colab_a_jefe' && e.periodo === periodo
+    ) : null;
+    const paresCount = STATE.pares.filter(p => p.evaluado_id === colab.id && p.periodo === periodo).length;
+    const parEvals   = STATE.evaluaciones.filter(e => e.evaluado_id === colab.id && e.tipo === 'par' && e.periodo === periodo);
+    const parEnviados = parEvals.filter(e => e.estado === 'enviado').length;
+
     const estadoLabel = { pendiente:'Pendiente', borrador:'En borrador', enviado:'Enviado' };
     const estadoCls   = { pendiente:'pill-progress', borrador:'pill-progress', enviado:'pill-done' };
-    const stateJefe = evalJefe
-      ? `<span class="status-pill ${estadoCls[evalJefe.estado]||'pill-progress'}">${estadoLabel[evalJefe.estado]||evalJefe.estado}</span>`
+
+    const pill = (e) => e
+      ? `<span class="status-pill ${estadoCls[e.estado]||'pill-progress'}">${estadoLabel[e.estado]||e.estado}</span>`
       : `<span class="status-pill pill-pending">Sin asignar</span>`;
-    const stateAuto = evalAuto
-      ? `<span class="status-pill ${estadoCls[evalAuto.estado]||'pill-progress'}">${estadoLabel[evalAuto.estado]||evalAuto.estado}</span>`
-      : `<span class="status-pill pill-pending">Sin asignar</span>`;
+
     const jefeNombre = jefe
       ? jefe.nombre
       : `<span style="color:#e53935;font-size:.8rem">⚠️ Sin jefe asignado</span>`;
+
     return `<tr>
       <td><strong>${colab.nombre}</strong></td>
       <td>${colab.cargo}</td>
       <td>${jefeNombre}</td>
-      <td>${stateJefe}</td>
-      <td>${stateAuto}</td>
+      <td>${pill(evalJefe)}</td>
+      <td>${pill(evalAuto)}</td>
+      <td>${pill(evalColabJefe)}</td>
+      <td><span style="font-size:.82rem">${parEnviados}/${paresCount} completadas</span></td>
     </tr>`;
   });
 
@@ -3207,7 +3917,7 @@ function previewAsignaciones() {
     </div>
     <div class="table-wrap">
       <table>
-        <thead><tr><th>Colaborador</th><th>Cargo</th><th>Jefe asignado</th><th>Evaluación Jefe</th><th>Autoevaluación</th></tr></thead>
+        <thead><tr><th>Colaborador</th><th>Cargo</th><th>Jefe asignado</th><th>Evaluación Jefe→Colab</th><th>Autoevaluación</th><th>Colab→Jefe</th><th>Pares (360°)</th></tr></thead>
         <tbody>${rows.join('')}</tbody>
       </table>
     </div>`;
@@ -3232,7 +3942,9 @@ async function ejecutarAsignaciones() {
 
   let creadas = 0;
   conJefe.forEach(colab => {
-    // Evaluación jefe → colaborador
+    const jefe = getUserById(colab.jefe_id);
+
+    // 1. Evaluación jefe → colaborador
     const yaJefe = STATE.evaluaciones.find(e =>
       e.evaluado_id === colab.id && e.tipo === 'jefe' && e.periodo === periodo
     );
@@ -3244,14 +3956,15 @@ async function ejecutarAsignaciones() {
         tipo: 'jefe',
         periodo,
         estado: 'pendiente',
-        score_comp: null, score_metas: null, score_okr: null, score_final: null,
-        comp_scores: {}, metas: [], fortalezas: '', mejoras: '', comentario: '', fecha_envio: null
+        score_comp: null, score_okr: null, score_final: null,
+        comp_scores: {}, fortalezas: '', mejoras: '', comentario: '', fecha_envio: null
       };
       STATE.evaluaciones.push(nueva);
       apiCall('saveEval', nueva);
       creadas++;
     }
-    // Autoevaluación
+
+    // 2. Autoevaluación colaborador → sí mismo
     const yaAuto = STATE.evaluaciones.find(e =>
       e.evaluado_id === colab.id && e.tipo === 'auto' && e.periodo === periodo
     );
@@ -3263,13 +3976,60 @@ async function ejecutarAsignaciones() {
         tipo: 'auto',
         periodo,
         estado: 'pendiente',
-        score_comp: null, score_metas: null, score_okr: null, score_final: null,
-        comp_scores: {}, metas: [], fortalezas: '', mejoras: '', comentario: '', fecha_envio: null
+        score_comp: null, score_okr: null, score_final: null,
+        comp_scores: {}, fortalezas: '', mejoras: '', comentario: '', fecha_envio: null
       };
       STATE.evaluaciones.push(autoEval);
       apiCall('saveEval', autoEval);
       creadas++;
     }
+
+    // 3. Evaluación colaborador → jefe
+    if (jefe) {
+      const yaColabAJefe = STATE.evaluaciones.find(e =>
+        e.evaluado_id === jefe.id && e.evaluador_id === colab.id && e.tipo === 'colab_a_jefe' && e.periodo === periodo
+      );
+      if (!yaColabAJefe) {
+        const evalColabJefe = {
+          id: 'E' + Date.now() + Math.floor(Math.random()*9999) + 'cj',
+          evaluado_id: jefe.id,
+          evaluador_id: colab.id,
+          tipo: 'colab_a_jefe',
+          periodo,
+          estado: 'pendiente',
+          score_comp: null, score_okr: null, score_final: null,
+          comp_scores: {}, fortalezas: '', mejoras: '', comentario: '', fecha_envio: null
+        };
+        STATE.evaluaciones.push(evalColabJefe);
+        apiCall('saveEval', evalColabJefe);
+        creadas++;
+      }
+    }
+
+    // 4. Evaluaciones de pares (para cada par asignado al colaborador)
+    const paresDelColab = STATE.pares.filter(p =>
+      p.evaluado_id === colab.id && p.periodo === periodo
+    );
+    paresDelColab.forEach(par => {
+      const yaPar = STATE.evaluaciones.find(e =>
+        e.evaluado_id === colab.id && e.evaluador_id === par.evaluador_id && e.tipo === 'par' && e.periodo === periodo
+      );
+      if (!yaPar) {
+        const evalPar = {
+          id: 'E' + Date.now() + Math.floor(Math.random()*9999) + 'p',
+          evaluado_id: colab.id,
+          evaluador_id: par.evaluador_id,
+          tipo: 'par',
+          periodo,
+          estado: 'pendiente',
+          score_comp: null, score_okr: null, score_final: null,
+          comp_scores: {}, fortalezas: '', mejoras: '', comentario: '', fecha_envio: null
+        };
+        STATE.evaluaciones.push(evalPar);
+        apiCall('saveEval', evalPar);
+        creadas++;
+      }
+    });
   });
 
   previewAsignaciones();
