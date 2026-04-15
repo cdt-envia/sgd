@@ -1414,6 +1414,20 @@ function getCategory(score) {
   return                   { label: 'No Cumple',       color: '#e53935' };
 }
 function getUserById(id) { return STATE.users.find(u => u.id === id); }
+
+// Regla central: se evalúa cualquier usuario activo que tenga jefe_id asignado,
+// sin importar su rol (un jefe con jefe_id también es evaluado por su propio jefe)
+function isEvaluable(user) {
+  return user && user.jefe_id && String(user.activo) !== 'false';
+}
+// Devuelve todos los usuarios evaluables del sistema
+function getAllEvaluables() {
+  return STATE.users.filter(isEvaluable);
+}
+// Devuelve los evaluables que reportan a un jefe específico
+function getEvaluablesByJefe(jefeId) {
+  return STATE.users.filter(u => isEvaluable(u) && u.jefe_id === jefeId);
+}
 function getCompsByRole(cargo) {
   return STATE.competencias.filter(c => c.cargos === 'Todos' || c.cargos.includes(cargo));
 }
@@ -1691,8 +1705,8 @@ function renderDashboard() {
   if (rol === 'admin' || rol === 'jefe') {
     // Solo colaboradores activos directos del jefe (o todos si admin)
     const equipo = rol === 'admin'
-      ? STATE.users.filter(x => x.rol === 'colaborador' && String(x.activo) !== 'false')
-      : STATE.users.filter(x => x.jefe_id === u.id && x.rol === 'colaborador' && String(x.activo) !== 'false');
+      ? getAllEvaluables()
+      : getEvaluablesByJefe(u.id);
     const teamIds = equipo.map(x => x.id);
     const evs = STATE.evaluaciones.filter(e => teamIds.includes(e.evaluado_id) && e.tipo === 'jefe');
     const done = evs.filter(e => e.estado === 'enviado').length;
@@ -1787,7 +1801,7 @@ function renderTeam() {
   const u = STATE.user;
   const team = u.rol === 'admin'
     ? STATE.users.filter(x => x.id !== u.id && String(x.activo) !== 'false')
-    : STATE.users.filter(x => x.jefe_id === u.id && x.rol === 'colaborador' && String(x.activo) !== 'false');
+    : getEvaluablesByJefe(u.id);
   const tbody = document.getElementById('teamTableBody');
   if (!team.length) { tbody.innerHTML = '<tr><td colspan="6" class="empty-state"><p>No tienes colaboradores asignados.</p></td></tr>'; return; }
 
@@ -3275,7 +3289,7 @@ async function saveCheckin(objId, krId) {
 function renderPares() {
   const u = STATE.user;
   const cont = document.getElementById('paresContent');
-  const team = STATE.users.filter(x => x.jefe_id === u.id && x.rol === 'colaborador');
+  const team = getEvaluablesByJefe(u.id);
 
   let html = `<div class="card">
     <div class="card-header">
@@ -3340,7 +3354,7 @@ function updateParLabel(evaluadoId, evaluadorId, checked) {
 
 async function saveParesTodos() {
   const u = STATE.user;
-  const team = STATE.users.filter(x => x.jefe_id === u.id && x.rol === 'colaborador');
+  const team = getEvaluablesByJefe(u.id);
   const periodo = STATE.periodo.nombre || '2025';
   const nuevasPares = [];
 
@@ -3499,8 +3513,8 @@ function renderNineBox() {
 
   // Determinar qué colaboradores mostrar
   const colabs = u.rol === 'admin'
-    ? STATE.users.filter(x => x.rol === 'colaborador')
-    : STATE.users.filter(x => x.jefe_id === u.id && x.rol === 'colaborador');
+    ? getAllEvaluables()
+    : getEvaluablesByJefe(u.id);
 
   if (!colabs.length) {
     cont.innerHTML = `<div class="card"><div class="empty-state" style="padding:32px"><p>No hay colaboradores para mostrar en el Nine Box.</p></div></div>`;
@@ -4318,7 +4332,7 @@ async function savePeriod() {
 
 function previewAsignaciones() {
   const periodo = document.getElementById('asigPeriodo').value.trim() || '2025';
-  const colaboradores = STATE.users.filter(u => u.rol === 'colaborador' && String(u.activo) !== 'false');
+  const colaboradores = getAllEvaluables();
   const wrap = document.getElementById('asignacionesTableWrap');
 
   const rows = colaboradores.map(colab => {
@@ -4379,7 +4393,7 @@ function previewAsignaciones() {
 
 async function ejecutarAsignaciones() {
   const periodo = document.getElementById('asigPeriodo').value.trim() || '2025';
-  const colaboradores = STATE.users.filter(u => u.rol === 'colaborador' && String(u.activo) !== 'false');
+  const colaboradores = getAllEvaluables();
 
   // Determine grado from active ciclo or default 360
   const cicloActivo = STATE.ciclos.find(c => c.estado === 'open');
@@ -4390,7 +4404,7 @@ async function ejecutarAsignaciones() {
     showToast(`⚠️ ${sinJefe.map(c=>c.nombre).join(', ')} no tienen jefe asignado`, 'error');
   }
 
-  const conJefe = colaboradores.filter(c => c.jefe_id);
+  const conJefe = colaboradores; // getAllEvaluables() ya garantiza que tienen jefe_id
   if (!conJefe.length) {
     showToast('No hay colaboradores con jefe asignado', 'error');
     return;
@@ -4640,7 +4654,7 @@ function renderRevisionesEquipo() {
   const cicloActivo = STATE.ciclos.find(c => c.estado === 'open');
   if (!cicloActivo || cicloActivo.tipo !== 'revision') return;
   const u = STATE.user;
-  const team = STATE.users.filter(x => x.jefe_id === u.id && x.rol === 'colaborador');
+  const team = getEvaluablesByJefe(u.id);
   const cont = document.getElementById('revisionEquipoSection');
   if (!cont) return;
   cont.style.display = 'block';
@@ -4743,7 +4757,7 @@ async function saveRevisionModal(id, colaboradorId, cicloId) {
 function renderGradosPorCargo() {
   const cont = document.getElementById('gradosPorCargo');
   if (!cont) return;
-  const cargos = [...new Set(STATE.users.filter(u => u.rol === 'colaborador').map(u => u.cargo).filter(Boolean))].sort();
+  const cargos = [...new Set(getAllEvaluables().map(u => u.cargo).filter(Boolean))].sort();
   // Set global select from active ciclo
   const cicloActivo = STATE.ciclos.find(c => c.estado === 'open');
   const gradoGlobalEl = document.getElementById('asigGradoGlobal');
@@ -4783,7 +4797,7 @@ function renderBitacora() {
   if (u.rol === 'jefe' || u.rol === 'admin') {
     const team = u.rol === 'admin'
       ? STATE.users.filter(x => x.rol === 'colaborador')
-      : STATE.users.filter(x => x.jefe_id === u.id && x.rol === 'colaborador');
+      : getEvaluablesByJefe(u.id);
 
     const filterColab = document.getElementById('bitacoraFilterColab')?.value || '';
     const filterTipo  = document.getElementById('bitacoraFilterTipo')?.value  || '';
@@ -4865,8 +4879,8 @@ function renderBitacora() {
 function openBitacoraModal(colabId) {
   const u = STATE.user;
   const team = u.rol === 'admin'
-    ? STATE.users.filter(x => x.rol === 'colaborador')
-    : STATE.users.filter(x => x.jefe_id === u.id && x.rol === 'colaborador');
+    ? getAllEvaluables()
+    : getEvaluablesByJefe(u.id);
   const newId = 'BIT' + Date.now();
 
   openModal('Nueva entrada en bitácora', `
@@ -4991,16 +5005,16 @@ const FRASES_LOGIN = [
   // 1. Personas en desarrollo (PDI activo o pendiente)
   const enDesarrollo = new Set(
     DEMO_PDI.filter(p => ['en_progreso','pendiente'].includes(p.estado)).map(p => p.colaborador_id)
-  ).size || DEMO_USERS.filter(u => u.rol === 'colaborador').length;
+  ).size || DEMO_USERS.filter(u => u.jefe_id && u.activo).length;
 
   // 2. Evaluaciones completadas (todas las fuentes)
   const evalCompletadas = DEMO_EVALUACIONES.filter(e => e.estado === 'enviado').length
-    || DEMO_USERS.filter(u => u.rol === 'colaborador').length;
+    || DEMO_USERS.filter(u => u.jefe_id && u.activo).length;
 
   // 3. Reconocimientos entregados (entradas de bitácora tipo reconocimiento)
   //    En demo usamos: evaluaciones enviadas con fortalezas + colaboradores activos como proxy positivo
   const reconocimientos = DEMO_EVALUACIONES.filter(e => e.estado === 'enviado' && e.fortalezas).length
-    || DEMO_USERS.filter(u => u.rol === 'colaborador' && u.activo).length;
+    || DEMO_USERS.filter(u => u.jefe_id && u.activo).length;
 
   // 4. Insignias otorgadas (criterios cumplidos por todos los colaboradores en demo)
   const colabs = DEMO_USERS.filter(u => u.rol === 'colaborador');
