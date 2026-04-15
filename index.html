@@ -427,48 +427,60 @@
     .okr-kr-row { grid-template-columns: 1fr; }
     .okr-summary-bar { grid-template-columns: 1fr 1fr; }
   }
-  /* ─── NINE BOX ─── */
-  .ninebox-grid {
-    display: grid; grid-template-columns: 40px repeat(3,1fr); grid-template-rows: repeat(3,1fr) 40px;
-    gap: 4px; height: 520px; width: 100%;
-  }
-  .ninebox-cell {
-    border-radius: 8px; padding: 10px; cursor: default;
-    display: flex; flex-direction: column; gap: 4px; position: relative; overflow: hidden;
-  }
-  .ninebox-cell-label {
-    font-size: .72rem; font-weight: 700; color: white; line-height: 1.2; text-align: center;
-  }
-  .ninebox-avatars { display: flex; flex-wrap: wrap; gap: 4px; justify-content: center; margin-top: 4px; }
-  .ninebox-avatar {
-    width: 32px; height: 32px; border-radius: 50%; background: rgba(255,255,255,.25);
-    display: flex; align-items: center; justify-content: center;
-    font-size: .7rem; font-weight: 700; color: white; cursor: pointer;
-    border: 2px solid rgba(255,255,255,.5); transition: transform .15s;
-    position: relative;
-  }
-  .ninebox-avatar:hover { transform: scale(1.2); z-index: 2; }
-  .ninebox-avatar[title]:hover::after {
-    content: attr(title); position: absolute; bottom: 110%; left: 50%; transform: translateX(-50%);
-    background: rgba(0,0,0,.8); color: white; padding: 3px 8px; border-radius: 4px;
-    font-size: .7rem; white-space: nowrap; pointer-events: none;
-  }
-  .ninebox-axis-y {
+  /* ─── NINE BOX (rediseño) ─── */
+  .nb-wrap { display: flex; flex-direction: column; gap: 24px; }
+  .nb-matrix-wrap { display: grid; grid-template-columns: 28px 1fr; grid-template-rows: 1fr 32px; gap: 6px; }
+  .nb-axis-y {
     writing-mode: vertical-rl; transform: rotate(180deg);
-    font-size: .75rem; font-weight: 700; color: var(--gray); text-align: center;
+    font-size: .72rem; font-weight: 800; color: #888; letter-spacing: .1em;
+    text-align: center; text-transform: uppercase; grid-row: 1;
+  }
+  .nb-grid {
+    display: grid; grid-template-columns: repeat(3,1fr); grid-template-rows: repeat(3,1fr);
+    gap: 6px; min-height: 420px;
+  }
+  .nb-cell {
+    border-radius: 12px; padding: 16px 14px;
+    display: flex; flex-direction: column; align-items: center; justify-content: space-between;
+    cursor: default; transition: transform .15s, box-shadow .15s; position: relative;
+  }
+  .nb-cell:hover { transform: translateY(-2px); box-shadow: 0 6px 20px rgba(0,0,0,.18); }
+  .nb-cell-name {
+    font-size: .78rem; font-weight: 800; color: white; text-align: center;
+    letter-spacing: .02em; text-transform: uppercase; line-height: 1.2;
+  }
+  .nb-cell-avatars { display: flex; flex-wrap: wrap; gap: 5px; justify-content: center; margin: 8px 0; }
+  .nb-avatar {
+    width: 36px; height: 36px; border-radius: 50%;
+    background: rgba(255,255,255,.28); border: 2px solid rgba(255,255,255,.6);
     display: flex; align-items: center; justify-content: center;
+    font-size: .75rem; font-weight: 800; color: white; cursor: pointer;
+    transition: transform .15s, background .15s; position: relative;
   }
-  .ninebox-axis-x {
-    font-size: .75rem; font-weight: 700; color: var(--gray); text-align: center;
-    display: flex; align-items: center; justify-content: center;
+  .nb-avatar:hover { transform: scale(1.25); background: rgba(255,255,255,.45); z-index: 3; }
+  .nb-avatar:hover::after {
+    content: attr(data-tip); position: absolute; bottom: 110%; left: 50%; transform: translateX(-50%);
+    background: rgba(0,0,0,.85); color: white; padding: 4px 10px; border-radius: 6px;
+    font-size: .7rem; white-space: nowrap; pointer-events: none; z-index: 10;
   }
-  .ninebox-legend {
-    display: grid; grid-template-columns: repeat(auto-fill, minmax(200px, 1fr)); gap: 8px; margin-top: 16px;
+  .nb-cell-count {
+    font-size: .68rem; color: rgba(255,255,255,.65); text-align: center; font-weight: 600;
   }
-  .ninebox-legend-item {
-    display: flex; align-items: center; gap: 8px; font-size: .82rem; color: var(--gray);
+  .nb-axis-x-row {
+    display: grid; grid-template-columns: repeat(3,1fr); gap: 6px; grid-column: 2;
   }
-  .ninebox-legend-dot { width: 14px; height: 14px; border-radius: 4px; flex-shrink: 0; }
+  .nb-axis-x {
+    font-size: .7rem; font-weight: 700; color: #888; text-align: center;
+    text-transform: uppercase; letter-spacing: .05em; padding-top: 4px;
+  }
+  .nb-chips { display: flex; flex-wrap: wrap; gap: 8px; }
+  .nb-chip {
+    display: flex; align-items: center; gap: 6px; padding: 5px 12px;
+    border-radius: 20px; font-size: .78rem; cursor: help; border: 1px solid transparent;
+    transition: transform .1s;
+  }
+  .nb-chip:hover { transform: scale(1.03); }
+  .nb-chip-dot { width: 10px; height: 10px; border-radius: 50%; flex-shrink: 0; }
 
   .login-metric-card {
     background: rgba(255,255,255,.12);
@@ -3516,50 +3528,74 @@ function renderNineBox() {
   ];
 
   let html = `<div class="card">
-    <div class="card-header">
+    <div class="card-header" style="margin-bottom:20px">
       <div>
-        <div class="card-title">Matriz Nine Box — Competencias vs. Desempeño OKR</div>
-        <div class="card-subtitle">Eje X (→) = Desempeño: cumplimiento OKR (0-4) &nbsp;|&nbsp; Eje Y (↑) = Potencial: score de competencias 360° (0-4)</div>
+        <div class="card-title">Matriz Nine Box</div>
+        <div class="card-subtitle">
+          <span style="margin-right:16px">↑ Eje Y = Potencial (score de competencias 360°)</span>
+          <span>→ Eje X = Desempeño (cumplimiento OKR)</span>
+        </div>
       </div>
     </div>
-    <div style="display:flex;gap:20px;flex-wrap:wrap;align-items:flex-start">
-      <div style="flex:1;min-width:400px">
-        <div class="ninebox-grid">
-          <!-- Eje Y label -->
-          <div class="ninebox-axis-y" style="grid-column:1;grid-row:1/4">POTENCIAL ↑</div>
-          <!-- 9 celdas -->
-          ${cells3x3.map((row, rowIdx) =>
-            row.map((cell, colIdx) => {
-              const matching = data.filter(d => d.cell === cell);
-              const avatars = matching.map(d =>
-                `<div class="ninebox-avatar" title="${d.colab.nombre} — Comp: ${d.scoreComp.toFixed(1)} | OKR: ${(d.scoreOKR*25).toFixed(0)}%"
-                  onclick="showNineBoxDetail('${d.colab.id}')" style="background:rgba(255,255,255,.3)">
-                  ${d.colab.nombre.charAt(0)}
-                </div>`
-              ).join('');
-              return `<div class="ninebox-cell" style="background:${cell.color};grid-column:${colIdx+2};grid-row:${rowIdx+1}">
-                <div class="ninebox-cell-label">${cell.label}</div>
-                <div class="ninebox-avatars">${avatars}</div>
-                <div style="font-size:.65rem;color:rgba(255,255,255,.7);text-align:center;margin-top:auto">${matching.length} persona${matching.length!==1?'s':''}</div>
-              </div>`;
-            }).join('')
-          ).join('')}
-          <!-- Eje X label -->
-          <div style="grid-column:1"></div>
-          ${['OKR Bajo (<1.5)','OKR Medio (1.5-2.5)','OKR Alto (>2.5)'].map((lbl,i) =>
-            `<div class="ninebox-axis-x" style="grid-column:${i+2};grid-row:4">${lbl}</div>`
-          ).join('')}
+
+    <div class="nb-wrap">
+      <!-- MATRIZ FULL WIDTH -->
+      <div class="nb-matrix-wrap">
+        <!-- Etiqueta eje Y -->
+        <div class="nb-axis-y">Potencial ↑</div>
+
+        <!-- Grid 3×3 -->
+        <div>
+          <!-- Etiquetas de filas (niveles de potencial) -->
+          <div style="display:grid;grid-template-columns:56px 1fr;gap:6px;margin-bottom:6px">
+            <div></div>
+            <div style="display:grid;grid-template-columns:repeat(3,1fr);gap:6px">
+              ${['OKR Bajo  < 1.5','OKR Medio  1.5 – 2.5','OKR Alto  > 2.5'].map(l =>
+                `<div style="text-align:center;font-size:.68rem;font-weight:700;color:#888;letter-spacing:.06em;text-transform:uppercase;padding-bottom:2px">${l}</div>`
+              ).join('')}
+            </div>
+          </div>
+          ${cells3x3.map((row, rowIdx) => {
+            const potLabels = ['Alto  > 2.5','Medio  1.5–2.5','Bajo  < 1.5'];
+            return `<div style="display:grid;grid-template-columns:56px 1fr;gap:6px;margin-bottom:6px">
+              <div style="display:flex;align-items:center;justify-content:flex-end;padding-right:8px">
+                <span style="font-size:.62rem;font-weight:700;color:#888;text-align:right;letter-spacing:.04em;text-transform:uppercase;line-height:1.3">${potLabels[rowIdx]}</span>
+              </div>
+              <div style="display:grid;grid-template-columns:repeat(3,1fr);gap:6px">
+                ${row.map(cell => {
+                  const matching = data.filter(d => d.cell === cell);
+                  const avatars = matching.map(d =>
+                    `<div class="nb-avatar" data-tip="${d.colab.nombre} · Comp ${d.scoreComp.toFixed(1)} · OKR ${(d.scoreOKR*25).toFixed(0)}%"
+                      onclick="showNineBoxDetail('${d.colab.id}')">${d.colab.nombre.charAt(0)}</div>`
+                  ).join('');
+                  return `<div class="nb-cell" style="background:${cell.color};min-height:110px">
+                    <div class="nb-cell-name">${cell.label}</div>
+                    <div class="nb-cell-avatars">${avatars || ''}</div>
+                    <div class="nb-cell-count">${matching.length ? matching.length+' persona'+(matching.length!==1?'s':'') : '—'}</div>
+                  </div>`;
+                }).join('')}
+              </div>
+            </div>`;
+          }).join('')}
+          <!-- Etiqueta eje X -->
+          <div style="display:grid;grid-template-columns:56px 1fr;gap:6px;margin-top:4px">
+            <div></div>
+            <div style="text-align:center;font-size:.68rem;font-weight:700;color:#888;letter-spacing:.1em;text-transform:uppercase">Desempeño →</div>
+          </div>
         </div>
-        <div style="text-align:center;font-size:.75rem;color:#888;margin-top:4px">DESEMPEÑO →</div>
       </div>
-      <div style="min-width:240px">
-        <div style="font-size:.82rem;font-weight:700;color:var(--gray);margin-bottom:10px">Leyenda</div>
-        <div class="ninebox-legend">
-          ${NINEBOX_CONFIG.map(c => `
-            <div class="ninebox-legend-item">
-              <div class="ninebox-legend-dot" style="background:${c.color}"></div>
-              <div><strong>${c.label}</strong><br><span style="font-size:.75rem;color:#888">${c.desc}</span></div>
-            </div>`).join('')}
+
+      <!-- LEYENDA COMPACTA COMO CHIPS -->
+      <div>
+        <div style="font-size:.75rem;font-weight:700;color:#aaa;text-transform:uppercase;letter-spacing:.08em;margin-bottom:10px">Leyenda</div>
+        <div class="nb-chips">
+          ${NINEBOX_CONFIG.map(c =>
+            `<div class="nb-chip" style="background:${c.color}18;border-color:${c.color}44" title="${c.desc}">
+              <div class="nb-chip-dot" style="background:${c.color}"></div>
+              <span style="font-size:.78rem;font-weight:700;color:${c.color}">${c.label}</span>
+              <span style="font-size:.73rem;color:#888;max-width:200px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap">${c.desc}</span>
+            </div>`
+          ).join('')}
         </div>
       </div>
     </div>`;
