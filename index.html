@@ -4208,14 +4208,17 @@ async function savePDIModal(id, origen) {
 function renderAdmin() {
   renderUsersTable();
   renderCompsTable();
-  document.getElementById('periodName').value = STATE.periodo.nombre||'';
-  document.getElementById('periodStatus').value = STATE.periodo.estado||'open';
-  document.getElementById('periodStart').value = STATE.periodo.inicio||'';
-  document.getElementById('periodEnd').value = STATE.periodo.fin||'';
-  document.getElementById('pesoJefe').value  = STATE.periodo.peso_jefe  || 40;
-  document.getElementById('pesoAuto').value  = STATE.periodo.peso_auto  || 20;
-  document.getElementById('pesoPares').value = STATE.periodo.peso_pares || 25;
-  document.getElementById('pesoOKR').value   = STATE.periodo.peso_okr   || 15;
+  // Pesos del ciclo activo (o STATE.periodo como fallback)
+  const cicloActivo = STATE.ciclos.find(c => c.estado === 'open');
+  const pesos = cicloActivo || STATE.periodo;
+  const pesoJefeEl  = document.getElementById('pesoJefe');
+  const pesoAutoEl  = document.getElementById('pesoAuto');
+  const pesoParsEl  = document.getElementById('pesoPares');
+  const pesoOKREl   = document.getElementById('pesoOKR');
+  if (pesoJefeEl)  pesoJefeEl.value  = pesos?.peso_jefe  || 40;
+  if (pesoAutoEl)  pesoAutoEl.value  = pesos?.peso_auto  || 20;
+  if (pesoParsEl)  pesoParsEl.value  = pesos?.peso_pares || 25;
+  if (pesoOKREl)   pesoOKREl.value   = pesos?.peso_okr   || 15;
   renderCiclos();
   setTimeout(renderAdminCharts, 150);
 }
@@ -4593,28 +4596,29 @@ function renderAdminOKRSummary() {
 }
 
 async function savePeriod() {
-  const data = {
-    nombre: document.getElementById('periodName').value,
-    estado: document.getElementById('periodStatus').value,
-    inicio: document.getElementById('periodStart').value,
-    fin: document.getElementById('periodEnd').value,
-    peso_jefe:  parseInt(document.getElementById('pesoJefe').value)  || 40,
-    peso_auto:  parseInt(document.getElementById('pesoAuto').value)  || 20,
-    peso_pares: parseInt(document.getElementById('pesoPares').value) || 25,
-    peso_okr:   parseInt(document.getElementById('pesoOKR').value)   || 15,
-  };
-  const suma = data.peso_jefe + data.peso_auto + data.peso_pares + data.peso_okr;
-  if (suma !== 100) {
-    showToast(`Los pesos deben sumar 100% (actualmente: ${suma}%)`, 'error');
-    document.getElementById('pesosTotal').textContent = `Total: ${suma}% ⚠️`;
-    document.getElementById('pesosTotal').style.color = '#e53935';
+  const cicloActivo = STATE.ciclos.find(c => c.estado === 'open');
+  if (!cicloActivo) {
+    showToast('No hay ningún ciclo activo para guardar los pesos.', 'error');
     return;
   }
-  document.getElementById('pesosTotal').textContent = 'Total: 100% ✓';
-  document.getElementById('pesosTotal').style.color = '#43a047';
-  Object.assign(STATE.periodo, data);
-  await apiCall('savePeriodo', data);
-  showToast('Periodo guardado exitosamente', 'success');
+  const peso_jefe  = parseInt(document.getElementById('pesoJefe')?.value)  || 40;
+  const peso_auto  = parseInt(document.getElementById('pesoAuto')?.value)  || 20;
+  const peso_pares = parseInt(document.getElementById('pesoPares')?.value) || 25;
+  const peso_okr   = parseInt(document.getElementById('pesoOKR')?.value)   || 15;
+  const suma = peso_jefe + peso_auto + peso_pares + peso_okr;
+  const totalEl = document.getElementById('pesosTotal');
+  if (suma !== 100) {
+    showToast(`Los pesos deben sumar 100% (actualmente: ${suma}%)`, 'error');
+    if (totalEl) { totalEl.textContent = `Total: ${suma}% ⚠️`; totalEl.style.color = '#e53935'; }
+    return;
+  }
+  if (totalEl) { totalEl.textContent = 'Total: 100% ✓'; totalEl.style.color = '#43a047'; }
+
+  // Save pesos into the active ciclo
+  Object.assign(cicloActivo, { peso_jefe, peso_auto, peso_pares, peso_okr });
+  Object.assign(STATE.periodo, { peso_jefe, peso_auto, peso_pares, peso_okr });
+  await apiCall('saveCiclo', cicloActivo);
+  showToast(`Pesos guardados para ciclo ${cicloActivo.nombre}`, 'success');
 }
 
 function previewAsignaciones() {
@@ -4883,6 +4887,9 @@ function openCicloModal(cicloId) {
           90° = jefe evalúa<br>180° + autoevaluación<br>270° + colaborador evalúa al jefe<br>360° + evaluación de pares
         </div>
       </div>
+    </div>
+    <div class="form-row">
+      <div class="form-field"><label>Fecha inicio</label><input type="date" id="cicloInicio" value="${c?.inicio||''}"></div>
       <div class="form-field"><label>Fecha fin</label><input type="date" id="cicloFin" value="${c?.fin||''}"></div>
     </div>
     <div class="form-field">
