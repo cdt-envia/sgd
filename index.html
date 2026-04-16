@@ -537,7 +537,7 @@
     </div>
     <button class="btn-login" onclick="handleLogin()">Ingresar al sistema</button>
     <p class="login-error" id="loginError">Usuario o contraseña incorrectos</p>
-    <div style="text-align:center;margin-top:16px;font-size:.7rem;color:#bbb;font-family:monospace">v1.26</div>
+    <div style="text-align:center;margin-top:16px;font-size:.7rem;color:#bbb;font-family:monospace">v1.27</div>
   </div>
 
   <!-- Indicadores de impacto -->
@@ -583,7 +583,7 @@
         <span class="user-role-tag" id="userRoleTag">ROL</span>
       </div>
       <button class="btn-logout" onclick="handleLogout()">Salir</button>
-      <span style="font-size:.68rem;color:#ccc;font-family:monospace;opacity:.6">v1.26</span>
+      <span style="font-size:.68rem;color:#ccc;font-family:monospace;opacity:.6">v1.27</span>
     </div>
   </div>
 
@@ -3487,12 +3487,14 @@ function renderPares() {
   const u = STATE.user;
   const cont = document.getElementById('paresContent');
   const team = getEvaluablesByJefe(u.id);
+  const cicloActivo = STATE.ciclos.find(c => c.estado === 'open');
+  const periodo = cicloActivo?.nombre || STATE.periodo.nombre || '';
 
   let html = `<div class="card">
     <div class="card-header">
       <div>
         <div class="card-title">Evaluadores pares por colaborador</div>
-        <div class="card-subtitle">Selecciona 2-4 pares para evaluar a cada persona de tu equipo</div>
+        <div class="card-subtitle">Ciclo activo: <strong>${periodo || '⚠️ Sin ciclo activo'}</strong> — Selecciona 2-4 pares para cada persona</div>
       </div>
       <button class="btn btn-primary" onclick="saveParesTodos()">💾 Guardar asignaciones</button>
     </div>
@@ -3505,9 +3507,9 @@ function renderPares() {
     html += `<div class="empty-state" style="padding:24px"><p>No tienes colaboradores asignados.</p></div>`;
   } else {
     team.forEach(colab => {
-      // Pares ya asignados
+      // Pares ya asignados para el ciclo activo
       const paresAsignados = STATE.pares
-        .filter(p => p.evaluado_id === colab.id)
+        .filter(p => p.evaluado_id === colab.id && (!periodo || p.periodo === periodo))
         .map(p => p.evaluador_id);
 
       // Posibles pares: todos los colaboradores del equipo excepto el propio
@@ -3555,6 +3557,11 @@ async function saveParesTodos() {
   // Usar siempre el nombre exacto del ciclo activo
   const cicloActivo = STATE.ciclos.find(c => c.estado === 'open');
   const periodo = cicloActivo?.nombre || STATE.periodo.nombre || '';
+
+  if (!periodo) {
+    showToast('⚠️ No hay ningún ciclo activo. Ve a Admin → Periodo y activa un ciclo antes de asignar pares.', 'error');
+    return;
+  }
   const nuevasPares = [];
 
   team.forEach(colab => {
