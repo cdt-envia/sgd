@@ -1082,7 +1082,7 @@
 // ═══════════════════════════════════════════
 //  CONFIG — Reemplaza con tu URL de Google Apps Script
 // ═══════════════════════════════════════════
-const SCRIPT_URL = 'https://script.google.com/macros/s/AKfycbxN48BPG2gwLvoSH43m2Un_ASiI1UFJ1PrlEe6tx1Fw6mpd4VymxS9oLmd9RhzmJm4b/exec';
+const SCRIPT_URL = 'https://script.google.com/macros/s/AKfycbxOfmSi1d2AxGP4dAIaDY2HC99G3Vl1vD5nhJve3mJLoui8g6Bbi-D15Jws1UVj6zZq/exec';
 
 // ═══════════════════════════════════════════
 //  STATE
@@ -2060,6 +2060,9 @@ function openEvalForm(evaluadoId) {
     });
   }
   renderCompetenciasForm(evaluado.cargo, savedScores, readOnly);
+  // Asegurar que el contenedor OKR esté visible (puede haber quedado oculto de eval colab→jefe)
+  const okrContainerJefe = document.getElementById('evalOKRContainer');
+  if (okrContainerJefe) okrContainerJefe.style.display = '';
   renderEvalOKRSection(evaluadoId, evalObj.score_okr || 0, readOnly);
 
   document.getElementById('evalFortalezas').value = evalObj.fortalezas || '';
@@ -2665,7 +2668,11 @@ function openEvalJefeFormFull(readOnly) {
   }
 
   renderCompetenciasForm(jefe.cargo, scores, readOnly);
-  renderEvalOKRSection(jefe.id, evalCJ.score_okr || 0, true);
+  // OKR no aplica cuando el colaborador evalúa al jefe — ocultar sección
+  const okrContainer = document.getElementById('evalOKRContainer');
+  const okrSection = okrContainer?.closest('.eval-section') || okrContainer?.parentElement;
+  if (okrContainer) okrContainer.style.display = 'none';
+  if (okrSection && okrSection.querySelector('h3,label,div.eval-section-title')) okrSection.style.display = 'none';
 
   document.getElementById('evalFortalezas').value = evalCJ.fortalezas || '';
   document.getElementById('evalMejoras').value = evalCJ.mejoras || '';
@@ -4964,8 +4971,8 @@ function renderCiclos() {
     return `<tr>
       <td><strong>${c.nombre}</strong></td>
       <td><span class="status-pill" style="background:#e3f2fd;color:#1565c0;font-size:.75rem">${tipoLabel[c.tipo]||c.tipo}</span></td>
-      <td style="font-size:.82rem">${c.inicio||'—'}</td>
-      <td style="font-size:.82rem">${c.fin||'—'}</td>
+      <td style="font-size:.82rem">${c.inicio ? String(c.inicio).slice(0,10) : '—'}</td>
+      <td style="font-size:.82rem">${c.fin ? String(c.fin).slice(0,10) : '—'}</td>
       <td><span class="status-pill ${st.cls}">${st.label}</span></td>
       <td style="font-size:.75rem;color:#888">${c.tipo==='completo' ? pesos : '—'}</td>
       <td style="display:flex;gap:6px;flex-wrap:wrap">
@@ -5214,7 +5221,7 @@ function renderGradosPorCargo() {
           <strong style="color:var(--gray)">${cicloActivo.nombre}</strong>
         </div>
         <div style="font-size:.78rem;color:#888;margin-top:3px">
-          ${tipoLabel[cicloActivo.tipo]||cicloActivo.tipo} · Grado ${gradoLabel[cicloActivo.grado]||cicloActivo.grado}°
+          ${tipoLabel[cicloActivo.tipo]||cicloActivo.tipo} · Grado ${gradoLabel[String(cicloActivo.grado)]||cicloActivo.grado}°
           ${cicloActivo.inicio ? ` · ${cicloActivo.inicio} → ${cicloActivo.fin||'—'}` : ''}
         </div>`;
       infoEl.style.borderColor = '#2e7d32';
