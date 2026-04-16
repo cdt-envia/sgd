@@ -537,7 +537,7 @@
     </div>
     <button class="btn-login" onclick="handleLogin()">Ingresar al sistema</button>
     <p class="login-error" id="loginError">Usuario o contraseña incorrectos</p>
-    <div style="text-align:center;margin-top:16px;font-size:.7rem;color:#bbb;font-family:monospace">v1.28</div>
+    <div style="text-align:center;margin-top:16px;font-size:.7rem;color:#bbb;font-family:monospace">v1.30</div>
   </div>
 
   <!-- Indicadores de impacto -->
@@ -583,7 +583,7 @@
         <span class="user-role-tag" id="userRoleTag">ROL</span>
       </div>
       <button class="btn-logout" onclick="handleLogout()">Salir</button>
-      <span style="font-size:.68rem;color:#ccc;font-family:monospace;opacity:.6">v1.28</span>
+      <span style="font-size:.68rem;color:#ccc;font-family:monospace;opacity:.6">v1.30</span>
     </div>
   </div>
 
@@ -1082,7 +1082,7 @@
 // ═══════════════════════════════════════════
 //  CONFIG — Reemplaza con tu URL de Google Apps Script
 // ═══════════════════════════════════════════
-const SCRIPT_URL = 'https://script.google.com/macros/s/AKfycbzukGx7p4SFxanUUuV-NVjKUdaaJdvklrJU4kCd4b2wyEux6Y8-7LV-2lUgckIPHzf0/exec';
+const SCRIPT_URL = 'https://script.google.com/macros/s/AKfycbw-2Tkvkdqy08AsqH71G0m0Akjr-d-DDVbYkIzcOK8DWk42XsNyTR8zVwnshiZ1-kqB/exec';
 
 // ═══════════════════════════════════════════
 //  STATE
@@ -1554,6 +1554,14 @@ function demoBridge(action, data) {
       if (idx >= 0) Object.assign(DEMO_EVALUACIONES[idx], data);
       else DEMO_EVALUACIONES.push(data);
       return { ok:true };
+    }
+    case 'saveEvalBatch': {
+      (data.evals || []).forEach(e => {
+        const idx = DEMO_EVALUACIONES.findIndex(x => x.id === e.id);
+        if (idx >= 0) Object.assign(DEMO_EVALUACIONES[idx], e);
+        else DEMO_EVALUACIONES.push(e);
+      });
+      return { ok:true, created: (data.evals||[]).length };
     }
     case 'savePDI': {
       const pidx = DEMO_PDI.findIndex(p => p.id === data.id);
@@ -3623,10 +3631,10 @@ function renderEvaluarPares() {
       return `<tr>
         <td><strong>${evaluado.nombre}</strong></td>
         <td>${evaluado.cargo}</td>
-        <td><span class="status-pill ${stateCls[estado]}">${stateLabel[estado]}</span></td>
+        <td><span class="status-pill ${stateCls[estado] || 'pill-pending'}">${stateLabel[estado] || estado}</span></td>
         <td>
-          ${estado === 'pendiente'
-            ? `<span style="font-size:.8rem;color:#aaa">El admin debe generar la evaluación primero</span>`
+          ${!evalPar
+            ? `<span style="font-size:.8rem;color:#aaa">El administrador debe generar las evaluaciones del ciclo activo.</span>`
             : estado === 'enviado'
               ? `<button class="btn btn-secondary btn-sm" onclick="openParEvalForm('${evaluado.id}',true)">Ver</button>`
               : `<button class="btn btn-primary btn-sm" onclick="openParEvalForm('${evaluado.id}',false)">Evaluar</button>`
@@ -4892,15 +4900,11 @@ async function ejecutarAsignaciones() {
     }
   });
 
-  // Guardar secuencialmente para evitar race conditions en el Sheets
+  // Guardar todas las evaluaciones en UN SOLO batch — mucho más rápido para equipos grandes
   if (toSave.length > 0) {
     showToast(`⏳ Guardando ${toSave.length} evaluación(es)...`, '');
-    let saved = 0;
-    for (const eval_ of toSave) {
-      await apiCall('saveEval', eval_);
-      saved++;
-    }
-    console.log('[ASIG] Guardadas:', saved, 'evaluaciones');
+    await apiCall('saveEvalBatch', { evals: toSave });
+    console.log('[ASIG] Batch guardado:', toSave.length, 'evaluaciones');
   }
 
   previewAsignaciones();
