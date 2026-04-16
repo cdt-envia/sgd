@@ -537,7 +537,7 @@
     </div>
     <button class="btn-login" onclick="handleLogin()">Ingresar al sistema</button>
     <p class="login-error" id="loginError">Usuario o contraseña incorrectos</p>
-    <div style="text-align:center;margin-top:16px;font-size:.7rem;color:#bbb;font-family:monospace">v1.27</div>
+    <div style="text-align:center;margin-top:16px;font-size:.7rem;color:#bbb;font-family:monospace">v1.28</div>
   </div>
 
   <!-- Indicadores de impacto -->
@@ -583,7 +583,7 @@
         <span class="user-role-tag" id="userRoleTag">ROL</span>
       </div>
       <button class="btn-logout" onclick="handleLogout()">Salir</button>
-      <span style="font-size:.68rem;color:#ccc;font-family:monospace;opacity:.6">v1.27</span>
+      <span style="font-size:.68rem;color:#ccc;font-family:monospace;opacity:.6">v1.28</span>
     </div>
   </div>
 
@@ -4813,83 +4813,95 @@ async function ejecutarAsignaciones() {
   if (!confirm(`¿Confirmas generar evaluaciones ${gradoLabel[grado]||grado+'°'} para ${conJefe.length} colaborador(es) en el periodo "${periodo}"?\n\nSolo se crearán las que no existan aún.`)) return;
 
   let creadas = 0;
+  let counter = 0;
+  const makeId = (suffix='') => `E${Date.now()}${String(++counter).padStart(3,'0')}${suffix}`;
+  const toSave = [];
+
   console.log('[ASIG] Generando para', conJefe.length, 'evaluables. Periodo:', periodo, '| Grado:', grado);
+
   conJefe.forEach(colab => {
     const jefe = getUserById(colab.jefe_id);
     const gradoColab = getGradoForColab(colab);
     console.log('[ASIG] Procesando:', colab.nombre, '| jefe:', jefe?.nombre, '| grado:', gradoColab);
 
-    // 1. Evaluación jefe → colaborador
+    // 1. Evaluación jefe → colaborador (siempre)
     const yaJefe = STATE.evaluaciones.find(e =>
       e.evaluado_id === colab.id && e.tipo === 'jefe' && e.periodo === periodo
     );
     if (!yaJefe) {
       const nueva = {
-        id: 'E' + Date.now() + Math.floor(Math.random()*9999),
-        evaluado_id: colab.id,
-        evaluador_id: colab.jefe_id,
-        tipo: 'jefe',
-        periodo,
-        estado: 'pendiente',
+        id: makeId(), evaluado_id: colab.id, evaluador_id: colab.jefe_id,
+        tipo: 'jefe', periodo, estado: 'pendiente',
         score_comp: null, score_okr: null, score_final: null,
         comp_scores: {}, fortalezas: '', mejoras: '', comentario: '', fecha_envio: null
       };
-      STATE.evaluaciones.push(nueva);
-      apiCall('saveEval', nueva);
-      creadas++;
+      STATE.evaluaciones.push(nueva); toSave.push(nueva); creadas++;
     }
 
-    // 2. Autoevaluación — solo en grado 180°, 270°, 360°
+    // 2. Autoevaluación — grado 180°+
     if (gradoColab >= 180) {
       const yaAuto = STATE.evaluaciones.find(e =>
         e.evaluado_id === colab.id && e.tipo === 'auto' && e.periodo === periodo
       );
       if (!yaAuto) {
         const autoEval = {
-          id: 'E' + Date.now() + Math.floor(Math.random()*9999) + 'a',
-          evaluado_id: colab.id, evaluador_id: colab.id, tipo: 'auto', periodo,
-          estado: 'pendiente', score_comp: null, score_okr: null, score_final: null,
+          id: makeId('a'), evaluado_id: colab.id, evaluador_id: colab.id,
+          tipo: 'auto', periodo, estado: 'pendiente',
+          score_comp: null, score_okr: null, score_final: null,
           comp_scores: {}, fortalezas: '', mejoras: '', comentario: '', fecha_envio: null
         };
-        STATE.evaluaciones.push(autoEval); apiCall('saveEval', autoEval); creadas++;
+        STATE.evaluaciones.push(autoEval); toSave.push(autoEval); creadas++;
       }
     }
 
-    // 3. Colaborador evalúa al jefe — solo en grado 270°, 360°
+    // 3. Colaborador evalúa al jefe — grado 270°+
     if (gradoColab >= 270 && jefe) {
       const yaColabAJefe = STATE.evaluaciones.find(e =>
-        e.evaluado_id === jefe.id && e.evaluador_id === colab.id && e.tipo === 'colab_a_jefe' && e.periodo === periodo
+        e.evaluado_id === jefe.id && e.evaluador_id === colab.id &&
+        e.tipo === 'colab_a_jefe' && e.periodo === periodo
       );
       if (!yaColabAJefe) {
         const evalColabJefe = {
-          id: 'E' + Date.now() + Math.floor(Math.random()*9999) + 'cj',
-          evaluado_id: jefe.id, evaluador_id: colab.id, tipo: 'colab_a_jefe', periodo,
-          estado: 'pendiente', score_comp: null, score_okr: null, score_final: null,
+          id: makeId('cj'), evaluado_id: jefe.id, evaluador_id: colab.id,
+          tipo: 'colab_a_jefe', periodo, estado: 'pendiente',
+          score_comp: null, score_okr: null, score_final: null,
           comp_scores: {}, fortalezas: '', mejoras: '', comentario: '', fecha_envio: null
         };
-        STATE.evaluaciones.push(evalColabJefe); apiCall('saveEval', evalColabJefe); creadas++;
+        STATE.evaluaciones.push(evalColabJefe); toSave.push(evalColabJefe); creadas++;
       }
     }
 
-    // 4. Evaluación de pares — solo en grado 360°
+    // 4. Evaluación de pares — grado 360°
     if (gradoColab >= 360) {
       const paresDelColab = STATE.pares.filter(p => p.evaluado_id === colab.id && p.periodo === periodo);
       paresDelColab.forEach(par => {
         const yaPar = STATE.evaluaciones.find(e =>
-          e.evaluado_id === colab.id && e.evaluador_id === par.evaluador_id && e.tipo === 'par' && e.periodo === periodo
+          e.evaluado_id === colab.id && e.evaluador_id === par.evaluador_id &&
+          e.tipo === 'par' && e.periodo === periodo
         );
         if (!yaPar) {
           const evalPar = {
-            id: 'E' + Date.now() + Math.floor(Math.random()*9999) + 'p',
-            evaluado_id: colab.id, evaluador_id: par.evaluador_id, tipo: 'par', periodo,
-            estado: 'pendiente', score_comp: null, score_okr: null, score_final: null,
+            id: makeId('p'), evaluado_id: colab.id, evaluador_id: par.evaluador_id,
+            tipo: 'par', periodo, estado: 'pendiente',
+            score_comp: null, score_okr: null, score_final: null,
             comp_scores: {}, fortalezas: '', mejoras: '', comentario: '', fecha_envio: null
           };
-          STATE.evaluaciones.push(evalPar); apiCall('saveEval', evalPar); creadas++;
+          STATE.evaluaciones.push(evalPar); toSave.push(evalPar); creadas++;
         }
       });
     }
   });
+
+  // Guardar secuencialmente para evitar race conditions en el Sheets
+  if (toSave.length > 0) {
+    showToast(`⏳ Guardando ${toSave.length} evaluación(es)...`, '');
+    let saved = 0;
+    for (const eval_ of toSave) {
+      await apiCall('saveEval', eval_);
+      saved++;
+    }
+    console.log('[ASIG] Guardadas:', saved, 'evaluaciones');
+  }
 
   previewAsignaciones();
   if (creadas > 0) {
