@@ -883,9 +883,13 @@
               <div>Ejecuta este paso <strong>una sola vez al inicio de cada ciclo</strong>. Las evaluaciones ya existentes no se duplican. El grado por defecto viene del ciclo activo; puedes sobreescribirlo por área abajo.</div>
             </div>
             <div class="form-row" style="align-items:flex-end">
-              <div class="form-field" style="max-width:220px">
-                <label>Periodo de evaluación</label>
-                <input type="text" id="asigPeriodo" placeholder="Ej: Q1-2026" value="Q1-2026">
+              <div class="form-field" style="max-width:280px">
+                <label>Ciclo activo</label>
+                <div id="asigCicloInfo" style="background:var(--gray-light);border:1.5px solid var(--gray-mid);border-radius:8px;padding:9px 14px;font-size:.88rem;color:var(--gray)">
+                  <!-- populated by renderGradosPorCargo / switchAdminTab -->
+                </div>
+                <!-- Campo oculto que guarda el nombre exacto del ciclo activo -->
+                <input type="hidden" id="asigPeriodo">
               </div>
               <div class="form-field" style="max-width:240px">
                 <label>Grado global (ciclo activo)</label>
@@ -972,25 +976,75 @@
           </div>
         </div>
         <div class="admin-tab-content" id="adminTab-reportes">
-          <div class="card">
-            <div class="card-title" style="margin-bottom:16px">Reportes Consolidados — Evaluaciones</div>
+
+          <!-- FILTROS DE BÚSQUEDA -->
+          <div class="card" style="margin-bottom:0">
+            <div class="card-title" style="margin-bottom:14px">🔍 Filtros del reporte</div>
+            <div style="display:flex;gap:10px;flex-wrap:wrap;align-items:flex-end">
+              <div class="form-field" style="min-width:160px;margin:0">
+                <label style="font-size:.75rem">Regional</label>
+                <select id="filtroRegional" onchange="applyReportFilters()" style="padding:7px 10px;border:1.5px solid var(--gray-mid);border-radius:8px;font-family:Asap;font-size:.84rem;width:100%">
+                  <option value="">Todas las regionales</option>
+                </select>
+              </div>
+              <div class="form-field" style="min-width:160px;margin:0">
+                <label style="font-size:.75rem">Área</label>
+                <select id="filtroArea" onchange="applyReportFilters()" style="padding:7px 10px;border:1.5px solid var(--gray-mid);border-radius:8px;font-family:Asap;font-size:.84rem;width:100%">
+                  <option value="">Todas las áreas</option>
+                </select>
+              </div>
+              <div class="form-field" style="min-width:160px;margin:0">
+                <label style="font-size:.75rem">Cargo</label>
+                <select id="filtroCargo" onchange="applyReportFilters()" style="padding:7px 10px;border:1.5px solid var(--gray-mid);border-radius:8px;font-family:Asap;font-size:.84rem;width:100%">
+                  <option value="">Todos los cargos</option>
+                </select>
+              </div>
+              <div class="form-field" style="min-width:160px;margin:0">
+                <label style="font-size:.75rem">Categoría</label>
+                <select id="filtroCategoria" onchange="applyReportFilters()" style="padding:7px 10px;border:1.5px solid var(--gray-mid);border-radius:8px;font-family:Asap;font-size:.84rem;width:100%">
+                  <option value="">Todas las categorías</option>
+                  <option value="Excepcional">Excepcional</option>
+                  <option value="Cumple">Cumple</option>
+                  <option value="En Desarrollo">En Desarrollo</option>
+                  <option value="No Cumple">No Cumple</option>
+                </select>
+              </div>
+              <button class="btn btn-secondary btn-sm" onclick="clearReportFilters()" style="margin-bottom:0">✕ Limpiar</button>
+              <button class="btn btn-secondary btn-sm" onclick="exportReport()" style="margin-bottom:0">📥 Exportar CSV</button>
+            </div>
+            <!-- KPIs de contexto -->
+            <div id="reportKPIs" style="display:grid;grid-template-columns:repeat(auto-fill,minmax(140px,1fr));gap:10px;margin-top:16px"></div>
+          </div>
+
+          <!-- GRÁFICAS -->
+          <div class="card" style="margin-top:0">
             <div style="display:grid;grid-template-columns:1fr 1fr;gap:20px">
               <div>
+                <div style="font-size:.8rem;font-weight:700;color:#888;margin-bottom:8px;text-transform:uppercase">Distribución de resultados</div>
                 <div class="chart-container"><canvas id="chartAdminDist"></canvas></div>
               </div>
               <div>
+                <div style="font-size:.8rem;font-weight:700;color:#888;margin-bottom:8px;text-transform:uppercase">Promedio de competencias</div>
                 <div class="radar-container"><canvas id="chartAdminRadar"></canvas></div>
               </div>
             </div>
-            <hr class="divider">
+          </div>
+
+          <!-- TABLA MEGA-REPORTE -->
+          <div class="card" style="margin-top:0">
+            <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:12px">
+              <div class="card-title">Detalle por colaborador</div>
+              <span id="reportCount" style="font-size:.82rem;color:#888"></span>
+            </div>
             <div class="table-wrap">
               <table id="reportTable">
-                <thead><tr><th>Colaborador</th><th>Cargo</th><th>Jefe</th><th>Comp.</th><th>OKR</th><th>Final</th><th>Categoría</th></tr></thead>
+                <thead><tr>
+                  <th>Colaborador</th><th>Cargo</th><th>Área</th><th>Regional</th>
+                  <th>Jefe</th><th>Comp.</th><th>OKR</th><th>Final</th>
+                  <th>Categoría</th><th>Nine Box</th><th>PDI</th>
+                </tr></thead>
                 <tbody id="reportTableBody"></tbody>
               </table>
-            </div>
-            <div style="margin-top:14px;display:flex;gap:10px">
-              <button class="btn btn-secondary btn-sm" onclick="exportReport()">📥 Exportar CSV</button>
             </div>
           </div>
 
@@ -1026,7 +1080,7 @@
 // ═══════════════════════════════════════════
 //  CONFIG — Reemplaza con tu URL de Google Apps Script
 // ═══════════════════════════════════════════
-const SCRIPT_URL = 'https://script.google.com/macros/s/AKfycbx29WWhuQqqi3OwkPoM5I-oHnrqe9yVxRbqelwtJiplWY3hVjX-Wbwtu88rHJgqRDbJ/exec';
+const SCRIPT_URL = 'https://script.google.com/macros/s/AKfycbx-7pHUx0TaYCOlZ8kfhT36GiisTtV3BRGusXm3mQOcxFAaBrJOpVkypKdXZCUhIcFp/exec';
 
 // ═══════════════════════════════════════════
 //  STATE
@@ -1095,11 +1149,18 @@ const BEHAVIORS = {
 //  DEMO DATA (se reemplaza con llamadas al backend)
 // ═══════════════════════════════════════════
 const DEMO_USERS = [
-  { id:'U001', nombre:'Admin Sistema',  usuario:'admin',    contrasena:'admin123',   cargo:'Administrador',     rol:'admin',  jefe_id:'',    activo:true },
-  { id:'U002', nombre:'Carlos Gómez',   usuario:'cgomez',   contrasena:'jefe123',    cargo:'Gerente Comercial', rol:'jefe',   jefe_id:'',    activo:true },
-  { id:'U003', nombre:'Laura Martínez', usuario:'lmartinez',contrasena:'colab123',   cargo:'Ejecutiva Comercial',rol:'colaborador',jefe_id:'U002',activo:true },
-  { id:'U004', nombre:'Andrés Ruiz',    usuario:'aruiz',    contrasena:'colab456',   cargo:'Analista de Datos', rol:'colaborador',jefe_id:'U002',activo:true },
-  { id:'U005', nombre:'Sofía Herrera',  usuario:'sherrera', contrasena:'colab789',   cargo:'Coordinadora RRHH', rol:'colaborador',jefe_id:'U002',activo:true },
+  { id:'U001', nombre:'Admin Sistema',    usuario:'admin',     contrasena:'admin123',  cargo:'Administrador',            rol:'admin',        jefe_id:'',    activo:true, regional:'Nacional',   area:'Administración' },
+  { id:'U002', nombre:'Daniela Torres',  usuario:'dtorres',   contrasena:'jefe2026',  cargo:'Directora de Talento Humano',rol:'jefe',       jefe_id:'',    activo:true, regional:'Nacional',   area:'Talento Humano' },
+  { id:'U003', nombre:'Carlos Mendoza',  usuario:'cmendoza',  contrasena:'colab2026', cargo:'Gerente Comercial',         rol:'jefe',        jefe_id:'U002',activo:true, regional:'Bogotá',     area:'Comercial' },
+  { id:'U004', nombre:'Sebastián Mora',  usuario:'smora',     contrasena:'colab2026', cargo:'Analista de Selección',     rol:'colaborador', jefe_id:'U002',activo:true, regional:'Nacional',   area:'Talento Humano' },
+  { id:'U005', nombre:'Valentina Ríos',  usuario:'vrios',     contrasena:'colab2026', cargo:'Analista de Bienestar',     rol:'colaborador', jefe_id:'U002',activo:true, regional:'Nacional',   area:'Talento Humano' },
+  { id:'U006', nombre:'Andrés Castillo', usuario:'acastillo', contrasena:'colab2026', cargo:'Coordinador de Nómina',     rol:'colaborador', jefe_id:'U002',activo:true, regional:'Nacional',   area:'Talento Humano' },
+  { id:'U007', nombre:'Juliana Ospina',  usuario:'jospina',   contrasena:'colab2026', cargo:'Analista de Formación',     rol:'colaborador', jefe_id:'U002',activo:true, regional:'Nacional',   area:'Talento Humano' },
+  { id:'U008', nombre:'Felipe Guerrero', usuario:'fguerrero', contrasena:'colab2026', cargo:'Ejecutiva Comercial',       rol:'colaborador', jefe_id:'U003',activo:true, regional:'Bogotá',     area:'Comercial' },
+  { id:'U009', nombre:'Marcela Suárez',  usuario:'msuarez',   contrasena:'colab2026', cargo:'Ejecutiva Comercial',       rol:'colaborador', jefe_id:'U003',activo:true, regional:'Medellín',   area:'Comercial' },
+  { id:'U010', nombre:'Ricardo Herrera', usuario:'rherrera',  contrasena:'colab2026', cargo:'Analista de Datos',         rol:'colaborador', jefe_id:'U003',activo:true, regional:'Bogotá',     area:'Comercial' },
+  { id:'U011', nombre:'Laura Pineda',    usuario:'lpineda',   contrasena:'colab2026', cargo:'Ejecutiva Comercial',       rol:'colaborador', jefe_id:'U003',activo:true, regional:'Cali',       area:'Comercial' },
+  { id:'U012', nombre:'Diego Ramírez',   usuario:'dramirez',  contrasena:'colab2026', cargo:'Analista de Datos',         rol:'colaborador', jefe_id:'U003',activo:true, regional:'Medellín',   area:'Comercial' },
 ];
 
 const DEMO_COMPETENCIAS = [
@@ -1811,14 +1872,27 @@ function renderTeam() {
     const stateLabel = { pendiente:'Pendiente', borrador:'Borrador', enviado:'Enviado', calibracion:'Calibración' };
     const stateClass = { pendiente:'pill-pending', borrador:'pill-progress', enviado:'pill-done', calibracion:'pill-calibration' };
     const score = evalJefe?.score_final ? `<strong>${evalJefe.score_final.toFixed(2)}</strong> / 4` : '—';
+
+    // Check if collaborator has at least 1 OKR — required before evaluating
+    const tieneOKR = STATE.okr.some(o =>
+      (o.tipo === 'individual' && o.colaborador_id === colab.id) ||
+      (o.tipo === 'equipo' && (o.krs||[]).some(kr => kr.responsable_id === colab.id))
+    );
+    const evalBtnDisabled = !tieneOKR && evalJefe?.estado !== 'enviado';
+    const evalBtnTitle = evalBtnDisabled ? 'Debes crear al menos 1 OKR para este colaborador antes de evaluar' : '';
+
     return `<tr>
       <td><strong>${colab.nombre}</strong></td>
       <td>${colab.cargo}</td>
       <td><span class="status-pill ${stateClass[evalAuto?.estado||'pendiente']}">${stateLabel[evalAuto?.estado||'pendiente']}</span></td>
       <td><span class="status-pill ${stateClass[evalJefe?.estado||'pendiente']}">${stateLabel[evalJefe?.estado||'pendiente']}</span></td>
       <td>${score}</td>
-      <td style="display:flex;gap:6px;flex-wrap:wrap">
-        <button class="btn btn-primary btn-sm" onclick="openEvalForm('${colab.id}')">Evaluar</button>
+      <td style="display:flex;gap:6px;flex-wrap:wrap;align-items:center">
+        <button class="btn btn-primary btn-sm" onclick="openEvalForm('${colab.id}')"
+          ${evalBtnDisabled ? 'disabled style="opacity:.45;cursor:not-allowed" title="'+evalBtnTitle+'"' : ''}>
+          Evaluar
+        </button>
+        ${evalBtnDisabled ? `<span style="font-size:.72rem;color:#f57c00">⚠️ Sin OKR</span>` : ''}
         <button class="btn btn-secondary btn-sm" onclick="viewColabResults('${colab.id}')">Ver resultados</button>
       </td>
     </tr>`;
@@ -1841,18 +1915,47 @@ function openEvalForm(evaluadoId) {
   if (!evaluado) { showToast('Colaborador no encontrado', 'error'); return; }
 
   // Solo abrir si el admin ya asignó la evaluación
+  const periodoActivo = STATE.periodo.nombre || STATE.ciclos.find(c=>c.estado==='open')?.nombre || '';
   const evalObj = STATE.evaluaciones.find(e =>
+    e.evaluado_id === evaluadoId &&
+    e.evaluador_id === STATE.user.id &&
+    e.tipo === 'jefe' &&
+    (!periodoActivo || e.periodo === periodoActivo)
+  ) || STATE.evaluaciones.find(e =>
+    // fallback sin filtro de periodo (compatibilidad)
     e.evaluado_id === evaluadoId &&
     e.evaluador_id === STATE.user.id &&
     e.tipo === 'jefe'
   );
 
   if (!evalObj) {
-    showToast('⚠️ Esta evaluación aún no ha sido asignada. El administrador debe generarla primero desde Admin → Asignar Evaluaciones.', 'error');
+    showToast('⚠️ La evaluación de este colaborador aún no ha sido generada. Ve a Admin → Asignar Evaluaciones y ejecuta la generación para el periodo activo.', 'error');
     return;
   }
 
   STATE.currentEval = { ...evalObj, _evaluado: evaluado };
+
+  // Bloquear si no hay OKR — el botón ya lo previene pero doble validación
+  const tieneOKR = STATE.okr.some(o =>
+    (o.tipo === 'individual' && o.colaborador_id === evaluadoId) ||
+    (o.tipo === 'equipo' && (o.krs||[]).some(kr => kr.responsable_id === evaluadoId))
+  );
+  if (!tieneOKR && evalObj.estado !== 'enviado') {
+    showToast(`⚠️ ${evaluado.nombre} no tiene OKR creados. Ve a OKR del equipo y define al menos un objetivo antes de evaluar.`, 'error');
+    return;
+  }
+
+  // Punto 3: Si el ciclo es 360°, verificar que se hayan asignado pares
+  const cicloActivo = STATE.ciclos.find(c => c.estado === 'open');
+  if (cicloActivo?.grado === '360' || cicloActivo?.grado === 360) {
+    const paresAsignados = STATE.pares.filter(p =>
+      p.evaluado_id === evaluadoId && p.periodo === (periodoActivo || evalObj.periodo)
+    );
+    if (!paresAsignados.length) {
+      showToast(`⚠️ Antes de evaluar a ${evaluado.nombre} en ciclo 360°, debes asignar evaluadores pares desde "Asignar evaluadores pares".`, 'error');
+      return;
+    }
+  }
   document.getElementById('evalFormTitle').textContent = 'Evaluando a: ' + evaluado.nombre;
   document.getElementById('evalFormSubtitle').textContent = evaluado.cargo + ' | Periodo: ' + (STATE.periodo.nombre || '2025');
   document.getElementById('evalBreadName').textContent = evaluado.nombre;
@@ -1999,9 +2102,12 @@ function renderEvalOKRSection(colaboradorId, savedOKRScore, readOnly) {
     );
 
   if (!indivOKRs.length && !teamKRs.length) {
-    cont.innerHTML = `<div style="padding:16px 0;color:#aaa;font-size:.88rem;text-align:center">
-      No hay OKR asignados a este colaborador para el periodo actual.<br>
-      <small>Puedes asignarlos desde el módulo de OKR.</small>
+    cont.innerHTML = `<div style="background:#fff8e1;border:1.5px solid #fbc02d;border-radius:8px;padding:14px 16px;display:flex;gap:10px;align-items:flex-start">
+      <svg width="18" height="18" viewBox="0 0 24 24" fill="#f57c00" style="flex-shrink:0;margin-top:1px"><path d="M1 21h22L12 2 1 21zm12-3h-2v-2h2v2zm0-4h-2v-4h2v4z"/></svg>
+      <div>
+        <div style="font-size:.85rem;font-weight:700;color:#e65100;margin-bottom:3px">No hay OKR registrados para este colaborador</div>
+        <div style="font-size:.82rem;color:#888">El score de desempeño OKR quedará en 0% en esta evaluación. Para incluirlo, ve al módulo <strong>OKR del equipo</strong> y crea los objetivos antes de evaluar.</div>
+      </div>
     </div>`;
     if (STATE.currentEval) STATE.currentEval.score_okr = 0;
     scoreEl.textContent = '0%';
@@ -2341,7 +2447,11 @@ function buildEvalPayload(estado) {
 // ═══════════════════════════════════════════
 function renderAutoEval() {
   const u = STATE.user;
-  const evalAuto = STATE.evaluaciones.find(e => e.evaluado_id === u.id && e.tipo === 'auto');
+  const periodoAuto = STATE.periodo.nombre || STATE.ciclos.find(c=>c.estado==='open')?.nombre || '';
+  const evalAuto = STATE.evaluaciones.find(e =>
+    e.evaluado_id === u.id && e.tipo === 'auto' &&
+    (!periodoAuto || e.periodo === periodoAuto)
+  ) || STATE.evaluaciones.find(e => e.evaluado_id === u.id && e.tipo === 'auto');
   const pill = document.getElementById('autoEvalStatus');
   const btn = document.getElementById('btnOpenAutoEval');
 
@@ -2377,7 +2487,11 @@ function renderEvalJefe() {
     return;
   }
 
+  const periodoCJ = STATE.periodo.nombre || STATE.ciclos.find(c=>c.estado==='open')?.nombre || '';
   const evalCJ = STATE.evaluaciones.find(e =>
+    e.evaluado_id === jefe.id && e.evaluador_id === u.id && e.tipo === 'colab_a_jefe' &&
+    (!periodoCJ || e.periodo === periodoCJ)
+  ) || STATE.evaluaciones.find(e =>
     e.evaluado_id === jefe.id && e.evaluador_id === u.id && e.tipo === 'colab_a_jefe'
   );
 
@@ -2424,7 +2538,11 @@ function openEvalJefeFormFull(readOnly) {
   const jefe = getUserById(u.jefe_id);
   if (!jefe) return;
 
+  const periodoCJ = STATE.periodo.nombre || STATE.ciclos.find(c=>c.estado==='open')?.nombre || '';
   const evalCJ = STATE.evaluaciones.find(e =>
+    e.evaluado_id === jefe.id && e.evaluador_id === u.id && e.tipo === 'colab_a_jefe' &&
+    (!periodoCJ || e.periodo === periodoCJ)
+  ) || STATE.evaluaciones.find(e =>
     e.evaluado_id === jefe.id && e.evaluador_id === u.id && e.tipo === 'colab_a_jefe'
   );
   if (!evalCJ) { showToast('⚠️ Evaluación no asignada aún', 'error'); return; }
@@ -2462,7 +2580,11 @@ function openEvalJefeFormFull(readOnly) {
 
 function openAutoEvalForm(readOnly) {
   const u = STATE.user;
-  const evalAuto = STATE.evaluaciones.find(e => e.evaluado_id === u.id && e.tipo === 'auto');
+  const periodoAuto = STATE.periodo.nombre || STATE.ciclos.find(c=>c.estado==='open')?.nombre || '';
+  const evalAuto = STATE.evaluaciones.find(e =>
+    e.evaluado_id === u.id && e.tipo === 'auto' &&
+    (!periodoAuto || e.periodo === periodoAuto)
+  ) || STATE.evaluaciones.find(e => e.evaluado_id === u.id && e.tipo === 'auto');
 
   // Solo abrir si el admin ya asignó la evaluación
   if (!evalAuto) {
@@ -3355,7 +3477,9 @@ function updateParLabel(evaluadoId, evaluadorId, checked) {
 async function saveParesTodos() {
   const u = STATE.user;
   const team = getEvaluablesByJefe(u.id);
-  const periodo = STATE.periodo.nombre || '2025';
+  // Usar siempre el nombre exacto del ciclo activo
+  const cicloActivo = STATE.ciclos.find(c => c.estado === 'open');
+  const periodo = cicloActivo?.nombre || STATE.periodo.nombre || '';
   const nuevasPares = [];
 
   team.forEach(colab => {
@@ -3724,7 +3848,44 @@ function renderPDI() {
 
   let html = '';
 
-  // ─── BANNER: PROPUESTAS PENDIENTES DE APROBACIÓN (JEFE) ───
+  // ─── BANNER: BALANCE 20-10 ───
+  if (pdiItems.filter(p=>p.estado!=='propuesta' && p.estado!=='cancelado').length > 0) {
+    const activItems = pdiItems.filter(p=>p.estado!=='propuesta' && p.estado!=='cancelado');
+    const social  = activItems.filter(p=>p.tipo_70_20_10==='20_social').length;
+    const formal  = activItems.filter(p=>p.tipo_70_20_10==='10_formal').length;
+    const total   = activItems.length;
+    const pctSoc  = total ? Math.round((social/total)*100) : 0;
+    const pctFor  = total ? Math.round((formal/total)*100) : 0;
+    html += `<div class="card" style="margin-bottom:16px;background:linear-gradient(135deg,#fafafa,#f5f0ff)">
+      <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:10px">
+        <div style="font-size:.85rem;font-weight:700;color:var(--gray)">Balance de acciones — Metodología 20·10</div>
+        <span style="font-size:.78rem;color:#888">${total} acción${total!==1?'es':''} activa${total!==1?'s':''}</span>
+      </div>
+      <div style="display:flex;gap:12px;margin-bottom:10px">
+        <div style="flex:1;background:#f3e5f5;border-radius:8px;padding:10px 14px">
+          <div style="font-size:.72rem;font-weight:700;color:#6a1b9a;text-transform:uppercase;letter-spacing:.05em">🟣 20% Social</div>
+          <div style="font-size:1.5rem;font-weight:800;color:#6a1b9a">${social}</div>
+          <div style="font-size:.72rem;color:#888">Mentoring, feedback, comunidades</div>
+        </div>
+        <div style="flex:1;background:#fff3e0;border-radius:8px;padding:10px 14px">
+          <div style="font-size:.72rem;font-weight:700;color:#e65100;text-transform:uppercase;letter-spacing:.05em">🟠 10% Formal</div>
+          <div style="font-size:1.5rem;font-weight:800;color:#e65100">${formal}</div>
+          <div style="font-size:.72rem;color:#888">Cursos, certificaciones, talleres</div>
+        </div>
+        <div style="flex:1;background:var(--gray-light);border-radius:8px;padding:10px 14px;opacity:.6">
+          <div style="font-size:.72rem;font-weight:700;color:#888;text-transform:uppercase;letter-spacing:.05em">🔵 70% Experiencial</div>
+          <div style="font-size:.85rem;color:#aaa;margin-top:4px;line-height:1.4">Ocurre en el trabajo diario — retos, proyectos y responsabilidades</div>
+        </div>
+      </div>
+      <div style="height:8px;border-radius:4px;background:#eee;overflow:hidden;display:flex">
+        <div style="width:${pctSoc}%;background:#6a1b9a;transition:.4s"></div>
+        <div style="width:${pctFor}%;background:#e65100;transition:.4s"></div>
+      </div>
+      <div style="display:flex;gap:12px;font-size:.7rem;color:#888;margin-top:4px">
+        <span>🟣 Social: ${pctSoc}%</span><span>🟠 Formal: ${pctFor}%</span>
+      </div>
+    </div>`; 
+  }
   if (pendingApproval.length) {
     html += `<div class="card" style="border-left:4px solid #f57c00;margin-bottom:20px">
       <div class="card-header">
@@ -3803,7 +3964,14 @@ function renderPDI() {
         <div class="pdi-item-header">
           <div>
             ${u.rol !== 'colaborador' ? `<div style="font-size:.78rem;color:#888;margin-bottom:2px">${colab?.nombre||'—'} · ${colab?.cargo||'—'}</div>` : ''}
-            <div class="pdi-item-title">📚 ${p.competencia}${propBadge}</div>
+            <div class="pdi-item-title">
+              ${p.tipo_70_20_10 === '20_social'
+                ? '<span style="background:#f3e5f5;color:#6a1b9a;font-size:.7rem;font-weight:700;padding:1px 7px;border-radius:6px;margin-right:6px">🟣 20% Social</span>'
+                : p.tipo_70_20_10 === '10_formal'
+                ? '<span style="background:#fff3e0;color:#e65100;font-size:.7rem;font-weight:700;padding:1px 7px;border-radius:6px;margin-right:6px">🟠 10% Formal</span>'
+                : ''}
+              📚 ${p.competencia}${propBadge}
+            </div>
             <div style="font-size:.85rem;color:#888;margin-top:3px">${p.accion}</div>
           </div>
           <div style="display:flex;align-items:center;gap:8px;flex-wrap:wrap;justify-content:flex-end">
@@ -3836,54 +4004,73 @@ function renderPDI() {
 // ─── JEFE: CREAR/EDITAR ACCIÓN PDI ───
 function openPDIModal(pdiId) {
   const pdi = pdiId ? STATE.pdi.find(p=>p.id===pdiId) : null;
-  const team = STATE.users.filter(x => x.jefe_id === STATE.user.id || STATE.user.rol === 'admin');
+  const team = getAllEvaluables().filter(x => x.jefe_id === STATE.user.id || STATE.user.rol === 'admin');
   const newId = 'P' + Date.now();
-  openModal(pdi ? 'Editar acción de PDI' : 'Nueva acción de desarrollo', `
-    <div class="form-field">
-      <label>Colaborador *</label>
-      <select id="pdiColab">
-        ${team.map(t=>`<option value="${t.id}" ${pdi?.colaborador_id===t.id?'selected':''}>${t.nombre} — ${t.cargo}</option>`).join('')}
-      </select>
+
+  const comps = STATE.competencias.length
+    ? STATE.competencias.map(c=>`<option value="${c.nombre}" ${pdi?.competencia===c.nombre?'selected':''}>${c.nombre}</option>`).join('')
+    : `<option value="${pdi?.competencia||''}"> ${pdi?.competencia||'Sin competencias cargadas'}</option>`;
+
+  openModal(pdi ? 'Editar acción de PDI' : 'Nueva acción de desarrollo — 70·20·10', `
+    <div style="background:linear-gradient(135deg,#e8f5e9,#f1f8e9);border-radius:8px;padding:12px 16px;margin-bottom:16px">
+      <div style="font-size:.78rem;font-weight:700;color:#2e7d32;margin-bottom:6px">Metodología 70 · 20 · 10</div>
+      <div style="display:grid;grid-template-columns:repeat(3,1fr);gap:8px;font-size:.72rem;color:#555">
+        <div style="opacity:.5"><strong style="color:#888">70% Experiencial</strong><br>El trabajo del día a día — retos, proyectos y responsabilidades actuales. Ocurre de forma natural.</div>
+        <div><strong style="color:#6a1b9a">20% Social</strong><br>Mentoring, feedback estructurado, comunidades de práctica, acompañamiento</div>
+        <div><strong style="color:#e65100">10% Formal</strong><br>Cursos, certificaciones, talleres, diplomados</div>
+      </div>
+      <div style="font-size:.7rem;color:#888;margin-top:6px;font-style:italic">📌 El 70% no se registra como acción — ocurre en el trabajo cotidiano. Aquí solo gestionas el 20% y el 10%.</div>
+    </div>
+    <div class="form-row">
+      <div class="form-field">
+        <label>Colaborador *</label>
+        <select id="pdiColab">
+          ${team.map(t=>`<option value="${t.id}" ${pdi?.colaborador_id===t.id?'selected':''}>${t.nombre} — ${t.cargo}</option>`).join('')}
+        </select>
+      </div>
+      <div class="form-field">
+        <label>Tipo de acción *</label>
+        <select id="pdiTipo" style="border-width:2px">
+          <option value="20_social"  ${(pdi?.tipo_70_20_10||'20_social')==='20_social' ?'selected':''}>🟣 20% — Social / Relacional</option>
+          <option value="10_formal"  ${pdi?.tipo_70_20_10==='10_formal' ?'selected':''}>🟠 10% — Formal / Estructurado</option>
+        </select>
+      </div>
     </div>
     <div class="form-field">
       <label>Competencia a desarrollar *</label>
-      <input type="text" id="pdiComp" value="${pdi?.competencia||''}" placeholder="Ej: Comunicación Efectiva">
+      <select id="pdiComp">
+        <option value="">— Seleccionar competencia —</option>
+        ${comps}
+      </select>
     </div>
     <div class="form-field">
       <label>Acción de desarrollo *</label>
-      <textarea id="pdiAccion" rows="2" placeholder="Describe la acción concreta a realizar...">${pdi?.accion||''}</textarea>
+      <textarea id="pdiAccion" rows="2" placeholder="Ej: Liderar el proyecto de onboarding Q2 (Experiencial) / Participar en sesión de mentoring mensual (Social) / Certificación en Excel avanzado (Formal)">${pdi?.accion||''}</textarea>
     </div>
     <div class="form-field">
-      <label>Indicador de éxito</label>
-      <input type="text" id="pdiIndicador" value="${pdi?.indicador_exito||''}" placeholder="¿Cómo sabremos que se logró?">
+      <label>Indicador de éxito — ¿cómo sabremos que se logró?</label>
+      <input type="text" id="pdiIndicador" value="${pdi?.indicador_exito||''}" placeholder="Ej: Completar el proyecto con evaluación ≥ 3.5 / Recibir 2 sesiones de feedback documentadas">
     </div>
-    <div class="form-field">
-      <label>Recursos requeridos</label>
-      <input type="text" id="pdiRecursos" value="${pdi?.recursos||''}" placeholder="Plataforma, presupuesto, mentor...">
+    <div class="form-row">
+      <div class="form-field"><label>Recursos / apoyo requerido</label><input type="text" id="pdiRecursos" value="${pdi?.recursos||''}" placeholder="Presupuesto, mentor, tiempo protegido..."></div>
+      <div class="form-field">
+        <label>Estado</label>
+        <select id="pdiEstado">
+          ${['pendiente','en_progreso','completado','cancelado'].map(s=>`<option value="${s}" ${(pdi?.estado||'pendiente')===s?'selected':''}>${s}</option>`).join('')}
+        </select>
+      </div>
     </div>
     <div class="form-row">
       <div class="form-field"><label>Fecha inicio</label><input type="date" id="pdiFechaInicio" value="${pdi?.fecha_inicio||''}"></div>
       <div class="form-field"><label>Fecha cierre</label><input type="date" id="pdiFechaFin" value="${pdi?.fecha_fin||''}"></div>
     </div>
     <div class="form-row">
-      <div class="form-field">
-        <label>Estado</label>
-        <select id="pdiEstado">
-          ${['pendiente','en_progreso','completado','cancelado'].map(s=>`<option value="${s}" ${pdi?.estado===s?'selected':''}>${s}</option>`).join('')}
-        </select>
-      </div>
-      <div class="form-field">
-        <label>Progreso (%)</label>
-        <input type="number" id="pdiProgreso" min="0" max="100" value="${pdi?.progreso||0}">
-      </div>
-    </div>
-    <div class="form-field">
-      <label>Observaciones del seguimiento</label>
-      <textarea id="pdiObs" rows="2" placeholder="Notas del último seguimiento realizado...">${pdi?.observaciones||''}</textarea>
+      <div class="form-field"><label>Progreso (%)</label><input type="number" id="pdiProgreso" min="0" max="100" value="${pdi?.progreso||0}"></div>
+      <div class="form-field"><label>Observaciones del seguimiento</label><textarea id="pdiObs" rows="2" placeholder="Notas del último seguimiento...">${pdi?.observaciones||''}</textarea></div>
     </div>
   `, [
     { label:'Cancelar', cls:'btn-secondary', action:'closeModal()' },
-    { label: pdi?'Guardar cambios':'Crear en PDI', cls:'btn-primary', action:`savePDIModal('${pdi?.id||newId}','jefe')` }
+    { label: pdi?'Guardar cambios':'Crear acción', cls:'btn-primary', action:`savePDIModal('${pdi?.id||newId}','jefe')` }
   ]);
 }
 
@@ -3987,16 +4174,19 @@ function editPDI(id) { openPDIModal(id); }
 
 async function savePDIModal(id, origen) {
   const isColab = origen === 'colaborador';
+  const compEl = document.getElementById('pdiComp');
+  const compVal = compEl?.tagName === 'SELECT' ? compEl.value : compEl?.value || '';
   const data = {
     id,
     colaborador_id: isColab ? STATE.user.id : document.getElementById('pdiColab')?.value || STATE.user.id,
-    jefe_id: isColab ? STATE.users.find(x=>x.id===STATE.user.jefe_id)?.id || '' : STATE.user.id,
-    competencia: document.getElementById('pdiComp').value,
+    jefe_id: isColab ? (STATE.users.find(x=>x.id===STATE.user.jefe_id)?.id || '') : STATE.user.id,
+    competencia: compVal,
+    tipo_70_20_10: document.getElementById('pdiTipo')?.value || '70_experiencial',
     accion: document.getElementById('pdiAccion').value,
     indicador_exito: document.getElementById('pdiIndicador')?.value || '',
-    recursos: document.getElementById('pdiRecursos').value,
-    fecha_inicio: document.getElementById('pdiFechaInicio').value,
-    fecha_fin: document.getElementById('pdiFechaFin').value,
+    recursos: document.getElementById('pdiRecursos')?.value || '',
+    fecha_inicio: document.getElementById('pdiFechaInicio')?.value || '',
+    fecha_fin: document.getElementById('pdiFechaFin')?.value || '',
     estado: isColab ? 'propuesta' : (document.getElementById('pdiEstado')?.value || 'pendiente'),
     progreso: isColab ? 0 : (parseInt(document.getElementById('pdiProgreso')?.value)||0),
     observaciones: document.getElementById('pdiObs')?.value || '',
@@ -4099,6 +4289,14 @@ function openUserModal(userId) {
         <option value="false" ${!u?.activo?'selected':''}>Inactivo</option>
       </select>
     </div>
+    <div class="form-row">
+      <div class="form-field"><label>Regional</label>
+        <input type="text" id="uRegional" value="${u?.regional||''}" placeholder="Ej: Bogotá, Medellín, Nacional">
+      </div>
+      <div class="form-field"><label>Área</label>
+        <input type="text" id="uArea" value="${u?.area||''}" placeholder="Ej: Comercial, Talento Humano, Operaciones">
+      </div>
+    </div>
   `, [
     { label:'Cancelar', cls:'btn-secondary', action:'closeModal()' },
     { label: u?'Guardar cambios':'Crear usuario', cls:'btn-primary', action:`saveUserModal('${u?.id||newId}')` }
@@ -4117,6 +4315,8 @@ async function saveUserModal(id) {
     rol: document.getElementById('uRol').value,
     jefe_id: document.getElementById('uJefe').value,
     activo: document.getElementById('uActivo').value === 'true',
+    regional: document.getElementById('uRegional')?.value?.trim() || '',
+    area: document.getElementById('uArea')?.value?.trim() || '',
   };
   if (!data.nombre || !data.usuario) { showToast('Nombre y usuario son obligatorios', 'error'); return; }
   await apiCall('saveUser', data);
@@ -4190,43 +4390,130 @@ async function saveCompModal(id) {
 }
 
 function renderAdminCharts() {
-  ['chartAdminDist','chartAdminRadar'].forEach(id => {
-    if (STATE.charts[id]) { STATE.charts[id].destroy(); delete STATE.charts[id]; }
-  });
-  const sent = STATE.evaluaciones.filter(e=>e.tipo==='jefe'&&e.estado==='enviado'&&e.score_final!==null);
-  const dist=[0,0,0,0];
-  sent.forEach(e=>{ const s=e.score_final; if(s<1.5)dist[0]++;else if(s<2.5)dist[1]++;else if(s<3.5)dist[2]++;else dist[3]++; });
+  // Populate filter dropdowns from current users
+  const evaluables = getAllEvaluables();
+  const regionales = [...new Set(evaluables.map(u=>u.regional).filter(Boolean))].sort();
+  const areas      = [...new Set(evaluables.map(u=>u.area).filter(Boolean))].sort();
+  const cargos     = [...new Set(evaluables.map(u=>u.cargo).filter(Boolean))].sort();
 
-  const ctx1 = document.getElementById('chartAdminDist')?.getContext('2d');
-  if(ctx1) STATE.charts['chartAdminDist'] = new Chart(ctx1,{type:'pie',data:{labels:['No Cumple','En Desarrollo','Cumple','Excepcional'],datasets:[{data:dist,backgroundColor:['#ffcdd2','#ffe0b2','#c8e6c9','#bbdefb'],borderWidth:2}]},options:{responsive:true,maintainAspectRatio:false,plugins:{legend:{position:'right',labels:{font:{family:'Asap',size:11}}}}}});
+  const setOpts = (selId, items) => {
+    const sel = document.getElementById(selId);
+    if (!sel) return;
+    const cur = sel.value;
+    sel.innerHTML = sel.options[0].outerHTML + items.map(v=>`<option value="${v}" ${cur===v?'selected':''}>${v}</option>`).join('');
+  };
+  setOpts('filtroRegional', regionales);
+  setOpts('filtroArea',     areas);
+  setOpts('filtroCargo',    cargos);
 
-  const comps = STATE.competencias.filter(c=>c.cargos==='Todos').slice(0,6);
-  const avgScores = comps.map(c=>{
-    const vals=sent.map(e=>e.comp_scores?.[c.id]||0).filter(v=>v>0);
-    return vals.length?+(vals.reduce((a,b)=>a+b,0)/vals.length).toFixed(2):0;
+  applyReportFilters();
+}
+
+function applyReportFilters() {
+  const fRegional  = document.getElementById('filtroRegional')?.value  || '';
+  const fArea      = document.getElementById('filtroArea')?.value      || '';
+  const fCargo     = document.getElementById('filtroCargo')?.value     || '';
+  const fCategoria = document.getElementById('filtroCategoria')?.value || '';
+
+  const allEvals = STATE.evaluaciones.filter(e => e.tipo === 'jefe' && e.estado === 'enviado' && e.score_final != null);
+
+  const rows = allEvals.map(e => {
+    const colab = getUserById(e.evaluado_id);
+    if (!colab) return null;
+    return { e, colab, jefe: getUserById(colab.jefe_id) };
+  }).filter(r => {
+    if (!r) return false;
+    if (fRegional  && r.colab.regional !== fRegional)  return false;
+    if (fArea      && r.colab.area     !== fArea)       return false;
+    if (fCargo     && r.colab.cargo    !== fCargo)      return false;
+    if (fCategoria && getCategory(r.e.score_final).label !== fCategoria) return false;
+    return true;
   });
-  const ctx2 = document.getElementById('chartAdminRadar')?.getContext('2d');
-  if(ctx2) STATE.charts['chartAdminRadar'] = new Chart(ctx2,{type:'radar',data:{labels:comps.map(c=>c.nombre.substring(0,14)),datasets:[{label:'Promedio Empresa',data:avgScores,borderColor:'#ba0020',backgroundColor:'rgba(186,0,32,.15)',pointBackgroundColor:'#ba0020'}]},options:{responsive:true,maintainAspectRatio:false,scales:{r:{min:0,max:4,ticks:{stepSize:1,font:{family:'Asap',size:10}},pointLabels:{font:{family:'Asap',size:10}}}},plugins:{legend:{labels:{font:{family:'Asap'}}}}}});
+
+  // KPI cards
+  const total     = rows.length;
+  const avgScore  = total ? (rows.reduce((a,r)=>a+(r.e.score_final||0),0)/total).toFixed(2) : '—';
+  const pctCumple = total ? Math.round(rows.filter(r=>(r.e.score_final||0)>=2.5).length/total*100) : 0;
+  const conPDI    = rows.filter(r => STATE.pdi.some(p=>p.colaborador_id===r.colab.id&&p.estado!=='cancelado')).length;
+  const kpiEl = document.getElementById('reportKPIs');
+  if (kpiEl) kpiEl.innerHTML = [
+    { label:'Personas filtradas', val:total, color:'#ba0020' },
+    { label:'Score promedio',     val:avgScore, color:'#1565c0' },
+    { label:'Cumplen o superan',  val:pctCumple+'%', color:'#2e7d32' },
+    { label:'Con PDI activo',     val:conPDI, color:'#6a1b9a' },
+  ].map(k => `<div style="background:${k.color}12;border:1.5px solid ${k.color}33;border-radius:10px;padding:10px 14px;text-align:center">
+    <div style="font-size:1.4rem;font-weight:800;color:${k.color}">${k.val}</div>
+    <div style="font-size:.7rem;color:#888;text-transform:uppercase;letter-spacing:.05em;margin-top:2px">${k.label}</div>
+  </div>`).join('');
+
+  // Count label
+  const countEl = document.getElementById('reportCount');
+  if (countEl) countEl.textContent = `${total} colaborador${total!==1?'es':''} encontrado${total!==1?'s':''}`;
 
   // Report table
   const tbody = document.getElementById('reportTableBody');
-  tbody.innerHTML = sent.map(e=>{
-    const colab=getUserById(e.evaluado_id);
-    const jefe=getUserById(colab?.jefe_id);
-    const cat=getCategory(e.score_final);
+  if (tbody) tbody.innerHTML = rows.map(({e,colab,jefe}) => {
+    const cat = getCategory(e.score_final);
+    const scoreComp = calcScoreCompetencias(colab.id);
+    const scoreOKR  = calcScoreOKR(colab.id);
+    const cell = getNineBoxCell(scoreOKR, scoreComp);
+    const pdiCount = STATE.pdi.filter(p=>p.colaborador_id===colab.id&&p.estado!=='cancelado').length;
     return `<tr>
-      <td><strong>${colab?.nombre||'—'}</strong></td>
-      <td>${colab?.cargo||'—'}</td>
-      <td>${jefe?.nombre||'—'}</td>
-      <td>${e.score_comp?.toFixed(2)||'—'}</td>
-      <td>${e.score_okr != null ? e.score_okr + '%' : '—'}</td>
-      <td><strong style="color:var(--red)">${e.score_final?.toFixed(2)||'—'}</strong></td>
-      <td><span class="status-pill pill-done" style="background:${cat.color}20;color:${cat.color}">${cat.label}</span></td>
+      <td><strong>${colab.nombre}</strong></td>
+      <td style="font-size:.82rem">${colab.cargo}</td>
+      <td style="font-size:.82rem">${colab.area||'—'}</td>
+      <td style="font-size:.82rem">${colab.regional||'—'}</td>
+      <td style="font-size:.82rem">${jefe?.nombre||'—'}</td>
+      <td><strong style="color:#1565c0">${e.score_comp?.toFixed(2)||'—'}</strong></td>
+      <td>${e.score_okr != null ? e.score_okr+'%' : '—'}</td>
+      <td><strong style="color:${cat.color}">${e.score_final?.toFixed(2)}</strong></td>
+      <td><span style="background:${cat.color}20;color:${cat.color};padding:2px 8px;border-radius:8px;font-size:.75rem;font-weight:600">${cat.label}</span></td>
+      <td>${cell ? `<span style="background:${cell.color};color:white;padding:2px 8px;border-radius:8px;font-size:.75rem;font-weight:600">${cell.label}</span>` : '<span style="color:#aaa;font-size:.8rem">Sin datos</span>'}</td>
+      <td style="text-align:center">${pdiCount > 0 ? `<span style="color:#2e7d32;font-weight:700">${pdiCount}</span>` : '<span style="color:#aaa">—</span>'}</td>
     </tr>`;
-  }).join('') || '<tr><td colspan="7" style="text-align:center;color:#aaa;padding:20px">Sin evaluaciones completadas</td></tr>';
+  }).join('') || `<tr><td colspan="11" style="text-align:center;color:#aaa;padding:20px">Sin evaluaciones completadas${(fRegional||fArea||fCargo||fCategoria)?' para los filtros seleccionados':''}</td></tr>`;
 
-  // ── OKR RESUMEN POR EQUIPO ──────────────────────────────
+  // Charts (rebuild only if first call or filters changed significantly)
+  ['chartAdminDist','chartAdminRadar'].forEach(id => {
+    if (STATE.charts[id]) { STATE.charts[id].destroy(); delete STATE.charts[id]; }
+  });
+
+  const dist = [0,0,0,0];
+  rows.forEach(r => {
+    const s = r.e.score_final;
+    if (s < 1.5) dist[0]++; else if (s < 2.5) dist[1]++; else if (s < 3.5) dist[2]++; else dist[3]++;
+  });
+  const ctx1 = document.getElementById('chartAdminDist')?.getContext('2d');
+  if (ctx1) STATE.charts['chartAdminDist'] = new Chart(ctx1, {
+    type:'pie',
+    data:{labels:['No Cumple','En Desarrollo','Cumple','Excepcional'],datasets:[{data:dist,backgroundColor:['#ffcdd2','#ffe0b2','#c8e6c9','#bbdefb'],borderWidth:2}]},
+    options:{responsive:true,maintainAspectRatio:false,plugins:{legend:{position:'right',labels:{font:{family:'Asap',size:11}}}}}
+  });
+
+  const comps = STATE.competencias.filter(c=>c.cargos==='Todos').slice(0,6);
+  const evalIds = rows.map(r=>r.e.evaluado_id);
+  const avgScores = comps.map(c => {
+    const vals = STATE.evaluaciones
+      .filter(e=>e.tipo==='jefe'&&e.estado==='enviado'&&evalIds.includes(e.evaluado_id))
+      .map(e=>e.comp_scores?.[c.id]||0).filter(v=>v>0);
+    return vals.length ? +(vals.reduce((a,b)=>a+b,0)/vals.length).toFixed(2) : 0;
+  });
+  const ctx2 = document.getElementById('chartAdminRadar')?.getContext('2d');
+  if (ctx2) STATE.charts['chartAdminRadar'] = new Chart(ctx2, {
+    type:'radar',
+    data:{labels:comps.map(c=>c.nombre.substring(0,14)),datasets:[{label:'Promedio filtrado',data:avgScores,borderColor:'#ba0020',backgroundColor:'rgba(186,0,32,.15)',pointBackgroundColor:'#ba0020'}]},
+    options:{responsive:true,maintainAspectRatio:false,scales:{r:{min:0,max:4,ticks:{stepSize:1,font:{family:'Asap',size:10}},pointLabels:{font:{family:'Asap',size:10}}}},plugins:{legend:{labels:{font:{family:'Asap'}}}}}
+  });
+
   renderAdminOKRSummary();
+}
+
+function clearReportFilters() {
+  ['filtroRegional','filtroArea','filtroCargo','filtroCategoria'].forEach(id => {
+    const el = document.getElementById(id);
+    if (el) el.value = '';
+  });
+  applyReportFilters();
 }
 
 function renderAdminOKRSummary() {
@@ -4331,7 +4618,11 @@ async function savePeriod() {
 }
 
 function previewAsignaciones() {
-  const periodo = document.getElementById('asigPeriodo').value.trim() || '2025';
+  const cicloActivo = STATE.ciclos.find(c => c.estado === 'open');
+  const periodo = cicloActivo?.nombre || document.getElementById('asigPeriodo')?.value?.trim() || '';
+  // Keep hidden field in sync
+  const hp = document.getElementById('asigPeriodo');
+  if (hp && periodo) hp.value = periodo;
   const colaboradores = getAllEvaluables();
   const wrap = document.getElementById('asignacionesTableWrap');
 
@@ -4392,12 +4683,15 @@ function previewAsignaciones() {
 }
 
 async function ejecutarAsignaciones() {
-  const periodo = document.getElementById('asigPeriodo').value.trim() || '2025';
-  const colaboradores = getAllEvaluables();
-
-  // Determine grado from active ciclo or default 360
+  // Siempre usar el nombre exacto del ciclo activo — NO campo de texto libre
   const cicloActivo = STATE.ciclos.find(c => c.estado === 'open');
-  const grado = parseInt(cicloActivo?.grado || '360');
+  if (!cicloActivo) {
+    showToast('⚠️ No hay ningún ciclo activo. Ve a Admin → Periodo y activa un ciclo primero.', 'error');
+    return;
+  }
+  const periodo = cicloActivo.nombre; // nombre exacto del ciclo
+  const grado   = parseInt(cicloActivo.grado || '360');
+  const colaboradores = getAllEvaluables();
 
   const sinJefe = colaboradores.filter(c => !c.jefe_id);
   if (sinJefe.length) {
@@ -4757,12 +5051,43 @@ async function saveRevisionModal(id, colaboradorId, cicloId) {
 function renderGradosPorCargo() {
   const cont = document.getElementById('gradosPorCargo');
   if (!cont) return;
-  const cargos = [...new Set(getAllEvaluables().map(u => u.cargo).filter(Boolean))].sort();
-  // Set global select from active ciclo
+
+  // Get active ciclo and auto-set the hidden periodo field
   const cicloActivo = STATE.ciclos.find(c => c.estado === 'open');
+  const periodoCiclo = cicloActivo?.nombre || '';
+
+  // Update the ciclo info display
+  const infoEl = document.getElementById('asigCicloInfo');
+  if (infoEl) {
+    if (cicloActivo) {
+      const gradoLabel = {90:'90°',180:'180°',270:'270°',360:'360°'};
+      const tipoLabel  = { completo:'Evaluación completa', revision:'Revisión ligera' };
+      infoEl.innerHTML = `
+        <div style="display:flex;align-items:center;gap:8px">
+          <span style="background:#2e7d32;color:white;border-radius:6px;padding:1px 8px;font-size:.72rem;font-weight:700">ACTIVO</span>
+          <strong style="color:var(--gray)">${cicloActivo.nombre}</strong>
+        </div>
+        <div style="font-size:.78rem;color:#888;margin-top:3px">
+          ${tipoLabel[cicloActivo.tipo]||cicloActivo.tipo} · Grado ${gradoLabel[cicloActivo.grado]||cicloActivo.grado}°
+          ${cicloActivo.inicio ? ` · ${cicloActivo.inicio} → ${cicloActivo.fin||'—'}` : ''}
+        </div>`;
+      infoEl.style.borderColor = '#2e7d32';
+    } else {
+      infoEl.innerHTML = `<span style="color:#e53935">⚠️ No hay ningún ciclo activo. Ve a la pestaña <strong>Periodo</strong> y activa un ciclo antes de generar evaluaciones.</span>`;
+      infoEl.style.borderColor = '#e53935';
+    }
+  }
+
+  // Set hidden field with exact ciclo nombre — this is what gets stored in evaluaciones.periodo
+  const hiddenPeriodo = document.getElementById('asigPeriodo');
+  if (hiddenPeriodo) hiddenPeriodo.value = periodoCiclo;
+
+  // Set grado global from active ciclo
   const gradoGlobalEl = document.getElementById('asigGradoGlobal');
   if (gradoGlobalEl && cicloActivo?.grado) gradoGlobalEl.value = String(cicloActivo.grado);
 
+  // Per-cargo grado overrides
+  const cargos = [...new Set(getAllEvaluables().map(u => u.cargo).filter(Boolean))].sort();
   const opts = '<option value="">— Global —</option><option value="360">360°</option><option value="270">270°</option><option value="180">180°</option><option value="90">90°</option>';
   cont.innerHTML = cargos.map(cargo => {
     const savedGrado = (STATE.periodo?.grados_por_cargo || {})[cargo] || '';
@@ -4957,17 +5282,35 @@ function switchAdminTab(tab, btn) {
 }
 
 function exportReport() {
-  const sent = STATE.evaluaciones.filter(e=>e.tipo==='jefe'&&e.estado==='enviado');
-  const rows = [['Colaborador','Cargo','Jefe','Competencias','Desempeño','Final','Categoría']];
-  sent.forEach(e=>{
-    const colab=getUserById(e.evaluado_id);
-    const jefe=getUserById(colab?.jefe_id);
-    const cat=getCategory(e.score_final);
-    rows.push([colab?.nombre||'',colab?.cargo||'',jefe?.nombre||'',e.score_comp||'',(e.score_okr != null ? e.score_okr+'%' : ''),e.score_final||'',cat.label]);
+  const fRegional  = document.getElementById('filtroRegional')?.value  || '';
+  const fArea      = document.getElementById('filtroArea')?.value      || '';
+  const fCargo     = document.getElementById('filtroCargo')?.value     || '';
+  const fCategoria = document.getElementById('filtroCategoria')?.value || '';
+
+  const sent = STATE.evaluaciones.filter(e => e.tipo==='jefe' && e.estado==='enviado' && e.score_final!=null);
+  const rows = [['Colaborador','Cargo','Área','Regional','Jefe','Score Competencias','Score OKR','Score Final','Categoría','Nine Box','PDI activos']];
+  sent.forEach(e => {
+    const colab = getUserById(e.evaluado_id);
+    if (!colab) return;
+    if (fRegional  && colab.regional !== fRegional)  return;
+    if (fArea      && colab.area     !== fArea)       return;
+    if (fCargo     && colab.cargo    !== fCargo)      return;
+    const cat  = getCategory(e.score_final);
+    if (fCategoria && cat.label !== fCategoria) return;
+    const jefe = getUserById(colab.jefe_id);
+    const sc   = calcScoreCompetencias(colab.id);
+    const so   = calcScoreOKR(colab.id);
+    const cell = getNineBoxCell(so, sc);
+    const pdi  = STATE.pdi.filter(p=>p.colaborador_id===colab.id&&p.estado!=='cancelado').length;
+    rows.push([
+      colab.nombre, colab.cargo, colab.area||'', colab.regional||'',
+      jefe?.nombre||'', e.score_comp||'', (e.score_okr!=null?e.score_okr+'%':''),
+      e.score_final?.toFixed(2)||'', cat.label, cell?.label||'', pdi
+    ]);
   });
-  const csv = rows.map(r=>r.join(',')).join('\n');
-  const blob = new Blob([csv],{type:'text/csv'});
-  const a = document.createElement('a'); a.href=URL.createObjectURL(blob); a.download='evaluaciones.csv'; a.click();
+  const csv = rows.map(r=>r.map(v=>`"${String(v).replace(/"/g,'""')}"`).join(',')).join('\n');
+  const blob = new Blob(['\uFEFF'+csv],{type:'text/csv;charset=utf-8'});
+  const a = document.createElement('a'); a.href=URL.createObjectURL(blob); a.download='reporte_evaluaciones.csv'; a.click();
   showToast('Reporte exportado', 'success');
 }
 
