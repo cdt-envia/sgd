@@ -537,7 +537,7 @@
     </div>
     <button class="btn-login" onclick="handleLogin()">Ingresar al sistema</button>
     <p class="login-error" id="loginError">Usuario o contraseña incorrectos</p>
-    <div style="text-align:center;margin-top:16px;font-size:.7rem;color:#bbb;font-family:monospace">v1.30</div>
+    <div style="text-align:center;margin-top:16px;font-size:.7rem;color:#bbb;font-family:monospace">v1.32</div>
   </div>
 
   <!-- Indicadores de impacto -->
@@ -583,7 +583,7 @@
         <span class="user-role-tag" id="userRoleTag">ROL</span>
       </div>
       <button class="btn-logout" onclick="handleLogout()">Salir</button>
-      <span style="font-size:.68rem;color:#ccc;font-family:monospace;opacity:.6">v1.30</span>
+      <span style="font-size:.68rem;color:#ccc;font-family:monospace;opacity:.6">v1.32</span>
     </div>
   </div>
 
@@ -1082,7 +1082,7 @@
 // ═══════════════════════════════════════════
 //  CONFIG — Reemplaza con tu URL de Google Apps Script
 // ═══════════════════════════════════════════
-const SCRIPT_URL = 'https://script.google.com/macros/s/AKfycbw-2Tkvkdqy08AsqH71G0m0Akjr-d-DDVbYkIzcOK8DWk42XsNyTR8zVwnshiZ1-kqB/exec';
+const SCRIPT_URL = 'https://script.google.com/macros/s/AKfycbxN48BPG2gwLvoSH43m2Un_ASiI1UFJ1PrlEe6tx1Fw6mpd4VymxS9oLmd9RhzmJm4b/exec';
 
 // ═══════════════════════════════════════════
 //  STATE
@@ -1512,17 +1512,31 @@ function getCompsByRole(cargo) {
 //  BACKEND CALLS (con demo fallback)
 // ═══════════════════════════════════════════
 async function apiCall(action, data={}) {
+  if (!SCRIPT_URL) return demoBridge(action, data);
   try {
     showLoading(true);
-    const url = SCRIPT_URL + '?action=' + action + '&data=' + encodeURIComponent(JSON.stringify(data));
-    const resp = await fetch(url);
+    let resp;
+    // Use POST for write operations to avoid URL length limits
+    const writeActions = ['saveEval','saveEvalBatch','savePDI','saveOKR','savePares',
+      'savePotencial','saveCiclo','saveRevision','saveBitacora','saveUser','saveComp','savePeriodo'];
+    if (writeActions.includes(action)) {
+      resp = await fetch(SCRIPT_URL, {
+        method: 'POST',
+        headers: { 'Content-Type': 'text/plain;charset=utf-8' },
+        body: JSON.stringify({ action, data })
+      });
+    } else {
+      const url = SCRIPT_URL + '?action=' + action + '&data=' + encodeURIComponent(JSON.stringify(data));
+      resp = await fetch(url);
+    }
     const json = await resp.json();
     showLoading(false);
+    if (!json.ok && json.error) console.error('[API ERROR]', action, json.error);
     return json;
   } catch(e) {
     showLoading(false);
-    // MODO DEMO: usar datos locales
-    return demoBridge(action, data);
+    console.error('[API FAIL]', action, e.message);
+    return { ok: false, error: e.message };
   }
 }
 
@@ -4900,11 +4914,18 @@ async function ejecutarAsignaciones() {
     }
   });
 
-  // Guardar todas las evaluaciones en UN SOLO batch — mucho más rápido para equipos grandes
+  // Guardar en chunks de 50 para no superar límite de URL del Apps Script
   if (toSave.length > 0) {
     showToast(`⏳ Guardando ${toSave.length} evaluación(es)...`, '');
-    await apiCall('saveEvalBatch', { evals: toSave });
-    console.log('[ASIG] Batch guardado:', toSave.length, 'evaluaciones');
+    const chunkSize = 50;
+    let saved = 0;
+    for (let i = 0; i < toSave.length; i += chunkSize) {
+      const chunk = toSave.slice(i, i + chunkSize);
+      await apiCall('saveEvalBatch', { evals: chunk });
+      saved += chunk.length;
+      console.log(`[ASIG] Guardadas ${saved}/${toSave.length}`);
+    }
+    console.log('[ASIG] Batch completo:', saved, 'evaluaciones');
   }
 
   previewAsignaciones();
