@@ -1476,6 +1476,19 @@ function getCategory(score) {
 }
 function getUserById(id) { return STATE.users.find(u => u.id === id); }
 
+// Generates next sequential ID in the format PREFIX + zero-padded number
+// e.g. 'U' → 'U013', 'C' → 'C011'
+function generateNextId(prefix, existingItems) {
+  const nums = existingItems
+    .map(item => {
+      const match = String(item.id || '').match(new RegExp('^' + prefix + '(\\d+)$'));
+      return match ? parseInt(match[1]) : 0;
+    })
+    .filter(n => n > 0);
+  const next = nums.length ? Math.max(...nums) + 1 : 1;
+  return prefix + String(next).padStart(3, '0');
+}
+
 // Regla central: se evalúa cualquier usuario activo que tenga jefe_id asignado,
 // sin importar su rol (un jefe con jefe_id también es evaluado por su propio jefe)
 function isEvaluable(user) {
@@ -1916,26 +1929,52 @@ function openEvalForm(evaluadoId) {
 
   // Solo abrir si el admin ya asignó la evaluación
   const periodoActivo = STATE.periodo.nombre || STATE.ciclos.find(c=>c.estado==='open')?.nombre || '';
-  const evalObj = STATE.evaluaciones.find(e =>
-    e.evaluado_id === evaluadoId &&
-    e.evaluador_id === STATE.user.id &&
-    e.tipo === 'jefe' &&
-    (!periodoActivo || e.periodo === periodoActivo)
-  ) || STATE.evaluaciones.find(e =>
-    // fallback sin filtro de periodo (compatibilidad)
-    e.evaluado_id === evaluadoId &&
-    e.evaluador_id === STATE.user.id &&
-    e.tipo === 'jefe'
-  );
+
+  // Buscar evaluación: primero por periodo exacto, luego sin filtro de periodo,
+  // finalmente por relación jerárquica (colab.jefe_id) en caso de que evaluador_id no coincida con STATE.user.id
+  const evalObj =
+    // 1. Coincidencia exacta con periodo activo
+    STATE.evaluaciones.find(e =>
+      e.evaluado_id === evaluadoId &&
+      e.evaluador_id === STATE.user.id &&
+      e.tipo === 'jefe' &&
+      e.periodo === periodoActivo
+    ) ||
+    // 2. Sin filtro de periodo (compatibilidad con ciclos anteriores)
+    STATE.evaluaciones.find(e =>
+      e.evaluado_id === evaluadoId &&
+      e.evaluador_id === STATE.user.id &&
+      e.tipo === 'jefe'
+    ) ||
+    // 3. Fallback: evaluación generada para este colaborador donde el evaluador es su jefe asignado
+    //    (útil cuando los IDs del Sheet difieren de los cargados en demo)
+    STATE.evaluaciones.find(e =>
+      e.evaluado_id === evaluadoId &&
+      e.tipo === 'jefe' &&
+      evaluado.jefe_id === STATE.user.id
+    );
 
   if (!evalObj) {
     const esAdmin = STATE.user?.rol === 'admin';
-    showToast(
-      esAdmin
-        ? '⚠️ Esta evaluación no existe aún. Ve a Asignar Evaluaciones y genera las evaluaciones del ciclo activo.'
-        : '⚠️ La evaluación de ' + evaluado.nombre + ' aún no ha sido generada para este ciclo. Solicita al administrador que ejecute la generación de evaluaciones.',
-      'error'
+    const evsForColab = STATE.evaluaciones.filter(e => e.evaluado_id === evaluadoId && e.tipo === 'jefe');
+    const periodosExistentes = evsForColab.map(e => e.periodo).join(', ') || 'ninguno';
+    const evaluadoresIds = evsForColab.map(e => e.evaluador_id).join(', ') || 'ninguno';
+
+    // Console diagnostic — visible in F12 → Console
+    console.warn('[EVAL DEBUG]',
+      '\n  evaluadoId:', evaluadoId,
+      '\n  STATE.user.id:', STATE.user.id,
+      '\n  evaluado.jefe_id:', evaluado.jefe_id,
+      '\n  periodoActivo:', periodoActivo,
+      '\n  periodos en evaluaciones:', periodosExistentes,
+      '\n  evaluadores en evaluaciones:', evaluadoresIds,
+      '\n  total evals cargadas:', STATE.evaluaciones.length
     );
+
+    const msg = esAdmin
+      ? `⚠️ No se encontró evaluación de ${evaluado.nombre}. [DEBUG] Periodos: ${periodosExistentes} | Ciclo activo: ${periodoActivo} | Evaluadores guardados: ${evaluadoresIds} | Tu ID: ${STATE.user.id}. Revisa consola F12.`
+      : `⚠️ La evaluación de ${evaluado.nombre} aún no ha sido generada para este ciclo. Solicita al administrador que ejecute la generación de evaluaciones.`;
+    showToast(msg, 'error');
     return;
   }
 
@@ -4283,7 +4322,7 @@ function renderCompsTable() {
 
 function openUserModal(userId) {
   const u = userId ? STATE.users.find(x=>x.id===userId) : null;
-  const newId = 'U' + Date.now();
+  const newId = generateNextId('U', STATE.users);
   const jefes = STATE.users.filter(x=>x.rol==='jefe'||x.rol==='admin');
   openModal(u ? 'Editar usuario' : 'Nuevo usuario', `
     <div class="form-row">
@@ -4352,7 +4391,7 @@ async function saveUserModal(id) {
 
 function openCompModal(compId) {
   const c = compId ? STATE.competencias.find(x => x.id === compId) : null;
-  const newId = 'C' + Date.now();
+  const newId = generateNextId('C', STATE.competencias);
 
   const behFields = [1,2,3,4].map(n => {
     const b = BEHAVIORS[n];
@@ -4692,6 +4731,19 @@ function previewAsignaciones() {
     STATE.evaluaciones.find(e => e.evaluado_id === c.id && e.tipo === 'jefe' && e.periodo === periodo)
   ).length;
 
+  // Detect orphaned evaluations from other periods
+  const otrosPeriodos = [...new Set(
+    STATE.evaluaciones
+      .filter(e => e.tipo === 'jefe' && e.periodo !== periodo)
+      .map(e => e.periodo)
+  )];
+  const orphanWarning = otrosPeriodos.length
+    ? `<div style="background:#fff8e1;border:1.5px solid #fbc02d;border-radius:8px;padding:10px 14px;margin-bottom:10px;font-size:.82rem;color:#e65100">
+        <strong>⚠️ Hay evaluaciones de ciclos anteriores:</strong> ${otrosPeriodos.join(', ')}.<br>
+        Si quieres que el ciclo <strong>${periodo}</strong> esté completo, haz clic en "Generar evaluaciones faltantes".
+       </div>`
+    : '';
+
   wrap.innerHTML = `
     <div style="display:flex;align-items:center;gap:14px;margin-bottom:10px;flex-wrap:wrap">
       <span style="font-weight:600;font-size:.88rem;color:var(--gray)">Periodo: <strong>${periodo}</strong></span>
@@ -4699,6 +4751,7 @@ function previewAsignaciones() {
         ${asignados}/${colaboradores.length} con evaluación asignada
       </span>
     </div>
+    ${orphanWarning}
     <div class="table-wrap">
       <table>
         <thead><tr><th>Colaborador</th><th>Cargo</th><th>Jefe asignado</th><th>Evaluación Jefe→Colab</th><th>Autoevaluación</th><th>Colab→Jefe</th><th>Pares (360°)</th></tr></thead>
@@ -4733,10 +4786,11 @@ async function ejecutarAsignaciones() {
   if (!confirm(`¿Confirmas generar evaluaciones ${gradoLabel[grado]||grado+'°'} para ${conJefe.length} colaborador(es) en el periodo "${periodo}"?\n\nSolo se crearán las que no existan aún.`)) return;
 
   let creadas = 0;
+  console.log('[ASIG] Generando para', conJefe.length, 'evaluables. Periodo:', periodo, '| Grado:', grado);
   conJefe.forEach(colab => {
     const jefe = getUserById(colab.jefe_id);
-    // Get grado specific to this colab's cargo, or global
     const gradoColab = getGradoForColab(colab);
+    console.log('[ASIG] Procesando:', colab.nombre, '| jefe:', jefe?.nombre, '| grado:', gradoColab);
 
     // 1. Evaluación jefe → colaborador
     const yaJefe = STATE.evaluaciones.find(e =>
