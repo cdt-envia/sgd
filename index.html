@@ -1080,7 +1080,7 @@
 // ═══════════════════════════════════════════
 //  CONFIG — Reemplaza con tu URL de Google Apps Script
 // ═══════════════════════════════════════════
-const SCRIPT_URL = 'https://script.google.com/macros/s/AKfycbx-7pHUx0TaYCOlZ8kfhT36GiisTtV3BRGusXm3mQOcxFAaBrJOpVkypKdXZCUhIcFp/exec';
+const SCRIPT_URL = 'https://script.google.com/macros/s/AKfycbzukGx7p4SFxanUUuV-NVjKUdaaJdvklrJU4kCd4b2wyEux6Y8-7LV-2lUgckIPHzf0/exec';
 
 // ═══════════════════════════════════════════
 //  STATE
@@ -1876,7 +1876,7 @@ function renderTeam() {
     // Check if collaborator has at least 1 OKR — required before evaluating
     const tieneOKR = STATE.okr.some(o =>
       (o.tipo === 'individual' && o.colaborador_id === colab.id) ||
-      (o.tipo === 'equipo' && (o.krs||[]).some(kr => kr.responsable_id === colab.id))
+      (o.tipo === 'equipo' && o.jefe_id === colab.jefe_id)
     );
     const evalBtnDisabled = !tieneOKR && evalJefe?.estado !== 'enviado';
     const evalBtnTitle = evalBtnDisabled ? 'Debes crear al menos 1 OKR para este colaborador antes de evaluar' : '';
@@ -1929,7 +1929,13 @@ function openEvalForm(evaluadoId) {
   );
 
   if (!evalObj) {
-    showToast('⚠️ La evaluación de este colaborador aún no ha sido generada. Ve a Admin → Asignar Evaluaciones y ejecuta la generación para el periodo activo.', 'error');
+    const esAdmin = STATE.user?.rol === 'admin';
+    showToast(
+      esAdmin
+        ? '⚠️ Esta evaluación no existe aún. Ve a Asignar Evaluaciones y genera las evaluaciones del ciclo activo.'
+        : '⚠️ La evaluación de ' + evaluado.nombre + ' aún no ha sido generada para este ciclo. Solicita al administrador que ejecute la generación de evaluaciones.',
+      'error'
+    );
     return;
   }
 
@@ -1938,10 +1944,10 @@ function openEvalForm(evaluadoId) {
   // Bloquear si no hay OKR — el botón ya lo previene pero doble validación
   const tieneOKR = STATE.okr.some(o =>
     (o.tipo === 'individual' && o.colaborador_id === evaluadoId) ||
-    (o.tipo === 'equipo' && (o.krs||[]).some(kr => kr.responsable_id === evaluadoId))
+    (o.tipo === 'equipo' && o.jefe_id === evaluado.jefe_id)
   );
   if (!tieneOKR && evalObj.estado !== 'enviado') {
-    showToast(`⚠️ ${evaluado.nombre} no tiene OKR creados. Ve a OKR del equipo y define al menos un objetivo antes de evaluar.`, 'error');
+    showToast(`⚠️ ${evaluado.nombre} no tiene OKR creados ni pertenece a un equipo con OKR activos. Crea primero los objetivos en "OKR del equipo" antes de evaluar.`, 'error');
     return;
   }
 
@@ -2089,30 +2095,45 @@ function renderEvalOKRSection(colaboradorId, savedOKRScore, readOnly) {
   const cont = document.getElementById('evalOKRContainer');
   const scoreEl = document.getElementById('evalScoreOKR');
 
-  // Find individual OKR for this colaborador in the current period
+  const colaborador = getUserById(colaboradorId);
+
+  // Individual OKRs assigned directly to this collaborator
   const indivOKRs = STATE.okr.filter(o =>
     o.tipo === 'individual' && o.colaborador_id === colaboradorId
   );
-  // Also team OKRs where this person has assigned KRs
-  const teamKRs = STATE.okr
-    .filter(o => o.tipo === 'equipo')
+
+  // Team OKRs from this collaborator's jefe — apply to the whole team
+  const teamOKRs = STATE.okr.filter(o =>
+    o.tipo === 'equipo' && o.jefe_id === colaborador?.jefe_id
+  );
+
+  // KRs where this person is specifically assigned as responsable
+  const assignedKRs = teamOKRs
     .flatMap(o => (o.krs || [])
       .filter(kr => kr.responsable_id === colaboradorId)
       .map(kr => ({ ...kr, _objTitulo: o.titulo, _objId: o.id }))
     );
 
-  if (!indivOKRs.length && !teamKRs.length) {
+  // All KRs from team OKRs (not filtered by responsable — team share)
+  const allTeamKRs = teamOKRs.flatMap(o =>
+    (o.krs || []).map(kr => ({ ...kr, _objTitulo: o.titulo, _objId: o.id }))
+  );
+
+  if (!indivOKRs.length && !teamOKRs.length) {
     cont.innerHTML = `<div style="background:#fff8e1;border:1.5px solid #fbc02d;border-radius:8px;padding:14px 16px;display:flex;gap:10px;align-items:flex-start">
       <svg width="18" height="18" viewBox="0 0 24 24" fill="#f57c00" style="flex-shrink:0;margin-top:1px"><path d="M1 21h22L12 2 1 21zm12-3h-2v-2h2v2zm0-4h-2v-4h2v4z"/></svg>
       <div>
         <div style="font-size:.85rem;font-weight:700;color:#e65100;margin-bottom:3px">No hay OKR registrados para este colaborador</div>
-        <div style="font-size:.82rem;color:#888">El score de desempeño OKR quedará en 0% en esta evaluación. Para incluirlo, ve al módulo <strong>OKR del equipo</strong> y crea los objetivos antes de evaluar.</div>
+        <div style="font-size:.82rem;color:#888">El score OKR quedará en 0%. Ve al módulo <strong>OKR del equipo</strong> y crea los objetivos primero.</div>
       </div>
     </div>`;
     if (STATE.currentEval) STATE.currentEval.score_okr = 0;
     scoreEl.textContent = '0%';
     return;
   }
+
+  // Use assigned KRs if available, otherwise use full team KRs
+  const teamKRs = assignedKRs.length ? assignedKRs : allTeamKRs;
 
   // Restore saved value or compute from live OKR data
   let currentOKRScore = savedOKRScore || 0;
@@ -2248,22 +2269,22 @@ function calcScoreCompetencias(colaboradorId) {
 }
 
 function calcScoreOKR(colaboradorId) {
-  // Eje X del Nine Box: avance promedio de OKR en el ciclo activo (escala 0-4)
+  // Eje X del Nine Box: avance promedio de OKR (escala 0-4)
   const evalJefe = STATE.evaluaciones.find(e =>
     e.evaluado_id === colaboradorId && e.tipo === 'jefe' && e.estado === 'enviado'
   );
   const okrPct = evalJefe?.score_okr ?? null;
-  if (okrPct == null) {
-    // Fallback: calcular directamente de los OKR asignados
-    const okrs = STATE.okr.filter(o =>
-      (o.tipo === 'individual' && o.colaborador_id === colaboradorId) ||
-      (o.tipo === 'equipo' && (o.krs||[]).some(kr => kr.responsable_id === colaboradorId))
-    );
-    const krs = okrs.flatMap(o => o.krs || []);
-    const avg = krs.length ? krs.reduce((a, k) => a + (k.progreso || 0), 0) / krs.length : 0;
-    return parseFloat((avg / 25).toFixed(2)); // % → 0-4
-  }
-  return parseFloat((okrPct / 25).toFixed(2)); // % → 0-4
+  if (okrPct != null) return parseFloat((okrPct / 25).toFixed(2));
+
+  // Fallback: calcular directamente de los OKR
+  const colaborador = getUserById(colaboradorId);
+  const okrs = STATE.okr.filter(o =>
+    (o.tipo === 'individual' && o.colaborador_id === colaboradorId) ||
+    (o.tipo === 'equipo' && o.jefe_id === colaborador?.jefe_id) // team OKRs apply to all team members
+  );
+  const krs = okrs.flatMap(o => o.krs || []);
+  const avg = krs.length ? krs.reduce((a, k) => a + (k.progreso || 0), 0) / krs.length : 0;
+  return parseFloat((avg / 25).toFixed(2));
 }
 
 function calcFinalScore360(colaboradorId) {
@@ -2498,7 +2519,7 @@ function renderEvalJefe() {
   if (!evalCJ) {
     card.innerHTML = `<div class="info-banner">
       <svg width="16" height="16" viewBox="0 0 24 24" fill="currentColor"><path d="M12 2C6.48 2 2 6.48 2 12s4.48 10 10 10 10-4.48 10-10S17.52 2 12 2zm1 15h-2v-6h2v6zm0-8h-2V7h2v2z"/></svg>
-      Tu evaluación al jefe aún no ha sido habilitada. El administrador debe generarla desde Admin → Asignar Evaluaciones.
+      Tu evaluación al jefe aún no está disponible para este ciclo. El administrador del sistema debe habilitarla.
     </div>`;
     return;
   }
@@ -2588,7 +2609,7 @@ function openAutoEvalForm(readOnly) {
 
   // Solo abrir si el admin ya asignó la evaluación
   if (!evalAuto) {
-    showToast('⚠️ Tu autoevaluación aún no ha sido asignada. El administrador debe generarla primero desde Admin → Asignar Evaluaciones.', 'error');
+    showToast('⚠️ Tu autoevaluación aún no está disponible para este ciclo. El administrador debe generarla primero.', 'error');
     return;
   }
 
@@ -3423,7 +3444,7 @@ function renderPares() {
     </div>
     <div class="info-banner" style="margin-bottom:16px;font-size:.82rem">
       <svg width="14" height="14" viewBox="0 0 24 24" fill="currentColor"><path d="M12 2C6.48 2 2 6.48 2 12s4.48 10 10 10 10-4.48 10-10S17.52 2 12 2zm1 15h-2v-6h2v6zm0-8h-2V7h2v2z"/></svg>
-      Los pares seleccionados recibirán automáticamente una evaluación de su compañero cuando generes las evaluaciones desde Admin → Asignar Evaluaciones.
+      Los pares seleccionados recibirán automáticamente una evaluación de su compañero cuando el administrador genere las evaluaciones del ciclo activo.
     </div>`;
 
   if (!team.length) {
