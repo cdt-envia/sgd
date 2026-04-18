@@ -67,7 +67,7 @@
   .login-error { color: var(--red); font-size: .85rem; margin-top: 10px; text-align: center; display: none; }
 
   /* ─── APP SHELL ─── */
-  #appShell { display: none; min-height: 100vh; }
+  #appShell { display: none; }
   .topbar {
     background: white; border-bottom: 2px solid var(--red);
     padding: 0 28px; height: 62px; display: flex; align-items: center;
@@ -129,7 +129,7 @@
 
   /* ─── MAIN ─── */
   .main-content { flex: 1; padding: 28px; overflow-x: hidden; }
-  .page { display: none; animation: fadeUp .3s ease; }
+  .page { display: none; }
   .page.active { display: block; }
   @keyframes fadeUp { from { opacity:0; transform:translateY(12px); } to { opacity:1; transform:translateY(0); } }
 
@@ -538,7 +538,7 @@
     </div>
     <button class="btn-login" onclick="handleLogin()">Ingresar al sistema</button>
     <p class="login-error" id="loginError">Usuario o contraseña incorrectos</p>
-    <div style="text-align:center;margin-top:16px;font-size:.7rem;color:#bbb;font-family:monospace">v2.9</div>
+    <div style="text-align:center;margin-top:16px;font-size:.7rem;color:#bbb;font-family:monospace">v3.0</div>
   </div>
 
   <!-- Indicadores de impacto -->
@@ -593,7 +593,7 @@
         </svg>
         Actualizar
       </button>
-      <span style="font-size:.68rem;color:#ccc;font-family:monospace;opacity:.6">v2.9</span>
+      <span style="font-size:.68rem;color:#ccc;font-family:monospace;opacity:.6">v3.0</span>
     </div>
   </div>
 
