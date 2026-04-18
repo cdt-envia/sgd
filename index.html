@@ -537,7 +537,7 @@
     </div>
     <button class="btn-login" onclick="handleLogin()">Ingresar al sistema</button>
     <p class="login-error" id="loginError">Usuario o contraseña incorrectos</p>
-    <div style="text-align:center;margin-top:16px;font-size:.7rem;color:#bbb;font-family:monospace">v2.0</div>
+    <div style="text-align:center;margin-top:16px;font-size:.7rem;color:#bbb;font-family:monospace">v2.1</div>
   </div>
 
   <!-- Indicadores de impacto -->
@@ -583,7 +583,7 @@
         <span class="user-role-tag" id="userRoleTag">ROL</span>
       </div>
       <button class="btn-logout" onclick="handleLogout()">Salir</button>
-      <span style="font-size:.68rem;color:#ccc;font-family:monospace;opacity:.6">v2.0</span>
+      <span style="font-size:.68rem;color:#ccc;font-family:monospace;opacity:.6">v2.1</span>
     </div>
   </div>
 
@@ -681,8 +681,8 @@
           <div id="competenciasContainer"></div>
         </div>
 
-        <!-- SECCIÓN OKR -->
-        <div class="card" id="evalOKRSection">
+        <!-- SECCIÓN OKR: oculta del formulario de competencias. OKR se evalúa por trimestre en el módulo OKR -->
+        <div class="card" id="evalOKRSection" style="display:none">
           <div class="card-header">
             <div>
               <div class="card-title">🎯 Cumplimiento de OKR</div>
@@ -969,18 +969,25 @@
           </div>
           <!-- Ciclo activo: pesos -->
           <div class="card" id="cicloActivoConfig" style="display:none">
-            <div class="card-title" style="margin-bottom:14px">⚙️ Configurar ciclo activo</div>
+            <div class="card-title" style="margin-bottom:10px">⚙️ Ciclo activo</div>
             <div id="cicloActivoNombre" style="font-size:.88rem;color:#888;margin-bottom:16px"></div>
-            <div class="form-row">
-              <div class="form-field"><label>Peso Jefe (%)</label><input type="number" id="pesoJefe" value="40" min="0" max="100"></div>
-              <div class="form-field"><label>Peso Autoevaluación (%)</label><input type="number" id="pesoAuto" value="20" min="0" max="100"></div>
+            <div style="background:linear-gradient(135deg,#e8f5e9,#f1f8e9);border-radius:10px;padding:14px 16px">
+              <div style="font-size:.8rem;font-weight:700;color:#2e7d32;margin-bottom:10px">Distribución del Potencial 360° — Fijo</div>
+              <div style="display:grid;grid-template-columns:repeat(4,1fr);gap:10px;text-align:center">
+                ${['Jefe → Colab','Autoevaluación','Pares','Equipo → Jefe'].map(label =>
+                  `<div style="background:white;border-radius:8px;padding:8px 4px">
+                    <div style="font-size:1.3rem;font-weight:800;color:#2e7d32">25%</div>
+                    <div style="font-size:.7rem;color:#888;margin-top:2px">${label}</div>
+                  </div>`
+                ).join('')}
+              </div>
+              <div style="font-size:.75rem;color:#888;margin-top:10px">El Desempeño (OKR) se registra por trimestre en el módulo OKR — no tiene peso en el formulario de competencias.</div>
             </div>
-            <div class="form-row">
-              <div class="form-field"><label>Peso Pares (%)</label><input type="number" id="pesoPares" value="25" min="0" max="100"></div>
-              <div class="form-field"><label>Peso OKR (%)</label><input type="number" id="pesoOKR" value="15" min="0" max="100"></div>
-            </div>
-            <div id="pesosTotal" style="font-size:.9rem;font-weight:700;color:var(--gray);margin-bottom:16px">Total: 100%</div>
-            <button class="btn btn-primary btn-sm" onclick="savePeriod()">Guardar pesos</button>
+            <!-- Hidden inputs mantenidos para compatibilidad con renderAdmin -->
+            <input type="hidden" id="pesoJefe" value="25">
+            <input type="hidden" id="pesoAuto" value="25">
+            <input type="hidden" id="pesoPares" value="25">
+            <input type="hidden" id="pesoOKR" value="25">
           </div>
         </div>
         <div class="admin-tab-content" id="adminTab-reportes">
@@ -1762,19 +1769,51 @@ function buildSidebar() {
   };
   const list = [...(items[rol] || items.colaborador)];
 
-  // Si el usuario es jefe pero también tiene jefe_id (es evaluable por alguien),
-  // agregar las opciones de colaborador que le corresponden
+  // Si el usuario es jefe con jefe_id: construir menú en dos bloques visuales
   if (rol === 'jefe' && STATE.user?.jefe_id) {
-    // Insertar después del dashboard
-    const dashIdx = list.findIndex(i => i.id === 'dashboard');
-    const insertAt = dashIdx >= 0 ? dashIdx + 1 : 1;
-    list.splice(insertAt, 0,
-      { id:'autoevaluacion', icon:'self', label:'Mi Autoevaluación' },
-      { id:'eval-jefe', icon:'eval', label:'Evaluar a mi jefe' },
-      { id:'resultados', icon:'results', label:'Mis Resultados' },
-      { id:'mi-pdi', icon:'pdi', label:'Mi PDI' },
-    );
+    // Build separate sections: personal (as collaborator) + team management (as leader)
+    const personalItems = [
+      { id:'autoevaluacion', icon:'self',    label:'Mi Autoevaluación' },
+      { id:'eval-jefe',      icon:'eval',    label:'Evaluar a mi jefe' },
+      { id:'evaluar-pares',  icon:'pares',   label:'Mis evaluaciones de pares' },
+      { id:'resultados',     icon:'results', label:'Mis Resultados' },
+      { id:'bitacora',       icon:'bitacora',label:'Mi Bitácora' },
+      { id:'mi-pdi',         icon:'pdi',     label:'Mi PDI' },
+    ];
+    const teamItems = [
+      { id:'mis-evaluaciones', icon:'eval',    label:'Evaluar equipo' },
+      { id:'pares',            icon:'pares',   label:'Asignar pares' },
+      { id:'bitacora-equipo',  icon:'bitacora',label:'Bitácora del equipo', _page:'bitacora' },
+      { id:'ninebox',          icon:'ninebox', label:'Nine Box' },
+      { id:'okr',              icon:'okr',     label:'OKR del equipo' },
+      { id:'pdi',              icon:'pdi',     label:'PDI del equipo' },
+    ];
+
+    let html = `<div class="sidebar-section"><div class="sidebar-label">Dashboard</div>
+      <button class="nav-item" id="nav-dashboard" onclick="navigateTo('dashboard')">
+        <svg viewBox="0 0 24 24" fill="currentColor">${icons.chart}</svg>Dashboard
+      </button>
+    </div>
+    <div class="sidebar-section">
+      <div class="sidebar-label" style="font-size:.65rem;letter-spacing:.08em;color:#ba0020;opacity:.8">— Mi gestión personal —</div>
+      ${personalItems.map(item => `
+        <button class="nav-item" id="nav-${item.id}" onclick="navigateTo('${item._page||item.id}')">
+          <svg viewBox="0 0 24 24" fill="currentColor">${icons[item.icon]||icons.chart}</svg>
+          ${item.label}
+        </button>`).join('')}
+    </div>
+    <div class="sidebar-section">
+      <div class="sidebar-label" style="font-size:.65rem;letter-spacing:.08em;color:#1565c0;opacity:.8">— Gestión del equipo —</div>
+      ${teamItems.map(item => `
+        <button class="nav-item" id="nav-${item.id}" onclick="navigateTo('${item._page||item.id}')">
+          <svg viewBox="0 0 24 24" fill="currentColor">${icons[item.icon]||icons.chart}</svg>
+          ${item.label}
+        </button>`).join('')}
+    </div>`;
+    document.getElementById('sidebar').innerHTML = html;
+    return;
   }
+
   let html = '<div class="sidebar-section"><div class="sidebar-label">Menú principal</div>';
   list.forEach(item => {
     html += `<button class="nav-item" id="nav-${item.id}" onclick="navigateTo('${item.id}')">
@@ -1936,13 +1975,8 @@ function renderTeam() {
     const stateClass = { pendiente:'pill-pending', borrador:'pill-progress', enviado:'pill-done', calibracion:'pill-calibration' };
     const score = evalJefe?.score_final ? `<strong>${evalJefe.score_final.toFixed(2)}</strong> / 4` : '—';
 
-    // Check if collaborator has at least 1 OKR — required before evaluating
-    const tieneOKR = STATE.okr.some(o =>
-      (o.tipo === 'individual' && o.colaborador_id === colab.id) ||
-      (o.tipo === 'equipo' && o.jefe_id === colab.jefe_id)
-    );
-    const evalBtnDisabled = !tieneOKR && evalJefe?.estado !== 'enviado';
-    const evalBtnTitle = evalBtnDisabled ? 'Debes crear al menos 1 OKR para este colaborador antes de evaluar' : '';
+    // OKR ya no es requisito para evaluar — se gestiona por separado en el módulo OKR
+    const evalBtnDisabled = false;
 
     return `<tr>
       <td><strong>${colab.nombre}</strong></td>
@@ -1951,11 +1985,7 @@ function renderTeam() {
       <td><span class="status-pill ${stateClass[evalJefe?.estado||'pendiente']}">${stateLabel[evalJefe?.estado||'pendiente']}</span></td>
       <td>${score}</td>
       <td style="display:flex;gap:6px;flex-wrap:wrap;align-items:center">
-        <button class="btn btn-primary btn-sm" onclick="openEvalForm('${colab.id}')"
-          ${evalBtnDisabled ? 'disabled style="opacity:.45;cursor:not-allowed" title="'+evalBtnTitle+'"' : ''}>
-          Evaluar
-        </button>
-        ${evalBtnDisabled ? `<span style="font-size:.72rem;color:#f57c00">⚠️ Sin OKR</span>` : ''}
+        <button class="btn btn-primary btn-sm" onclick="openEvalForm('${colab.id}')">Evaluar</button>
         <button class="btn btn-secondary btn-sm" onclick="viewColabResults('${colab.id}')">Ver resultados</button>
       </td>
     </tr>`;
@@ -2030,17 +2060,8 @@ function openEvalForm(evaluadoId) {
 
   STATE.currentEval = { ...evalObj, _evaluado: evaluado };
 
-  // Bloquear si no hay OKR — el botón ya lo previene pero doble validación
-  const tieneOKR = STATE.okr.some(o =>
-    (o.tipo === 'individual' && o.colaborador_id === evaluadoId) ||
-    (o.tipo === 'equipo' && o.jefe_id === evaluado.jefe_id)
-  );
-  if (!tieneOKR && evalObj.estado !== 'enviado') {
-    showToast(`⚠️ ${evaluado.nombre} no tiene OKR creados ni pertenece a un equipo con OKR activos. Crea primero los objetivos en "OKR del equipo" antes de evaluar.`, 'error');
-    return;
-  }
-
-  // Punto 3: Si el ciclo es 360°, verificar que se hayan asignado pares
+  // OKR ya no se evalúa en este formulario — se hace por trimestre en el módulo OKR
+  // Solo verificar pares para 360°
   const cicloActivo = STATE.ciclos.find(c => c.estado === 'open');
   if (cicloActivo?.grado === '360' || cicloActivo?.grado === 360) {
     const paresAsignados = STATE.pares.filter(p =>
@@ -2790,26 +2811,23 @@ function renderResultados() {
           <div class="cat">${cat.label}</div>
         </div>
         <div class="card" style="margin-top:16px">
-          <div class="card-title" style="margin-bottom:10px">Desglose de Puntaje 360°</div>
-          <div style="display:flex;justify-content:space-between;padding:7px 0;border-bottom:1px solid var(--gray-light)">
-            <span>Evaluación jefe (${STATE.periodo.peso_jefe||40}%)</span>
-            <strong>${evalJefe.score_comp?.toFixed(2)||'—'} / 4</strong>
-          </div>
-          <div style="display:flex;justify-content:space-between;padding:7px 0;border-bottom:1px solid var(--gray-light)">
-            <span>Autoevaluación (${STATE.periodo.peso_auto||20}%)</span>
-            <strong>${evalAuto?.score_comp?.toFixed(2)||'—'} / 4</strong>
-          </div>
-          <div style="display:flex;justify-content:space-between;padding:7px 0;border-bottom:1px solid var(--gray-light)">
-            <span>Pares (${STATE.periodo.peso_pares||25}%)</span>
-            <strong>${(() => { const evPar = STATE.evaluaciones.filter(e => e.evaluado_id === u.id && e.tipo === 'par' && e.estado === 'enviado'); return evPar.length ? (evPar.reduce((a,e)=>a+(e.score_comp||0),0)/evPar.length).toFixed(2)+' / 4 ('+evPar.length+')' : '—'; })()}</strong>
-          </div>
-          <div style="display:flex;justify-content:space-between;padding:7px 0;border-bottom:1px solid var(--gray-light)">
-            <span>🎯 OKR (${STATE.periodo.peso_okr||15}%)</span>
-            <strong>${evalJefe.score_okr != null ? evalJefe.score_okr + '%' : '—'}</strong>
+          <div class="card-title" style="margin-bottom:10px">Potencial 360° — Competencias</div>
+          ${[
+            { label:'Jefe → Colaborador (25%)',   val: evalJefe.score_comp?.toFixed(2), ok: !!evalJefe.score_comp },
+            { label:'Autoevaluación (25%)',        val: evalAuto?.score_comp?.toFixed(2), ok: !!evalAuto?.score_comp },
+            { label:'Pares (25%)',                 val: (() => { const evPar = STATE.evaluaciones.filter(e => e.evaluado_id === u.id && e.tipo === 'par' && e.estado === 'enviado'); return evPar.length ? (evPar.reduce((a,e)=>a+(e.score_comp||0),0)/evPar.length).toFixed(2)+' ('+evPar.length+' eval.)' : null; })(), ok: STATE.evaluaciones.some(e=>e.evaluado_id===u.id&&e.tipo==='par'&&e.estado==='enviado') },
+            { label:'Equipo → Jefe (25%)',        val: (() => { const evEq = STATE.evaluaciones.filter(e => e.evaluado_id === u.id && e.tipo === 'colab_a_jefe' && e.estado === 'enviado'); return evEq.length ? (evEq.reduce((a,e)=>a+(e.score_comp||0),0)/evEq.length).toFixed(2)+' ('+evEq.length+' eval.)' : null; })(), ok: STATE.evaluaciones.some(e=>e.evaluado_id===u.id&&e.tipo==='colab_a_jefe'&&e.estado==='enviado') },
+          ].map(f => `<div style="display:flex;justify-content:space-between;padding:7px 0;border-bottom:1px solid var(--gray-light)">
+            <span style="color:${f.ok?'var(--gray)':'#aaa'}">${f.label}</span>
+            <strong style="color:${f.ok?'var(--gray)':'#aaa'}">${f.val || '—'} ${f.ok?'/ 4':''}</strong>
+          </div>`).join('')}
+          <div style="display:flex;justify-content:space-between;padding:8px 0;border-bottom:1px solid var(--gray-light)">
+            <strong>Potencial Final</strong>
+            <strong style="color:#1565c0;font-size:1.1rem">${calcScorePotencial(u.id) > 0 ? calcScorePotencial(u.id).toFixed(2)+' / 4' : '—'}</strong>
           </div>
           <div style="display:flex;justify-content:space-between;padding:8px 0">
-            <span><strong>Calificación Final 360°</strong></span>
-            <strong style="color:var(--red);font-size:1.1rem">${evalJefe.score_final?.toFixed(2)||'—'}</strong>
+            <span style="color:#888">🎯 Desempeño OKR (registrado por trimestre)</span>
+            <strong style="color:#2e7d32">${evalJefe.score_okr != null ? evalJefe.score_okr + '%' : '—'}</strong>
           </div>
         </div>
       </div>
@@ -2829,10 +2847,6 @@ function renderResultados() {
           <label>🎯 Oportunidades de mejora</label>
           <p style="background:var(--gray-light);padding:12px;border-radius:8px;font-size:.9rem">${evalJefe.mejoras || 'Sin comentarios'}</p>
         </div>
-      </div>
-      <div class="form-field">
-        <label>📝 Comentario general</label>
-        <p style="background:var(--gray-light);padding:12px;border-radius:8px;font-size:.9rem">${evalJefe.comentario || 'Sin comentarios'}</p>
       </div>
     </div>
     <!-- HISTORIAL DE EVOLUCIÓN -->
@@ -5128,7 +5142,7 @@ function openCicloModal(cicloId) {
     </div>
     <div class="info-banner" style="margin-top:10px;font-size:.8rem">
       <svg width="13" height="13" viewBox="0 0 24 24" fill="currentColor"><path d="M12 2C6.48 2 2 6.48 2 12s4.48 10 10 10 10-4.48 10-10S17.52 2 12 2zm1 15h-2v-6h2v6zm0-8h-2V7h2v2z"/></svg>
-      Solo puede haber un ciclo Activo a la vez. Si activas este, el actual se cierra automáticamente.
+      Las fechas son libres — tu año puede comenzar en cualquier mes (ej. mayo 2026 → abril 2027). Solo puede haber un ciclo Activo a la vez.
     </div>
   `, [
     { label:'Cancelar', cls:'btn-secondary', action:'closeModal()' },
