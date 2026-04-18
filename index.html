@@ -538,7 +538,7 @@
     </div>
     <button class="btn-login" onclick="handleLogin()">Ingresar al sistema</button>
     <p class="login-error" id="loginError">Usuario o contraseña incorrectos</p>
-    <div style="text-align:center;margin-top:16px;font-size:.7rem;color:#bbb;font-family:monospace">v2.2</div>
+    <div style="text-align:center;margin-top:16px;font-size:.7rem;color:#bbb;font-family:monospace">v2.3</div>
   </div>
 
   <!-- Indicadores de impacto -->
@@ -593,7 +593,7 @@
         </svg>
         Actualizar
       </button>
-      <span style="font-size:.68rem;color:#ccc;font-family:monospace;opacity:.6">v2.2</span>
+      <span style="font-size:.68rem;color:#ccc;font-family:monospace;opacity:.6">v2.3</span>
     </div>
   </div>
 
@@ -643,8 +643,8 @@
               Actualizar
             </button>
           </div>
+          <div id="teamQBanner"></div>
           <div class="table-wrap">
-            <table id="teamTable">
               <thead>
                 <tr>
                   <th>Colaborador</th><th>Cargo</th><th>Estado Autoevaluación</th>
@@ -2009,6 +2009,19 @@ function renderTeam() {
     ? STATE.users.filter(x => x.id !== u.id && String(x.activo) !== 'false')
     : getEvaluablesByJefe(u.id);
   const tbody = document.getElementById('teamTableBody');
+
+  // Show active Q(s) banner
+  const activeQs = STATE.ciclos.filter(c => c.estado === 'open' && c.trimestre)
+    .sort((a,b) => (a.trimestre||'').localeCompare(b.trimestre||''));
+  const qBanner = activeQs.length > 0
+    ? `<div style="display:flex;gap:8px;align-items:center;margin-bottom:12px;flex-wrap:wrap">
+        <span style="font-size:.8rem;color:#888">Periodos activos:</span>
+        ${activeQs.map(q => `<span style="background:${q.trimestre==='Q1'?'#ffebee':'#e3f2fd'};color:${q.trimestre==='Q1'?'#ba0020':'#1565c0'};font-weight:700;font-size:.75rem;padding:2px 10px;border-radius:8px">${q.trimestre} — ${q.nombre.replace(/.*—\s*/,'')} <span style="font-weight:400;font-size:.7rem">(${q.inicio?String(q.inicio).slice(0,10):''} → ${q.fin?String(q.fin).slice(0,10):''})</span></span>`).join('')}
+      </div>` : '';
+
+  const bannerEl = document.getElementById('teamQBanner');
+  if (bannerEl) bannerEl.innerHTML = qBanner;
+
   if (!team.length) { tbody.innerHTML = '<tr><td colspan="6" class="empty-state"><p>No tienes colaboradores asignados.</p></td></tr>'; return; }
 
   tbody.innerHTML = team.map(colab => {
@@ -2051,26 +2064,34 @@ function openEvalForm(evaluadoId) {
   if (!evaluado) { showToast('Colaborador no encontrado', 'error'); return; }
 
   // Solo abrir si el admin ya asignó la evaluación
-  const periodoActivo = STATE.periodo.nombre || STATE.ciclos.find(c=>c.estado==='open')?.nombre || '';
+  // Collect all open period names (can be multiple Qs)
+  const periodosAbiertos = STATE.ciclos.filter(c => c.estado === 'open').map(c => c.nombre);
+  const periodoActivo = STATE.periodo.nombre || periodosAbiertos[0] || '';
 
   // Buscar evaluación: primero por periodo exacto, luego sin filtro de periodo,
   // finalmente por relación jerárquica (colab.jefe_id) en caso de que evaluador_id no coincida con STATE.user.id
   const evalObj =
-    // 1. Coincidencia exacta con periodo activo
+    // 1. Match any open period
+    STATE.evaluaciones.find(e =>
+      e.evaluado_id === evaluadoId &&
+      e.evaluador_id === STATE.user.id &&
+      e.tipo === 'jefe' &&
+      periodosAbiertos.includes(e.periodo)
+    ) ||
+    // 2. Match exact periodoActivo
     STATE.evaluaciones.find(e =>
       e.evaluado_id === evaluadoId &&
       e.evaluador_id === STATE.user.id &&
       e.tipo === 'jefe' &&
       e.periodo === periodoActivo
     ) ||
-    // 2. Sin filtro de periodo (compatibilidad con ciclos anteriores)
+    // 3. Any period (fallback)
     STATE.evaluaciones.find(e =>
       e.evaluado_id === evaluadoId &&
       e.evaluador_id === STATE.user.id &&
       e.tipo === 'jefe'
     ) ||
-    // 3. Fallback: evaluación generada para este colaborador donde el evaluador es su jefe asignado
-    //    (útil cuando los IDs del Sheet difieren de los cargados en demo)
+    // 4. By jefe relationship
     STATE.evaluaciones.find(e =>
       e.evaluado_id === evaluadoId &&
       e.tipo === 'jefe' &&
@@ -2116,7 +2137,12 @@ function openEvalForm(evaluadoId) {
     }
   }
   document.getElementById('evalFormTitle').textContent = 'Evaluando a: ' + evaluado.nombre;
-  document.getElementById('evalFormSubtitle').textContent = evaluado.cargo + ' | Periodo: ' + (STATE.periodo.nombre || '2025');
+  const activeQs = STATE.ciclos.filter(x => x.estado === 'open' && x.trimestre)
+    .sort((a,b) => (a.trimestre||'').localeCompare(b.trimestre||''));
+  const periodoLabel = activeQs.length > 0
+    ? activeQs.map(q => q.trimestre).join(' + ') + ' — ' + (STATE.periodo.nombre || '')
+    : (STATE.periodo.nombre || '');
+  document.getElementById('evalFormSubtitle').textContent = evaluado.cargo + ' | ' + periodoLabel;
   document.getElementById('evalBreadName').textContent = evaluado.nombre;
 
   const readOnly = evalObj.estado === 'enviado';
@@ -5105,11 +5131,9 @@ function renderCiclos() {
       <td style="font-size:.82rem">${parent.fin ? String(parent.fin).slice(0,10) : '—'}</td>
       <td><span class="status-pill ${st.cls}">${st.label}</span></td>
       <td style="font-size:.75rem;color:#888">4 × 25%</td>
-      <td style="display:flex;gap:6px;flex-wrap:wrap">
+      <td>
         <button class="btn btn-secondary btn-sm" onclick="openCicloModal('${parent.id}')">Editar</button>
-        ${parent.estado !== 'open'
-          ? `<button class="btn btn-primary btn-sm" onclick="activarCiclo('${parent.id}')">Activar</button>`
-          : `<button class="btn btn-secondary btn-sm" onclick="activarCiclo('${parent.id}',true)">Cerrar</button>`}
+        <span style="font-size:.72rem;color:#aaa;margin-left:6px">Activa los Q individualmente</span>
       </td>
     </tr>`;
 
@@ -5350,14 +5374,42 @@ async function saveCicloModal(id) {
 async function activarCiclo(id, cerrar = false) {
   const c = STATE.ciclos.find(x => x.id === id);
   if (!c) return;
-  if (!cerrar && !confirm(`¿Activar el ciclo "${c.nombre}"? El ciclo activo actual se cerrará.`)) return;
-  if (cerrar && !confirm(`¿Cerrar el ciclo "${c.nombre}"?`)) return;
-  if (!cerrar) STATE.ciclos.forEach(x => { x.estado = x.id === id ? 'open' : 'closed'; });
-  else c.estado = 'closed';
-  if (!cerrar) STATE.periodo = { ...STATE.periodo, ...c, nombre: c.nombre };
+
+  const esQ = !!c.trimestre;
+
+  if (cerrar) {
+    if (!confirm(`¿Cerrar "${c.nombre}"?`)) return;
+    c.estado = 'closed';
+    await apiCall('saveCiclo', { ...c });
+    renderCiclos();
+    showToast(`"${c.nombre}" cerrado`, 'success');
+    return;
+  }
+
+  if (esQ) {
+    // Q cycles: accumulate — do NOT close other Q cycles, only close non-Q ciclos
+    if (!confirm(`¿Activar "${c.nombre}"?\n\nLos Q anteriores abiertos seguirán activos para personas que aún no han terminado.`)) return;
+    // Close only non-Q (annual) cycles that are open
+    STATE.ciclos.forEach(x => {
+      if (!x.trimestre && x.id !== id && x.estado === 'open') x.estado = 'closed';
+    });
+    c.estado = 'open';
+  } else {
+    // Annual cycle: close everything and open this one
+    if (!confirm(`¿Activar el ciclo anual "${c.nombre}"?`)) return;
+    STATE.ciclos.forEach(x => { x.estado = x.id === id ? 'open' : 'closed'; });
+  }
+
+  // Sync active periodo to the most recent open cycle
+  const activeQ = STATE.ciclos.filter(x => x.estado === 'open' && x.trimestre)
+    .sort((a,b) => (b.trimestre||'').localeCompare(a.trimestre||''))[0];
+  const fallback = STATE.ciclos.find(x => x.estado === 'open');
+  const effective = activeQ || fallback || c;
+  STATE.periodo = { ...STATE.periodo, ...effective, nombre: effective.nombre };
+
   await apiCall('saveCiclo', { ...c });
   renderCiclos();
-  showToast(cerrar ? `Ciclo "${c.nombre}" cerrado` : `Ciclo "${c.nombre}" activado`, 'success');
+  showToast(`"${c.nombre}" activado`, 'success');
 }
 
 // ═══════════════════════════════════════════
