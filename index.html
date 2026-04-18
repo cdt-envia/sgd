@@ -538,7 +538,7 @@
     </div>
     <button class="btn-login" onclick="handleLogin()">Ingresar al sistema</button>
     <p class="login-error" id="loginError">Usuario o contraseña incorrectos</p>
-    <div style="text-align:center;margin-top:16px;font-size:.7rem;color:#bbb;font-family:monospace">v2.8</div>
+    <div style="text-align:center;margin-top:16px;font-size:.7rem;color:#bbb;font-family:monospace">v2.9</div>
   </div>
 
   <!-- Indicadores de impacto -->
@@ -593,7 +593,7 @@
         </svg>
         Actualizar
       </button>
-      <span style="font-size:.68rem;color:#ccc;font-family:monospace;opacity:.6">v2.8</span>
+      <span style="font-size:.68rem;color:#ccc;font-family:monospace;opacity:.6">v2.9</span>
     </div>
   </div>
 
@@ -1779,37 +1779,16 @@ function buildSidebar() {
   // ── Section builder ───────────────────────────────────────────────────
   const makeSection = (id, label, color, items, startOpen=false) => {
     const navItems = items.map(item =>
-      `<button class="nav-item" id="nav-${item.id}" onclick="navigateTo('${item._page||item.id}')">
-        <svg viewBox="0 0 24 24" fill="currentColor" width="18" height="18">${icons[item.icon]||icons.chart}</svg>
-        <span>${item.label}</span>
-      </button>`
+      `<button class="nav-item" id="nav-${item.id}" onclick="navigateTo('${item._page||item.id}')"><svg viewBox="0 0 24 24" fill="currentColor" width="18" height="18">${icons[item.icon]||icons.chart}</svg><span>${item.label}</span></button>`
     ).join('');
-    return `
-      <div class="sidebar-group" id="sg-${id}">
-        <button class="sidebar-group-header" onclick="toggleSidebarGroup('${id}')"
-          style="width:100%;display:flex;align-items:center;justify-content:space-between;
-            padding:8px 16px;background:none;border:none;cursor:pointer;
-            border-left:3px solid ${color};margin-bottom:2px">
-          <span style="font-size:.68rem;font-weight:800;letter-spacing:.08em;text-transform:uppercase;color:${color}">${label}</span>
-          <svg id="sg-arrow-${id}" viewBox="0 0 24 24" fill="${color}" width="14" height="14"
-            style="transition:transform .2s;transform:${startOpen?'rotate(0deg)':'rotate(-90deg)'}">
-            <path d="M7 10l5 5 5-5z"/>
-          </svg>
-        </button>
-        <div id="sg-items-${id}" style="display:${startOpen?'block':'none'};padding-left:4px">
-          ${navItems}
-        </div>
-      </div>`;
+    return `<div class="sidebar-group" id="sg-${id}"><button onclick="toggleSidebarGroup('${id}')" style="width:100%;display:flex;align-items:center;justify-content:space-between;padding:8px 12px;background:none;border:none;border-left:3px solid ${color};cursor:pointer;margin-bottom:2px"><span style="font-size:.65rem;font-weight:800;letter-spacing:.08em;text-transform:uppercase;color:${color};font-family:Asap,sans-serif">${label}</span><svg id="sg-arrow-${id}" viewBox="0 0 24 24" fill="${color}" width="14" height="14" style="transition:transform .2s;transform:rotate(${startOpen?'0':'-90'}deg)"><path d="M7 10l5 5 5-5z"/></svg></button><div id="sg-items-${id}" style="display:${startOpen?'block':'none'};padding-left:4px">${navItems}</div></div>`;
   };
 
   // ── Define sections per role ──────────────────────────────────────────
   let sections = '';
 
   // Dashboard always visible
-  sections += `<button class="nav-item" id="nav-dashboard" onclick="navigateTo('dashboard')" style="margin:4px 8px 8px">
-    <svg viewBox="0 0 24 24" fill="currentColor" width="18" height="18">${icons.chart}</svg>
-    <span>Dashboard</span>
-  </button>`;
+  sections += `<button class="nav-item" id="nav-dashboard" onclick="navigateTo('dashboard')" style="margin:4px 8px 8px"><svg viewBox="0 0 24 24" fill="currentColor" width="18" height="18">${icons.chart}</svg><span>Dashboard</span></button>`;
 
   if (rol === 'admin') {
     sections += makeSection('admin-ops', 'Administración', '#ba0020', [
