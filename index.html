@@ -538,7 +538,7 @@
     </div>
     <button class="btn-login" onclick="handleLogin()">Ingresar al sistema</button>
     <p class="login-error" id="loginError">Usuario o contraseña incorrectos</p>
-    <div style="text-align:center;margin-top:16px;font-size:.7rem;color:#bbb;font-family:monospace">v2.4</div>
+    <div style="text-align:center;margin-top:16px;font-size:.7rem;color:#bbb;font-family:monospace">v2.5</div>
   </div>
 
   <!-- Indicadores de impacto -->
@@ -593,7 +593,7 @@
         </svg>
         Actualizar
       </button>
-      <span style="font-size:.68rem;color:#ccc;font-family:monospace;opacity:.6">v2.4</span>
+      <span style="font-size:.68rem;color:#ccc;font-family:monospace;opacity:.6">v2.5</span>
     </div>
   </div>
 
@@ -3320,8 +3320,25 @@ function toggleOKRExpand(objId) {
   krsDiv.style.display = krsDiv.style.display === 'none' ? '' : 'none';
 }
 
-// ─── MODAL: NUEVO / EDITAR OBJETIVO ───
-// Genera el nombre del periodo basado en fecha inicio y fin
+function syncOKRDatesFromQ(selectEl) {
+  const opt = selectEl.options[selectEl.selectedIndex];
+  const inicio  = opt.dataset.inicio || '';
+  const fin     = opt.dataset.fin    || '';
+  const periodo = opt.value;
+
+  const inicioEl  = document.getElementById('okrFechaInicio');
+  const finEl     = document.getElementById('okrFechaFin');
+  const periodoEl = document.getElementById('okrPeriodo');
+  const display   = document.getElementById('okrQDateDisplay');
+
+  if (inicioEl)  inicioEl.value  = inicio;
+  if (finEl)     finEl.value     = fin;
+  if (periodoEl) periodoEl.value = periodo;
+  if (display)   display.textContent = inicio && fin
+    ? String(inicio).slice(0,10) + ' → ' + String(fin).slice(0,10)
+    : 'Sin fechas definidas en este Q';
+}
+
 function actualizarPeriodoOKR() {
   const inicio = document.getElementById('okrFechaInicio')?.value;
   const fin    = document.getElementById('okrFechaFin')?.value;
@@ -3366,6 +3383,29 @@ function openOKRModal(objId) {
   const newId = 'OBJ' + Date.now();
   const team = STATE.users.filter(x => x.jefe_id === STATE.user.id);
 
+  // Get available Q cycles (and open annual cycles as fallback)
+  const qCiclos = STATE.ciclos
+    .filter(c => c.trimestre) // only Q sub-cycles
+    .sort((a,b) => (a.nombre||'').localeCompare(b.nombre||''));
+  const cicloActivo = STATE.ciclos.find(c => c.estado === 'open');
+
+  // Build Q options
+  const qOpts = qCiclos.length > 0
+    ? qCiclos.map(q => {
+        const isSelected = obj?.periodo === q.nombre || (!obj && q.estado === 'open');
+        const estadoBadge = q.estado === 'open' ? ' 🟢 Activo' : q.estado === 'closed' ? '' : '';
+        return `<option value="${q.nombre}" data-inicio="${q.inicio||''}" data-fin="${q.fin||''}" ${isSelected?'selected':''}>${q.trimestre} — ${q.nombre.replace(/.*—\s*/,'')} (${q.inicio?String(q.inicio).slice(0,7):''} → ${q.fin?String(q.fin).slice(0,7):''})${estadoBadge}</option>`;
+      }).join('')
+    : `<option value="${cicloActivo?.nombre||''}">${cicloActivo?.nombre||'Sin ciclos Q definidos'}</option>`;
+
+  // Pre-fill dates from selected Q
+  const defaultQ = qCiclos.find(q => obj?.periodo === q.nombre) ||
+                   qCiclos.find(q => q.estado === 'open') ||
+                   qCiclos[0];
+  const defaultInicio = obj?.fecha_inicio || defaultQ?.inicio || '';
+  const defaultFin    = obj?.fecha_fin    || defaultQ?.fin    || '';
+  const defaultPeriodo = obj?.periodo || defaultQ?.nombre || cicloActivo?.nombre || '';
+
   openModal(obj ? 'Editar Objetivo' : 'Nuevo Objetivo', `
     <div class="form-row">
       <div class="form-field">
@@ -3391,13 +3431,11 @@ function openOKRModal(objId) {
       <textarea id="okrDesc" rows="2" placeholder="¿Por qué este objetivo es importante?">${obj?.descripcion||''}</textarea>
     </div>
     <div class="form-row">
-      <div class="form-field"><label>Fecha inicio *</label><input type="date" id="okrFechaInicio" value="${obj?.fecha_inicio||''}" onchange="actualizarPeriodoOKR()"></div>
-      <div class="form-field"><label>Fecha fin *</label><input type="date" id="okrFechaFin" value="${obj?.fecha_fin||''}" onchange="actualizarPeriodoOKR()"></div>
-    </div>
-    <div class="form-row">
       <div class="form-field">
-        <label>Periodo <small style="color:#aaa;font-weight:400">(se calcula automáticamente según las fechas)</small></label>
-        <input type="text" id="okrPeriodo" value="${obj?.periodo||''}" placeholder="Ej: Q1-2026 · se genera al seleccionar fechas" style="background:var(--gray-light);color:var(--gray)">
+        <label>Trimestre (Q) *</label>
+        <select id="okrQ" onchange="syncOKRDatesFromQ(this)" style="border:2px solid var(--red)">
+          ${qOpts}
+        </select>
       </div>
       <div class="form-field">
         <label>Estado</label>
@@ -3407,6 +3445,14 @@ function openOKRModal(objId) {
           ).join('')}
         </select>
       </div>
+    </div>
+    <div class="form-row" style="display:none">
+      <input type="hidden" id="okrFechaInicio" value="${defaultInicio}">
+      <input type="hidden" id="okrFechaFin"    value="${defaultFin}">
+      <input type="hidden" id="okrPeriodo"     value="${defaultPeriodo}">
+    </div>
+    <div style="background:var(--gray-light);border-radius:8px;padding:8px 14px;font-size:.82rem;color:#888;margin-top:4px">
+      📅 Fechas del Q seleccionado: <strong id="okrQDateDisplay">${defaultInicio ? String(defaultInicio).slice(0,10)+' → '+String(defaultFin).slice(0,10) : 'Selecciona un Q'}</strong>
     </div>
     <div class="form-field">
       <label>Score OKR (0–100) <small style="color:#aaa">— Actualiza al cierre del periodo</small></label>
