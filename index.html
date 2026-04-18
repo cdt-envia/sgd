@@ -538,7 +538,7 @@
     </div>
     <button class="btn-login" onclick="handleLogin()">Ingresar al sistema</button>
     <p class="login-error" id="loginError">Usuario o contraseña incorrectos</p>
-    <div style="text-align:center;margin-top:16px;font-size:.7rem;color:#bbb;font-family:monospace">v2.5</div>
+    <div style="text-align:center;margin-top:16px;font-size:.7rem;color:#bbb;font-family:monospace">v2.6</div>
   </div>
 
   <!-- Indicadores de impacto -->
@@ -593,7 +593,7 @@
         </svg>
         Actualizar
       </button>
-      <span style="font-size:.68rem;color:#ccc;font-family:monospace;opacity:.6">v2.5</span>
+      <span style="font-size:.68rem;color:#ccc;font-family:monospace;opacity:.6">v2.6</span>
     </div>
   </div>
 
@@ -674,10 +674,8 @@
         </div>
 
         <!-- SECCIÓN COMPETENCIAS -->
-        <div class="card">
+        <div class="card" id="evalCompSection">
           <div class="card-header">
-            <div>
-              <div class="card-title">🎯 Evaluación de Competencias</div>
               <div class="card-subtitle">Califica cada competencia del 1 al 4 según los comportamientos observados</div>
             </div>
             <div style="text-align:right">
@@ -2170,10 +2168,32 @@ function openEvalForm(evaluadoId) {
     }
   });
   renderCompetenciasForm(evaluado.cargo, savedScores, readOnly);
-  // Asegurar que el contenedor OKR esté visible (puede haber quedado oculto de eval colab→jefe)
+
+  // Q1 = completo (competencias + OKR visible). Q2/Q3/Q4 = revision (solo OKR)
+  // Find the Q ciclo matching the eval's period
+  const evalCiclo = STATE.ciclos.find(c => c.nombre === evalObj.periodo) ||
+                    STATE.ciclos.find(c => c.estado === 'open' && c.trimestre) ||
+                    cicloActivo;
+  const esRevision = evalCiclo?.tipo === 'revision' || evalCiclo?.trimestre === 'Q2' || evalCiclo?.trimestre === 'Q3' || evalCiclo?.trimestre === 'Q4';
+
+  const compSection = document.getElementById('evalCompSection');
+  const comSection2 = document.getElementById('evalCompSection');
+  if (compSection) compSection.style.display = esRevision ? 'none' : '';
+
+  // Show a banner if revision Q
   const okrContainerJefe = document.getElementById('evalOKRContainer');
   if (okrContainerJefe) okrContainerJefe.style.display = '';
-  renderEvalOKRSection(evaluadoId, evalObj.score_okr || 0, readOnly);
+
+  if (esRevision) {
+    // For Q2/Q3/Q4: show OKR section as read-only reference
+    const evalOKRSec = document.getElementById('evalOKRSection');
+    if (evalOKRSec) {
+      evalOKRSec.style.display = '';
+      evalOKRSec.querySelector('.card-subtitle').textContent =
+        `${evalCiclo?.trimestre || 'Q'} — Seguimiento de OKR (competencias se evalúan en Q1)`;
+    }
+    renderEvalOKRSection(evaluadoId, evalObj.score_okr || 0, readOnly);
+  }
 
   document.getElementById('evalFortalezas').value = evalObj.fortalezas || '';
   document.getElementById('evalMejoras').value = evalObj.mejoras || '';
@@ -2585,12 +2605,22 @@ async function savePotencialStandalone() {
 
 async function submitEval() {
   const e = STATE.currentEval;
-  const comps = getCompsByRole(e._evaluado.cargo);
-  const scores = e.comp_scores || {};
-  const rated = comps.filter(c => scores[c.id] > 0).length;
-  if (rated < comps.length) {
-    showToast(`Debes calificar todas las competencias (${rated}/${comps.length})`, 'error'); return;
+
+  // Check if current ciclo is revision (Q2/Q3/Q4) — skip competencias validation
+  const evalCiclo = STATE.ciclos.find(c => c.nombre === e.periodo) ||
+                    STATE.ciclos.find(c => c.estado === 'open' && c.trimestre);
+  const esRevision = evalCiclo?.tipo === 'revision' ||
+    ['Q2','Q3','Q4'].includes(evalCiclo?.trimestre);
+
+  if (!esRevision) {
+    const comps = getCompsByRole(e._evaluado.cargo);
+    const scores = e.comp_scores || {};
+    const rated = comps.filter(c => scores[c.id] > 0).length;
+    if (rated < comps.length) {
+      showToast(`Debes calificar todas las competencias (${rated}/${comps.length})`, 'error'); return;
+    }
   }
+
   if (!confirm('¿Confirmas el envío de la evaluación? No podrás editarla después.')) return;
 
   const data = buildEvalPayload('enviado');
