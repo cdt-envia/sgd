@@ -538,7 +538,7 @@
     </div>
     <button class="btn-login" onclick="handleLogin()">Ingresar al sistema</button>
     <p class="login-error" id="loginError">Usuario o contraseña incorrectos</p>
-    <div style="text-align:center;margin-top:16px;font-size:.7rem;color:#bbb;font-family:monospace">v2.6</div>
+    <div style="text-align:center;margin-top:16px;font-size:.7rem;color:#bbb;font-family:monospace">v2.8</div>
   </div>
 
   <!-- Indicadores de impacto -->
@@ -593,7 +593,7 @@
         </svg>
         Actualizar
       </button>
-      <span style="font-size:.68rem;color:#ccc;font-family:monospace;opacity:.6">v2.6</span>
+      <span style="font-size:.68rem;color:#ccc;font-family:monospace;opacity:.6">v2.8</span>
     </div>
   </div>
 
@@ -1877,6 +1877,11 @@ function navigateTo(pageId) {
   if (pg) pg.classList.add('active');
   const nav = document.getElementById('nav-' + pageId);
   if (nav) nav.classList.add('active');
+
+  // Always scroll to top when changing pages
+  window.scrollTo({ top: 0, behavior: 'instant' });
+  document.documentElement.scrollTop = 0;
+  document.body.scrollTop = 0;
 
   // Render de cada página
   switch(pageId) {
