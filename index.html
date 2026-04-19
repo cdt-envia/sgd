@@ -538,7 +538,7 @@
     </div>
     <button class="btn-login" onclick="handleLogin()">Ingresar al sistema</button>
     <p class="login-error" id="loginError">Usuario o contraseña incorrectos</p>
-    <div style="text-align:center;margin-top:16px;font-size:.7rem;color:#bbb;font-family:monospace">v3.3</div>
+    <div style="text-align:center;margin-top:16px;font-size:.7rem;color:#bbb;font-family:monospace">v3.6</div>
   </div>
 
   <!-- Indicadores de impacto -->
@@ -593,7 +593,7 @@
         </svg>
         Actualizar
       </button>
-      <span style="font-size:.68rem;color:#ccc;font-family:monospace;opacity:.6">v3.3</span>
+      <span style="font-size:.68rem;color:#ccc;font-family:monospace;opacity:.6">v3.6</span>
     </div>
   </div>
 
@@ -2025,8 +2025,12 @@ function renderTeam() {
     const stateClass = { pendiente:'pill-pending', borrador:'pill-progress', enviado:'pill-done', calibracion:'pill-calibration' };
     const score = evalJefe?.score_final ? `<strong>${evalJefe.score_final.toFixed(2)}</strong> / 4` : '—';
 
-    // OKR ya no es requisito para evaluar — se gestiona por separado en el módulo OKR
-    const evalBtnDisabled = false;
+    // OKR obligatorio: el colaborador debe tener al menos 1 OKR antes de poder ser evaluado
+    const tieneOKR = STATE.okr.some(o =>
+      (o.tipo === 'individual' && o.colaborador_id === colab.id) ||
+      (o.tipo === 'equipo' && o.jefe_id === colab.jefe_id)
+    );
+    const evalBtnDisabled = !tieneOKR && evalJefe?.estado !== 'enviado';
 
     return `<tr>
       <td><strong>${colab.nombre}</strong></td>
@@ -2035,7 +2039,11 @@ function renderTeam() {
       <td><span class="status-pill ${stateClass[evalJefe?.estado||'pendiente']}">${stateLabel[evalJefe?.estado||'pendiente']}</span></td>
       <td>${score}</td>
       <td style="display:flex;gap:6px;flex-wrap:wrap;align-items:center">
-        <button class="btn btn-primary btn-sm" onclick="openEvalForm('${colab.id}')">Evaluar</button>
+        <button class="btn btn-primary btn-sm" onclick="openEvalForm('${colab.id}')"
+          ${evalBtnDisabled ? 'disabled style="opacity:.45;cursor:not-allowed" title="Debes crear al menos 1 OKR para este colaborador antes de evaluar"' : ''}>
+          Evaluar
+        </button>
+        ${evalBtnDisabled ? `<span style="font-size:.72rem;color:#f57c00">⚠️ Sin OKR</span>` : ''}
         <button class="btn btn-secondary btn-sm" onclick="viewColabResults('${colab.id}')">Ver resultados</button>
       </td>
     </tr>`;
@@ -2118,8 +2126,17 @@ function openEvalForm(evaluadoId) {
 
   STATE.currentEval = { ...evalObj, _evaluado: evaluado };
 
-  // OKR ya no se evalúa en este formulario — se hace por trimestre en el módulo OKR
-  // Solo verificar pares para 360°
+  // OKR obligatorio: verificar que el colaborador tenga OKR antes de evaluar
+  if (evalObj.estado !== 'enviado') {
+    const tieneOKR = STATE.okr.some(o =>
+      (o.tipo === 'individual' && o.colaborador_id === evaluadoId) ||
+      (o.tipo === 'equipo' && o.jefe_id === evaluado.jefe_id)
+    );
+    if (!tieneOKR) {
+      showToast(`⚠️ ${evaluado.nombre} no tiene OKR definidos. Ve a "OKR del equipo" y crea los objetivos primero.`, 'error');
+      return;
+    }
+  }
   const cicloActivo = STATE.ciclos.find(c => c.estado === 'open');
   if (cicloActivo?.grado === '360' || cicloActivo?.grado === 360) {
     const paresAsignados = STATE.pares.filter(p =>
@@ -2689,11 +2706,21 @@ function buildEvalPayload(estado) {
 // ═══════════════════════════════════════════
 function renderAutoEval() {
   const u = STATE.user;
-  const periodoAuto = STATE.periodo.nombre || STATE.ciclos.find(c=>c.estado==='open')?.nombre || '';
-  const evalAuto = STATE.evaluaciones.find(e =>
-    e.evaluado_id === u.id && e.tipo === 'auto' &&
-    (!periodoAuto || e.periodo === periodoAuto)
-  ) || STATE.evaluaciones.find(e => e.evaluado_id === u.id && e.tipo === 'auto');
+  // Search across ALL open periods (multi-Q support)
+  const periodosAbiertos = STATE.ciclos.filter(c => c.estado === 'open').map(c => c.nombre);
+  const periodoAuto = STATE.periodo.nombre || periodosAbiertos[0] || '';
+
+  const evalAuto =
+    // 1. Match any open period
+    STATE.evaluaciones.find(e =>
+      e.evaluado_id === u.id && e.tipo === 'auto' && periodosAbiertos.includes(e.periodo)
+    ) ||
+    // 2. Exact periodo match
+    STATE.evaluaciones.find(e =>
+      e.evaluado_id === u.id && e.tipo === 'auto' && e.periodo === periodoAuto
+    ) ||
+    // 3. Any period fallback
+    STATE.evaluaciones.find(e => e.evaluado_id === u.id && e.tipo === 'auto');
   const pill = document.getElementById('autoEvalStatus');
   const btn = document.getElementById('btnOpenAutoEval');
 
@@ -2862,7 +2889,6 @@ function openAutoEvalForm(readOnly) {
 
   document.getElementById('evalFortalezas').value = evalAuto.fortalezas || '';
   document.getElementById('evalMejoras').value = evalAuto.mejoras || '';
-  document.getElementById('evalComentario').value = evalAuto.comentario || '';
   if (readOnly) ['evalFortalezas','evalMejoras'].forEach(id => document.getElementById(id).disabled = true);
 
   navigateTo('form-eval');
@@ -3479,10 +3505,6 @@ function openOKRModal(objId) {
     <div style="background:var(--gray-light);border-radius:8px;padding:8px 14px;font-size:.82rem;color:#888;margin-top:4px">
       📅 Fechas del Q seleccionado: <strong id="okrQDateDisplay">${defaultInicio ? String(defaultInicio).slice(0,10)+' → '+String(defaultFin).slice(0,10) : 'Selecciona un Q'}</strong>
     </div>
-    <div class="form-field">
-      <label>Score OKR (0–100) <small style="color:#aaa">— Actualiza al cierre del periodo</small></label>
-      <input type="number" id="okrScore" min="0" max="100" value="${obj?.score||0}">
-    </div>
   `, [
     { label:'Cancelar', cls:'btn-secondary', action:'closeModal()' },
     { label: obj ? 'Guardar cambios' : 'Crear objetivo', cls:'btn-primary', action:`saveOKRObjective('${obj?.id||newId}')` }
@@ -3512,7 +3534,7 @@ async function saveOKRObjective(id) {
     estado: document.getElementById('okrEstado').value,
     fecha_inicio: document.getElementById('okrFechaInicio').value,
     fecha_fin: document.getElementById('okrFechaFin').value,
-    score: parseInt(document.getElementById('okrScore').value) || 0,
+    score: 0, // calculado automáticamente del promedio de KRs
     krs: existing?.krs || [],
   };
   await apiCall('saveOKR', data);
@@ -3813,8 +3835,12 @@ function renderEvaluarPares() {
   const u = STATE.user;
   const cont = document.getElementById('evaluarParesContent');
 
-  // Evalúa a personas donde yo soy el evaluador par
-  const misParesAsignados = STATE.pares.filter(p => p.evaluador_id === u.id);
+  // Filter pares assigned to me as evaluador, in any active period
+  const periodosAbiertos = STATE.ciclos.filter(c => c.estado === 'open').map(c => c.nombre);
+  const misParesAsignados = STATE.pares.filter(p =>
+    p.evaluador_id === u.id &&
+    (!p.periodo || periodosAbiertos.includes(p.periodo) || !periodosAbiertos.length)
+  );
 
   let html = '<div class="card"><div class="card-header"><div class="card-title">Personas que debes evaluar como par</div></div>';
 
@@ -3824,9 +3850,15 @@ function renderEvaluarPares() {
     const rows = misParesAsignados.map(par => {
       const evaluado = getUserById(par.evaluado_id);
       if (!evaluado) return '';
-      const evalPar = STATE.evaluaciones.find(e =>
-        e.evaluado_id === par.evaluado_id && e.evaluador_id === u.id && e.tipo === 'par'
-      );
+      // Find eval across all open periods
+      const evalPar =
+        STATE.evaluaciones.find(e =>
+          e.evaluado_id === par.evaluado_id && e.evaluador_id === u.id &&
+          e.tipo === 'par' && periodosAbiertos.includes(e.periodo)
+        ) ||
+        STATE.evaluaciones.find(e =>
+          e.evaluado_id === par.evaluado_id && e.evaluador_id === u.id && e.tipo === 'par'
+        );
       const stateLabel = { pendiente:'Pendiente', borrador:'En borrador', enviado:'Completada' };
       const stateCls   = { pendiente:'pill-pending', borrador:'pill-progress', enviado:'pill-done' };
       const estado = evalPar?.estado || 'pendiente';
@@ -3836,7 +3868,7 @@ function renderEvaluarPares() {
         <td><span class="status-pill ${stateCls[estado] || 'pill-pending'}">${stateLabel[estado] || estado}</span></td>
         <td>
           ${!evalPar
-            ? `<span style="font-size:.8rem;color:#aaa">El administrador debe generar las evaluaciones del ciclo activo.</span>`
+            ? `<span style="font-size:.8rem;color:#f57c00">⚠️ El admin debe generar las evaluaciones del ciclo activo.</span>`
             : estado === 'enviado'
               ? `<button class="btn btn-secondary btn-sm" onclick="openParEvalForm('${evaluado.id}',true)">Ver</button>`
               : `<button class="btn btn-primary btn-sm" onclick="openParEvalForm('${evaluado.id}',false)">Evaluar</button>`
@@ -3879,7 +3911,6 @@ function openParEvalForm(evaluadoId, readOnly) {
   renderEvalOKRSection(evaluadoId, 0, true);
   document.getElementById('evalFortalezas').value = evalPar.fortalezas || '';
   document.getElementById('evalMejoras').value = evalPar.mejoras || '';
-  document.getElementById('evalComentario').value = evalPar.comentario || '';
   if (readOnly) ['evalFortalezas','evalMejoras'].forEach(id => document.getElementById(id).disabled = true);
   navigateTo('form-eval');
 }
