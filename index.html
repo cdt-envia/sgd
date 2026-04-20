@@ -538,7 +538,7 @@
     </div>
     <button class="btn-login" onclick="handleLogin()">Ingresar al sistema</button>
     <p class="login-error" id="loginError">Usuario o contraseña incorrectos</p>
-    <div style="text-align:center;margin-top:16px;font-size:.7rem;color:#bbb;font-family:monospace">v4.1</div>
+    <div style="text-align:center;margin-top:16px;font-size:.7rem;color:#bbb;font-family:monospace">v4.2</div>
   </div>
 
   <!-- Indicadores de impacto -->
@@ -593,7 +593,7 @@
         </svg>
         Actualizar
       </button>
-      <span style="font-size:.68rem;color:#ccc;font-family:monospace;opacity:.6">v4.1</span>
+      <span style="font-size:.68rem;color:#ccc;font-family:monospace;opacity:.6">v4.2</span>
     </div>
   </div>
 
@@ -3596,6 +3596,7 @@ function openOKRModal(objId) {
     ' (' + String(q.inicio||'').slice(0,7) + ' → ' + String(q.fin||'').slice(0,7) + ')' +
     (q.estado==='open'?' 🟢':'') + '</option>'
   ).join('') || '<option value="Q1">Q1</option><option value="Q2">Q2</option><option value="Q3">Q3</option><option value="Q4">Q4</option>';
+  // Note: "Todos" option is added inside buildKRRow directly (first option)
 
   const krsHtml = (obj?.krs||[]).map((kr,i) => buildKRRow(kr, i, window._okrQOptions)).join('');
   const equipoMiembros = obj?.miembros || [];
@@ -3664,39 +3665,118 @@ function openOKRModal(objId) {
 
 function buildKRRow(kr, idx, qOptions) {
   const id = kr?.id || ('KR' + Date.now() + idx);
-  const pct = kr?.progreso || 0;
-  return `<div id="kr-row-${id}" style="background:var(--gray-light);border-radius:8px;padding:10px 12px;margin-bottom:8px">
-    <div style="display:flex;gap:8px;align-items:flex-start;flex-wrap:wrap">
-      <div style="flex:1;min-width:180px">
-        <input type="text" value="${kr?.descripcion||''}" placeholder="¿Qué hay que lograr?"
-          id="kr-desc-${id}"
-          style="width:100%;padding:6px 10px;border:1.5px solid var(--gray-mid);border-radius:6px;font-family:Asap;font-size:.85rem">
-      </div>
-      <div style="display:flex;gap:6px;flex-wrap:wrap;align-items:center">
-        <select id="kr-q-${id}" style="padding:5px 8px;border:1.5px solid var(--gray-mid);border-radius:6px;font-size:.78rem;font-family:Asap">
-          ${qOptions.replace(`value="${kr?.q_asignado||'Q1'}"`, `value="${kr?.q_asignado||'Q1'}" selected`)}
+  const tipo     = kr?.tipo_metrica || 'numero';
+  const inicio   = kr?.valor_inicio  ?? '';
+  const meta     = kr?.valor_meta    ?? '';
+  const actual   = kr?.valor_actual  ?? '';
+
+  // Calculate % automatically from start→current→target
+  const pct = calcKRProgreso(tipo, inicio, meta, actual, kr?.progreso || 0);
+
+  const qOptsWithAll = '<option value="todos"' + ((!kr?.q_asignado || kr?.q_asignado === 'todos') ? ' selected' : '') + '>📅 Todo el año</option>' +
+    qOptions.replace(
+      new RegExp(`value="${kr?.q_asignado || ''}"(?!\\s*selected)`),
+      `value="${kr?.q_asignado || ''}" selected`
+    );
+
+  const tipoOpts = [
+    { val:'numero', label:'#  Número',    ph_inicio:'Ej: 0',    ph_meta:'Ej: 100',  ph_actual:'Ej: 65' },
+    { val:'pct',    label:'%  Porcentaje', ph_inicio:'Ej: 0',    ph_meta:'Ej: 95',   ph_actual:'Ej: 72' },
+    { val:'dinero', label:'$  Dinero',     ph_inicio:'Ej: 0',    ph_meta:'Ej: 50M',  ph_actual:'Ej: 32M'},
+    { val:'binario',label:'✓  Sí / No',   ph_inicio:'',         ph_meta:'Completar',ph_actual:'' },
+  ];
+  const t = tipoOpts.find(t => t.val === tipo) || tipoOpts[0];
+
+  const barColor = pct >= 70 ? '#43a047' : pct >= 40 ? '#f57c00' : '#e53935';
+
+  return `<div id="kr-row-${id}" style="background:white;border:1.5px solid var(--gray-mid);border-radius:10px;padding:12px 14px;margin-bottom:8px">
+    <!-- Fila 1: descripción + Q + eliminar -->
+    <div style="display:flex;gap:8px;align-items:center;margin-bottom:10px">
+      <input type="text" value="${kr?.descripcion||''}" placeholder="¿Qué resultado hay que lograr?"
+        id="kr-desc-${id}"
+        style="flex:1;padding:7px 10px;border:1.5px solid var(--gray-mid);border-radius:6px;font-family:Asap;font-size:.88rem">
+      <select id="kr-q-${id}"
+        style="padding:6px 8px;border:1.5px solid var(--gray-mid);border-radius:6px;font-size:.78rem;font-family:Asap;min-width:130px">
+        ${qOptsWithAll}
+      </select>
+      <button onclick="document.getElementById('kr-row-${id}').remove()" type="button"
+        style="background:none;border:none;color:#e53935;cursor:pointer;font-size:1.2rem;line-height:1;flex-shrink:0" title="Eliminar KR">✕</button>
+    </div>
+    <!-- Fila 2: tipo métrica + valores -->
+    <div style="display:flex;gap:8px;align-items:flex-end;flex-wrap:wrap">
+      <div style="min-width:130px">
+        <div style="font-size:.7rem;font-weight:700;color:#888;margin-bottom:3px;text-transform:uppercase">Tipo de métrica</div>
+        <select id="kr-tipo-${id}" onchange="recalcKRProgress('${id}')"
+          style="width:100%;padding:5px 8px;border:1px solid var(--gray-mid);border-radius:6px;font-size:.78rem;font-family:Asap">
+          ${tipoOpts.map(t => `<option value="${t.val}" ${tipo===t.val?'selected':''}>${t.label}</option>`).join('')}
         </select>
-        <div style="display:flex;align-items:center;gap:4px">
-          <input type="number" min="0" max="100" value="${pct}"
-            id="kr-prog-${id}"
-            style="width:64px;padding:5px 8px;border:1.5px solid var(--gray-mid);border-radius:6px;font-size:.82rem;font-family:Asap"
-            placeholder="%">
-          <span style="font-size:.75rem;color:#888">%</span>
+      </div>
+      ${tipo === 'binario'
+        ? `<div>
+            <div style="font-size:.7rem;font-weight:700;color:#888;margin-bottom:3px;text-transform:uppercase">¿Completado?</div>
+            <select id="kr-actual-${id}" onchange="recalcKRProgress('${id}')"
+              style="padding:5px 8px;border:1px solid var(--gray-mid);border-radius:6px;font-size:.78rem;font-family:Asap">
+              <option value="no" ${actual!=='si'?'selected':''}>No</option>
+              <option value="si" ${actual==='si'?'selected':''}>Sí ✓</option>
+            </select>
+            <input type="hidden" id="kr-inicio-${id}" value="0">
+            <input type="hidden" id="kr-meta-${id}" value="si">
+           </div>`
+        : `<div>
+            <div style="font-size:.7rem;font-weight:700;color:#888;margin-bottom:3px;text-transform:uppercase">Valor inicial</div>
+            <input type="text" value="${inicio}" placeholder="${t.ph_inicio}" id="kr-inicio-${id}" onchange="recalcKRProgress('${id}')"
+              style="width:80px;padding:5px 8px;border:1px solid var(--gray-mid);border-radius:6px;font-size:.82rem;font-family:Asap">
+          </div>
+          <div>
+            <div style="font-size:.7rem;font-weight:700;color:#888;margin-bottom:3px;text-transform:uppercase">Meta</div>
+            <input type="text" value="${meta}" placeholder="${t.ph_meta}" id="kr-meta-${id}" onchange="recalcKRProgress('${id}')"
+              style="width:80px;padding:5px 8px;border:1px solid var(--gray-mid);border-radius:6px;font-size:.82rem;font-family:Asap">
+          </div>
+          <div>
+            <div style="font-size:.7rem;font-weight:700;color:#888;margin-bottom:3px;text-transform:uppercase">Valor actual</div>
+            <input type="text" value="${actual}" placeholder="${t.ph_actual}" id="kr-actual-${id}" onchange="recalcKRProgress('${id}')"
+              style="width:80px;padding:5px 8px;border:1px solid var(--gray-mid);border-radius:6px;font-size:.82rem;font-family:Asap">
+          </div>`
+      }
+      <!-- Progreso calculado -->
+      <div style="flex:1;min-width:120px">
+        <div style="font-size:.7rem;font-weight:700;color:#888;margin-bottom:3px;text-transform:uppercase">Avance</div>
+        <div style="display:flex;align-items:center;gap:8px">
+          <div style="flex:1;background:#e0e0e0;border-radius:4px;height:8px">
+            <div id="kr-bar-${id}" style="width:${pct}%;background:${barColor};height:8px;border-radius:4px;transition:width .3s"></div>
+          </div>
+          <strong id="kr-pct-${id}" style="font-size:.85rem;color:${barColor};min-width:36px;text-align:right">${pct}%</strong>
         </div>
-        <button onclick="document.getElementById('kr-row-${id}').remove()" type="button"
-          style="background:none;border:none;color:#e53935;cursor:pointer;font-size:1.1rem;padding:2px 6px" title="Eliminar KR">✕</button>
       </div>
     </div>
-    <div style="margin-top:6px;display:flex;gap:8px;align-items:center;font-size:.75rem;color:#888;flex-wrap:wrap">
-      <span>Meta:</span>
-      <input type="text" value="${kr?.meta||''}" placeholder="Ej: 95%" id="kr-meta-${id}"
-        style="width:80px;padding:3px 8px;border:1px solid var(--gray-mid);border-radius:5px;font-size:.75rem;font-family:Asap">
-      <span style="margin-left:8px">Avance actual:</span>
-      <input type="text" value="${kr?.actual||''}" placeholder="Ej: 78%" id="kr-actual-${id}"
-        style="width:80px;padding:3px 8px;border:1px solid var(--gray-mid);border-radius:5px;font-size:.75rem;font-family:Asap">
-      <input type="hidden" id="kr-id-${id}" value="${id}">
-    </div>
+    <input type="hidden" id="kr-prog-${id}" value="${pct}">
+    <input type="hidden" id="kr-id-${id}" value="${id}">
   </div>`;
+}
+
+function calcKRProgreso(tipo, inicio, meta, actual, fallback) {
+  if (tipo === 'binario') return actual === 'si' ? 100 : 0;
+  const i = parseFloat(String(inicio).replace(/[^0-9.-]/g,'')) || 0;
+  const m = parseFloat(String(meta).replace(/[^0-9.-]/g,''))   || 0;
+  const a = parseFloat(String(actual).replace(/[^0-9.-]/g,'')) || 0;
+  if (m === i) return fallback || 0;
+  const pct = Math.round(((a - i) / (m - i)) * 100);
+  return Math.min(100, Math.max(0, pct));
+}
+
+function recalcKRProgress(id) {
+  const tipo   = document.getElementById('kr-tipo-' + id)?.value || 'numero';
+  const inicio = document.getElementById('kr-inicio-' + id)?.value || '0';
+  const meta   = document.getElementById('kr-meta-' + id)?.value || '0';
+  const actual = document.getElementById('kr-actual-' + id)?.value || '0';
+  const pct = calcKRProgreso(tipo, inicio, meta, actual, 0);
+  const barColor = pct >= 70 ? '#43a047' : pct >= 40 ? '#f57c00' : '#e53935';
+  const bar = document.getElementById('kr-bar-' + id);
+  const pctEl = document.getElementById('kr-pct-' + id);
+  const progEl = document.getElementById('kr-prog-' + id);
+  if (bar) { bar.style.width = pct + '%'; bar.style.background = barColor; }
+  if (pctEl) { pctEl.textContent = pct + '%'; pctEl.style.color = barColor; }
+  if (progEl) progEl.value = pct;
 }
 
 function toggleOKRColabField(val) {
@@ -3743,10 +3823,12 @@ async function saveOKRObjective(id) {
     const rowId = row.id.replace('kr-row-', '');
     const desc = document.getElementById('kr-desc-' + rowId)?.value?.trim();
     if (!desc) return; // skip empty rows
-    const qAsignado = document.getElementById('kr-q-' + rowId)?.value || 'Q1';
-    const progreso  = parseInt(document.getElementById('kr-prog-' + rowId)?.value || '0');
-    const meta      = document.getElementById('kr-meta-' + rowId)?.value || '';
-    const actual    = document.getElementById('kr-actual-' + rowId)?.value || '';
+    const tipo_metrica = document.getElementById('kr-tipo-' + rowId)?.value || 'numero';
+    const valor_inicio = document.getElementById('kr-inicio-' + rowId)?.value || '';
+    const valor_meta   = document.getElementById('kr-meta-' + rowId)?.value || '';
+    const valor_actual = document.getElementById('kr-actual-' + rowId)?.value || '';
+    const progreso     = calcKRProgreso(tipo_metrica, valor_inicio, valor_meta, valor_actual,
+                           parseInt(document.getElementById('kr-prog-' + rowId)?.value || '0'));
 
     // Find existing KR to preserve history
     const existingKR = (existing?.krs || []).find(k => k.id === rowId);
@@ -3768,10 +3850,14 @@ async function saveOKRObjective(id) {
     krs.push({
       id: rowId,
       descripcion: desc,
-      q_asignado: qAsignado,
-      progreso: progresoFinal,
-      meta,
-      actual,
+      q_asignado:   document.getElementById('kr-q-' + rowId)?.value || 'todos',
+      tipo_metrica,
+      valor_inicio,
+      valor_meta,
+      valor_actual,
+      progreso,
+      meta:      valor_meta,    // backward compat
+      actual:    valor_actual,  // backward compat
       confianza: existingKR?.confianza || 'mid',
       historial: existingKR?.historial || [],
     });
@@ -3903,76 +3989,109 @@ function openCheckinModal(objId, krId) {
   const kr = obj?.krs?.find(k => k.id === krId);
   if (!kr) return;
 
-  openModal(`💬 Check-in: ${kr.descripcion.substring(0, 50)}...`, `
-    <div style="display:flex;gap:14px;margin-bottom:14px;align-items:center">
-      <div style="flex:1">
-        <div style="font-size:.78rem;color:#888;margin-bottom:4px">Progreso actual</div>
-        <div class="progress-bar-wrap" style="height:10px"><div class="progress-bar" style="width:${kr.progreso||0}%;background:#43a047"></div></div>
-        <div style="font-size:.75rem;color:#888;margin-top:3px">${kr.actual||'—'} de meta: ${kr.meta||'—'}</div>
+  const tipo = kr.tipo_metrica || 'numero';
+  const pct  = kr.progreso || 0;
+  const barColor = pct>=70?'#43a047':pct>=40?'#f57c00':'#e53935';
+  const isBinario = tipo === 'binario';
+
+  openModal(`Check-in: ${kr.descripcion.substring(0, 50)}`, `
+    <div style="background:var(--gray-light);border-radius:8px;padding:10px 14px;margin-bottom:14px">
+      <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:6px">
+        <span style="font-size:.8rem;color:#888">Progreso acumulado</span>
+        <strong style="color:${barColor}">${pct}%</strong>
       </div>
-      <div style="text-align:center">
-        <div style="font-size:1.8rem;font-weight:700;color:var(--red)">${kr.progreso||0}%</div>
+      <div style="background:#e0e0e0;border-radius:4px;height:8px">
+        <div style="width:${pct}%;background:${barColor};height:8px;border-radius:4px"></div>
       </div>
-    </div>
-    <div class="form-row">
-      <div class="form-field">
-        <label>Nuevo % de progreso</label>
-        <input type="number" id="ciProgreso" min="0" max="100" value="${kr.progreso||0}">
-      </div>
-      <div class="form-field">
-        <label>Resultado actual actualizado</label>
-        <input type="text" id="ciActual" value="${kr.actual||''}" placeholder="${kr.meta||''}">
+      <div style="font-size:.75rem;color:#aaa;margin-top:4px">
+        ${kr.valor_inicio||'—'} → meta: ${kr.valor_meta||kr.meta||'—'}
+        ${kr.q_asignado === 'todos' ? '· Todo el año' : '· ' + (kr.q_asignado||'')}
       </div>
     </div>
-    <div class="form-field">
-      <label>Nivel de confianza</label>
-      <select id="ciConfianza">
-        ${Object.entries(CONF_CONFIG).map(([k,v]) =>
-          `<option value="${k}" ${kr.confianza===k?'selected':''}>${v.label}</option>`
-        ).join('')}
-      </select>
-    </div>
+    ${isBinario
+      ? `<div class="form-field">
+          <label>¿Completado?</label>
+          <select id="ciActual">
+            <option value="no" ${kr.valor_actual!=='si'?'selected':''}>No</option>
+            <option value="si" ${kr.valor_actual==='si'?'selected':''}>Sí ✓</option>
+          </select>
+        </div>`
+      : `<div class="form-row">
+          <div class="form-field">
+            <label>Valor actual <small style="color:#888">(tipo: ${tipo})</small></label>
+            <input type="text" id="ciActual" value="${kr.valor_actual||''}" placeholder="Ej: ${kr.valor_meta||''}">
+          </div>
+          <div class="form-field">
+            <label>Avance calculado</label>
+            <div id="ciProgresoDisplay" style="font-size:1.3rem;font-weight:700;color:${barColor};padding:6px 0">${pct}%</div>
+            <input type="hidden" id="ciProgreso" value="${pct}">
+          </div>
+        </div>`
+    }
     <div class="form-field">
       <label>Nota del check-in *</label>
-      <textarea id="ciNota" rows="3" placeholder="¿Qué avances hubo? ¿Qué bloqueos hay? ¿Qué sigue?"></textarea>
+      <textarea id="ciNota" rows="3" placeholder="¿Qué avances hubo? ¿Qué bloqueos? ¿Qué sigue?"></textarea>
     </div>
-    <div style="background:var(--gray-light);border-radius:8px;padding:10px 14px;font-size:.8rem;color:#888">
-      <strong>Historial:</strong> ${(kr.checkins||[]).length} check-in(s) previos registrados
+    <div style="font-size:.75rem;color:#aaa">
+      ${(kr.checkins||[]).length} check-in(s) previos registrados
     </div>
   `, [
     { label:'Cancelar', cls:'btn-secondary', action:'closeModal()' },
     { label:'Registrar check-in', cls:'btn-primary', action:`saveCheckin('${objId}','${krId}')` }
   ]);
+
+  // Live recalc as user types
+  if (!isBinario) {
+    setTimeout(() => {
+      document.getElementById('ciActual')?.addEventListener('input', function() {
+        const newPct = calcKRProgreso(tipo, kr.valor_inicio||'0', kr.valor_meta||kr.meta||'0', this.value, 0);
+        const c = newPct>=70?'#43a047':newPct>=40?'#f57c00':'#e53935';
+        const d = document.getElementById('ciProgresoDisplay');
+        const h = document.getElementById('ciProgreso');
+        if (d) { d.textContent = newPct + '%'; d.style.color = c; }
+        if (h) h.value = newPct;
+      });
+    }, 100);
+  }
 }
 
 async function saveCheckin(objId, krId) {
-  const nota = document.getElementById('ciNota').value.trim();
+  const nota = document.getElementById('ciNota')?.value.trim();
   if (!nota) { showToast('Escribe una nota para el check-in', 'error'); return; }
 
   const obj = STATE.okr.find(o => o.id === objId);
   const kr = obj?.krs?.find(k => k.id === krId);
   if (!kr) return;
 
+  const valorActual = document.getElementById('ciActual')?.value || kr.valor_actual || '';
+  const newPct = calcKRProgreso(
+    kr.tipo_metrica || 'numero',
+    kr.valor_inicio || '0',
+    kr.valor_meta || kr.meta || '0',
+    valorActual,
+    parseInt(document.getElementById('ciProgreso')?.value || kr.progreso || 0)
+  );
+
   if (!kr.checkins) kr.checkins = [];
   kr.checkins.push({
-    fecha: new Date().toISOString().split('T')[0],
+    fecha:    new Date().toISOString().split('T')[0],
     autor_id: STATE.user.id,
     nota,
-    progreso: parseInt(document.getElementById('ciProgreso').value) || kr.progreso || 0,
+    progreso:      newPct,
+    valor_actual:  valorActual,
   });
 
-  kr.progreso = parseInt(document.getElementById('ciProgreso').value) || kr.progreso;
-  kr.actual = document.getElementById('ciActual').value || kr.actual;
-  kr.confianza = document.getElementById('ciConfianza').value;
+  kr.valor_actual = valorActual;
+  kr.actual       = valorActual; // backward compat
+  kr.progreso     = newPct;
 
-  // Recalculate obj score
-  const avgProg = obj.krs.reduce((a, k) => a + (k.progreso||0), 0) / obj.krs.length;
-  obj.score = Math.round(avgProg);
+  // Recalculate OKR score from all KRs
+  obj.score = Math.round(obj.krs.reduce((a,k) => a + (k.progreso||0), 0) / obj.krs.length);
 
   await apiCall('saveOKR', obj);
   closeModal();
   renderOKR();
-  showToast('✅ Check-in registrado', 'success');
+  showToast('✅ Check-in registrado — avance actualizado', 'success');
 }
 
 // ═══════════════════════════════════════════
