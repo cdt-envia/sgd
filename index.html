@@ -543,7 +543,7 @@
     </div>
     <button class="btn-login" onclick="handleLogin()">Ingresar al sistema</button>
     <p class="login-error" id="loginError">Usuario o contraseña incorrectos</p>
-    <div style="text-align:center;margin-top:16px;font-size:.7rem;color:#bbb;font-family:monospace">v4.6</div>
+    <div style="text-align:center;margin-top:16px;font-size:.7rem;color:#bbb;font-family:monospace">v4.8</div>
   </div>
 
   <!-- Indicadores de impacto -->
@@ -673,7 +673,7 @@
         </svg>
         Actualizar
       </button>
-      <span style="font-size:.68rem;color:#ccc;font-family:monospace;opacity:.6">v4.6</span>
+      <span style="font-size:.68rem;color:#ccc;font-family:monospace;opacity:.6">v4.8</span>
     </div>
   </div>
 
@@ -3259,7 +3259,8 @@ function renderResultados() {
   const autoScores = evalAuto ? comps.map(c => getCompScore(evalAuto, c.id)) : [];
 
   const potencial = calcScorePotencial(u.id);
-  const okrPct    = evalJefe.score_okr ?? 0;
+  const okrScore  = calcScoreOKR(u.id);          // from KR progreso directly (0-4 scale)
+  const okrPct    = Math.round(okrScore * 25);   // back to 0-100%
   const evPar     = STATE.evaluaciones.filter(e => e.evaluado_id === u.id && e.tipo === 'par' && e.estado === 'enviado');
   const evEq      = STATE.evaluaciones.filter(e => e.evaluado_id === u.id && e.tipo === 'colab_a_jefe' && e.estado === 'enviado');
   const catColor  = cat?.color || 'var(--red)';
@@ -4168,86 +4169,80 @@ function openEditKRModal(objId, krId) {
   const obj = STATE.okr.find(o => o.id === objId);
   if (!obj) return;
   const kr = krId ? (obj.krs || []).find(k => k.id === krId) : null;
-  const newKRId = 'KR' + Date.now();
-  const team = STATE.users.filter(x => x.jefe_id === STATE.user.id);
-  team.push(STATE.user); // include self
 
-  openModal(kr ? 'Editar Resultado Clave' : 'Agregar Resultado Clave (KR)', `
-    <div style="background:var(--red-light);border-radius:8px;padding:10px 14px;margin-bottom:14px;font-size:.82rem;color:var(--red-dark)">
+  // Build qOptions for the KR row
+  const qCiclos = STATE.ciclos.filter(c => c.trimestre)
+    .sort((a,b) => (a.trimestre||'').localeCompare(b.trimestre||''));
+  window._okrQOptions = qCiclos.map(q =>
+    '<option value="' + q.trimestre + '">' + q.trimestre + ' — ' + q.nombre.replace(/.*—\s*/,'') +
+    ' (' + String(q.inicio||'').slice(0,7) + ' → ' + String(q.fin||'').slice(0,7) + ')' +
+    (q.estado==='open'?' 🟢':'') + '</option>'
+  ).join('') || '<option value="Q1">Q1</option><option value="Q2">Q2</option><option value="Q3">Q3</option><option value="Q4">Q4</option>';
+
+  const krRowHtml = buildKRRow(kr, 0, window._okrQOptions);
+
+  openModal(kr ? 'Editar Resultado Clave' : 'Nuevo Resultado Clave', `
+    <div style="background:var(--red-light);border-radius:8px;padding:8px 14px;margin-bottom:14px;font-size:.82rem;color:var(--red)">
       <strong>Objetivo:</strong> ${obj.titulo}
     </div>
-    <div class="form-field">
-      <label>Descripción del resultado clave *</label>
-      <input type="text" id="krDesc" value="${kr?.descripcion||''}" placeholder="Ej: Cerrar 15 nuevos clientes enterprise">
-    </div>
-    <div class="form-row">
-      <div class="form-field">
-        <label>Meta a alcanzar</label>
-        <input type="text" id="krMeta" value="${kr?.meta||''}" placeholder="Ej: 15 clientes, $50M, 95%">
-      </div>
-      <div class="form-field">
-        <label>Resultado actual</label>
-        <input type="text" id="krActual" value="${kr?.actual||''}" placeholder="Ej: 8 clientes">
-      </div>
-    </div>
-    <div class="form-row">
-      <div class="form-field">
-        <label>% Progreso</label>
-        <input type="number" id="krProgreso" min="0" max="100" value="${kr?.progreso||0}">
-      </div>
-      <div class="form-field">
-        <label>Nivel de confianza</label>
-        <select id="krConfianza">
-          ${Object.entries(CONF_CONFIG).map(([k,v]) =>
-            `<option value="${k}" ${kr?.confianza===k?'selected':''}>${v.label}</option>`
-          ).join('')}
-        </select>
-      </div>
-    </div>
-    <div class="form-field">
-      <label>Responsable *</label>
-      <select id="krResponsable">
-        ${[...new Map(team.map(t => [t.id, t])).values()].map(t =>
-          `<option value="${t.id}" ${kr?.responsable_id===t.id?'selected':''}>${t.nombre} — ${t.cargo}</option>`
-        ).join('')}
-      </select>
-    </div>
+    <div id="editKRContainer">${krRowHtml}</div>
   `, [
     { label:'Cancelar', cls:'btn-secondary', action:'closeModal()' },
-    { label: kr ? 'Guardar KR' : 'Agregar KR', cls:'btn-primary', action:`saveKR('${objId}','${kr?.id||newKRId}')` }
+    { label: kr ? 'Guardar cambios' : 'Agregar KR', cls:'btn-primary', action:`saveEditedKR('${objId}','${kr?.id||''}')` }
   ]);
 }
 
-async function saveKR(objId, krId) {
-  const desc = document.getElementById('krDesc').value.trim();
-  if (!desc) { showToast('La descripción del KR es obligatoria', 'error'); return; }
-
+async function saveEditedKR(objId, krId) {
   const obj = STATE.okr.find(o => o.id === objId);
   if (!obj) return;
-  if (!obj.krs) obj.krs = [];
+
+  // Find the KR row — the id is the row id (kr?.id or a new KRNEW... id)
+  const rows = document.querySelectorAll('#editKRContainer [id^="kr-row-"]');
+  if (!rows.length) { showToast('Error al leer el KR', 'error'); return; }
+  const rowEl = rows[0];
+  const rowId = rowEl.id.replace('kr-row-', '');
+
+  const desc = document.getElementById('kr-desc-' + rowId)?.value?.trim();
+  if (!desc) { showToast('La descripción es obligatoria', 'error'); return; }
+
+  const tipo_metrica = document.getElementById('kr-tipo-' + rowId)?.value || 'numero';
+  const valor_meta   = document.getElementById('kr-meta-' + rowId)?.value || '';
+  const q_asignado   = document.getElementById('kr-q-' + rowId)?.value || 'todos';
+  const progreso     = parseInt(document.getElementById('kr-prog-' + rowId)?.value || '0');
+
+  const existingKR = (obj.krs||[]).find(k => k.id === krId);
+  const finalId    = krId || rowId; // use existing ID or the generated row ID
 
   const krData = {
-    id: krId,
-    descripcion: desc,
-    meta: document.getElementById('krMeta').value,
-    actual: document.getElementById('krActual').value,
-    progreso: parseInt(document.getElementById('krProgreso').value) || 0,
-    confianza: document.getElementById('krConfianza').value,
-    responsable_id: document.getElementById('krResponsable').value,
-    checkins: obj.krs.find(k => k.id === krId)?.checkins || [],
+    id:           finalId,
+    descripcion:  desc,
+    tipo_metrica,
+    valor_meta,
+    meta:         valor_meta,
+    q_asignado,
+    progreso:     existingKR?.progreso || 0, // keep existing progress, don't reset
+    valor_actual: existingKR?.valor_actual || '',
+    actual:       existingKR?.actual || '',
+    confianza:    existingKR?.confianza || 'mid',
+    checkins:     existingKR?.checkins || [],
+    historial:    existingKR?.historial || [],
   };
 
+  if (!obj.krs) obj.krs = [];
   const kidx = obj.krs.findIndex(k => k.id === krId);
   if (kidx >= 0) obj.krs[kidx] = krData; else obj.krs.push(krData);
 
-  // Recalculate obj score
-  const avgProg = obj.krs.reduce((a, k) => a + (k.progreso || 0), 0) / obj.krs.length;
-  obj.score = Math.round(avgProg);
+  obj.score = Math.round(obj.krs.reduce((a,k) => a + (k.progreso||0), 0) / obj.krs.length);
 
   await apiCall('saveOKR', obj);
   closeModal();
   renderOKR();
-  showToast('✅ Resultado Clave guardado', 'success');
+  showToast('✅ KR guardado', 'success');
+}
+
+async function saveKR(objId, krId) {
+  // Legacy — redirect to saveEditedKR
+  return saveEditedKR(objId, krId);
 }
 
 // ─── MODAL: CHECK-IN ───
@@ -4366,7 +4361,8 @@ function openCheckinModal(objId, krId) {
             <div class="form-field">
               <label>Valor alcanzado <small style="color:#888">(${tipo})</small></label>
               <input type="text" id="ciActual" placeholder="¿Cuánto lograste?"
-                oninput="calcCheckinPct(this.value,'${meta.replace(/'/g,"\\'")}','${tipo}')"
+                data-meta="${meta}" data-tipo="${tipo}"
+                oninput="calcCheckinPct(this.value, this.dataset.meta, this.dataset.tipo)"
                 style="padding:7px 10px;border:1.5px solid var(--gray-mid);border-radius:6px;font-family:Asap">
             </div>
             <div class="form-field">
