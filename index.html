@@ -381,7 +381,7 @@
   .okr-kr-list { border-top: 1px solid var(--gray-light); }
   .okr-kr-row {
     padding: 14px 22px 14px 38px; border-bottom: 1px solid var(--gray-light);
-    display: grid; grid-template-columns: 1fr 140px 120px 110px;
+    display: grid; grid-template-columns: 1fr 120px 140px;
     gap: 12px; align-items: center; font-size: .88rem;
   }
   .okr-kr-row:last-child { border-bottom: none; }
@@ -543,7 +543,7 @@
     </div>
     <button class="btn-login" onclick="handleLogin()">Ingresar al sistema</button>
     <p class="login-error" id="loginError">Usuario o contraseña incorrectos</p>
-    <div style="text-align:center;margin-top:16px;font-size:.7rem;color:#bbb;font-family:monospace">v4.4</div>
+    <div style="text-align:center;margin-top:16px;font-size:.7rem;color:#bbb;font-family:monospace">v4.6</div>
   </div>
 
   <!-- Indicadores de impacto -->
@@ -673,7 +673,7 @@
         </svg>
         Actualizar
       </button>
-      <span style="font-size:.68rem;color:#ccc;font-family:monospace;opacity:.6">v4.4</span>
+      <span style="font-size:.68rem;color:#ccc;font-family:monospace;opacity:.6">v4.6</span>
     </div>
   </div>
 
@@ -3737,7 +3737,7 @@ function renderObjectiveCard(obj, isReadOnly) {
     </div>
     <div class="okr-kr-list" id="okr-krs-${obj.id}">
       <div style="display:grid;grid-template-columns:1fr 140px 120px 110px;gap:12px;padding:8px 22px 8px 38px;background:var(--gray-light);font-size:.75rem;font-weight:700;color:#888;text-transform:uppercase;letter-spacing:.05em">
-        <span>Resultado Clave</span><span>Meta vs Actual</span><span>Progreso</span><span style="text-align:right">Acciones</span>
+        <span>Resultado Clave</span><span>Ponderado</span><span style="text-align:right">Acciones</span>
       </div>
       ${krRows}
     </div>
@@ -3752,6 +3752,8 @@ function renderKRRow(kr, objId, isReadOnly) {
   const checkinCount = (kr.checkins || []).length;
   const mesStr = new Date().toISOString().slice(0,7);
   const hayCheckinEsteMes = (kr.checkins||[]).some(c => (c.fecha||'').slice(0,7) === mesStr);
+  const activeQNow = STATE.ciclos.find(c => c.estado === 'open' && c.trimestre)?.trimestre;
+  const hayCheckinQActivo = activeQNow && (kr.checkins||[]).some(c => c.q === activeQNow);
 
   // Display meta and last actual value
   const metaDisplay = kr.valor_meta || kr.meta || '—';
@@ -3765,8 +3767,12 @@ function renderKRRow(kr, objId, isReadOnly) {
         <span style="color:#888">${qLabel}</span>
         <span>Meta: <strong>${metaDisplay}</strong></span>
         ${actualDisplay !== '—' ? `<span>Actual: <strong>${actualDisplay}</strong></span>` : ''}
-        ${checkinCount ? `<span style="color:#1565c0">💬 ${checkinCount} seguimiento(s)</span>` : ''}
-        ${hayCheckinEsteMes ? '<span style="color:#43a047">✅ Mes registrado</span>' : '<span style="color:#f57c00">⏳ Sin registro este mes</span>'}
+        ${checkinCount ? `<span style="color:#1565c0">💬 ${checkinCount} registro(s)</span>` : ''}
+        ${activeQNow
+          ? (hayCheckinQActivo
+              ? `<span style="color:#43a047">✅ ${activeQNow} registrado</span>`
+              : `<span style="color:#f57c00">⏳ Sin registro en ${activeQNow}</span>`)
+          : ''}
       </small>
     </div>
     <div>
@@ -3776,8 +3782,8 @@ function renderKRRow(kr, objId, isReadOnly) {
       <div class="progress-bar-wrap"><div class="progress-bar" style="width:${pct}%;background:${barColor}"></div></div>
     </div>
     <div class="okr-kr-actions">
-      <button class="btn btn-primary btn-sm" onclick="openCheckinModal('${objId}','${kr.id}')" title="Registrar seguimiento del mes">
-        ${hayCheckinEsteMes ? '✏️ Actualizar' : '📊 Seguimiento'}
+      <button class="btn btn-primary btn-sm" onclick="openCheckinModal('${objId}','${kr.id}')" title="Registrar avance">
+        ${hayCheckinQActivo ? '✏️ Nuevo avance' : '📊 Registrar avance'}
       </button>
       ${!isReadOnly ? `<button class="btn btn-secondary btn-sm" onclick="openEditKRModal('${objId}','${kr.id}')" title="Editar KR">✏️</button>` : ''}
     </div>
@@ -4250,97 +4256,146 @@ function openCheckinModal(objId, krId) {
   const kr  = obj?.krs?.find(k => k.id === krId);
   if (!kr) return;
 
-  const tipo     = kr.tipo_metrica || 'numero';
-  const meta     = kr.valor_meta || kr.meta || '—';
-  const pct      = kr.progreso || 0;
-  const barColor = pct>=70?'#43a047':pct>=40?'#f57c00':'#e53935';
+  const tipo      = kr.tipo_metrica || 'numero';
+  const meta      = kr.valor_meta || kr.meta || '—';
   const isBinario = tipo === 'binario';
   const isJefe    = STATE.user.rol === 'jefe' || STATE.user.rol === 'admin';
+  const checkins  = [...(kr.checkins || [])].sort((a,b) => b.fecha.localeCompare(a.fecha));
 
-  // Build monthly tracking table
-  const checkins = kr.checkins || [];
-  const meses = ['Ene','Feb','Mar','Abr','May','Jun','Jul','Ago','Sep','Oct','Nov','Dic'];
-  const now   = new Date();
-  const mesActual = now.getMonth(); // 0-11
+  // Build Q list from ciclos (all Q, including closed ones)
+  const qCiclos = STATE.ciclos.filter(c => c.trimestre)
+    .sort((a,b) => (a.trimestre||'').localeCompare(b.trimestre||''));
+  const activeQ = qCiclos.find(c => c.estado === 'open')?.trimestre || 'Q1';
 
-  // Ponderado = promedio de checkins del período
-  const checkinsConPct = checkins.filter(c => c.progreso != null);
-  const ponderadoActual = checkinsConPct.length
-    ? Math.round(checkinsConPct.reduce((a,c)=>a+(c.progreso||0),0) / checkinsConPct.length)
-    : pct;
+  // Group checkins by Q for the history view
+  const byQ = {};
+  checkins.forEach(c => {
+    const q = c.q || 'Sin Q';
+    if (!byQ[q]) byQ[q] = [];
+    byQ[q].push(c);
+  });
 
-  // Ya existe check-in este mes?
-  const mesStr = now.toISOString().slice(0,7); // YYYY-MM
-  const checkinEsteMes = checkins.find(c => (c.fecha||'').slice(0,7) === mesStr);
-
-  const historialHTML = checkins.length > 0 ? `
-    <div style="margin-top:12px">
-      <div style="font-size:.75rem;font-weight:700;color:#888;text-transform:uppercase;margin-bottom:6px">Historial de seguimiento</div>
-      <div style="max-height:150px;overflow-y:auto;display:flex;flex-direction:column;gap:4px">
-        ${[...checkins].reverse().map(c => {
-          const autor = getUserById(c.autor_id);
-          const bc = (c.progreso||0)>=70?'#43a047':(c.progreso||0)>=40?'#f57c00':'#e53935';
-          return `<div style="display:flex;align-items:center;gap:8px;background:var(--gray-light);border-radius:6px;padding:6px 10px;font-size:.78rem">
-            <span style="color:#aaa;min-width:56px">${c.fecha?.slice(0,7)||''}</span>
-            <span style="flex:1;color:var(--gray)">${c.nota}</span>
-            ${c.valor_actual ? `<span style="color:#888;font-size:.72rem">${c.valor_actual}</span>` : ''}
-            <strong style="color:${bc};min-width:32px;text-align:right">${c.progreso||0}%</strong>
-            <span style="font-size:.7rem;color:#aaa">${autor?.nombre?.split(' ')[0]||''}</span>
-          </div>`;
-        }).join('')}
+  // Last entry per Q = cierre de ese Q
+  const cierresHTML = Object.entries(byQ).sort().map(([q, entries]) => {
+    const cierre = entries[0]; // already sorted desc, so entries[0] is most recent
+    const bc = (cierre.progreso||0)>=70?'#43a047':(cierre.progreso||0)>=40?'#f57c00':'#e53935';
+    const cicloQ = qCiclos.find(c => c.trimestre === q);
+    const estadoQ = cicloQ?.estado === 'open' ? '🟢 Activo' : cicloQ?.estado === 'closed' ? '🔒 Cerrado' : '';
+    return `<div style="margin-bottom:10px">
+      <div style="display:flex;align-items:center;gap:8px;margin-bottom:4px">
+        <span style="background:#e3f2fd;color:#1565c0;font-size:.72rem;font-weight:700;padding:2px 8px;border-radius:6px">${q}</span>
+        <span style="font-size:.72rem;color:#aaa">${estadoQ}</span>
+        <span style="font-size:.72rem;color:#aaa;margin-left:auto">${entries.length} registro(s)</span>
+        <strong style="color:${bc};font-size:.82rem">Cierre: ${cierre.progreso||0}%</strong>
       </div>
-    </div>` : '';
+      ${entries.map(c => {
+        const autor = getUserById(c.autor_id);
+        const bc2 = (c.progreso||0)>=70?'#43a047':(c.progreso||0)>=40?'#f57c00':'#e53935';
+        return `<div style="display:flex;align-items:center;gap:8px;background:var(--gray-light);border-radius:6px;padding:5px 10px;font-size:.76rem;margin-bottom:2px">
+          <span style="color:#aaa;min-width:72px">${c.fecha||''}</span>
+          <span style="flex:1;color:var(--gray)">${c.nota}</span>
+          ${c.valor_actual ? `<span style="color:#888">${c.valor_actual}</span>` : ''}
+          <strong style="color:${bc2};min-width:34px;text-align:right">${c.progreso||0}%</strong>
+          <span style="color:#aaa;font-size:.7rem">${autor?.nombre?.split(' ')[0]||''}</span>
+        </div>`;
+      }).join('')}
+    </div>`;
+  }).join('');
 
-  openModal(`📊 Seguimiento: ${kr.descripcion.substring(0,50)}`, `
-    <!-- KR info -->
+  // Overall ponderado = average of Q closures (last entry per Q)
+  const cierres = Object.values(byQ).map(entries => entries[0].progreso || 0);
+  const ponderado = cierres.length
+    ? Math.round(cierres.reduce((a,b)=>a+b,0)/cierres.length)
+    : kr.progreso || 0;
+  const barColor = ponderado>=70?'#43a047':ponderado>=40?'#f57c00':'#e53935';
+
+  // Q options for new entry — ALL Qs (including closed) so user can register retroactively
+  const qOpts = qCiclos.length > 0
+    ? qCiclos.map(q =>
+        `<option value="${q.trimestre}" ${q.trimestre===activeQ?'selected':''}>${q.trimestre} — ${q.nombre.replace(/.*—\s*/,'')} (${String(q.inicio||'').slice(0,7)} → ${String(q.fin||'').slice(0,7)}) ${q.estado==='closed'?'🔒':'🟢'}</option>`
+      ).join('')
+    : `<option value="Q1">Q1</option><option value="Q2">Q2</option><option value="Q3">Q3</option><option value="Q4">Q4</option>`;
+
+  openModal(`📊 Seguimiento: ${kr.descripcion.substring(0,45)}`, `
+    <!-- KR summary -->
     <div style="background:var(--gray-light);border-radius:8px;padding:10px 14px;margin-bottom:14px">
       <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:6px">
-        <span style="font-size:.8rem;color:#888">Meta: <strong style="color:var(--gray)">${meta}</strong> · ${tipo} · ${kr.q_asignado==='todos'?'Todo el año':kr.q_asignado||''}</span>
-        <strong style="color:${barColor}">${ponderadoActual}% ponderado</strong>
+        <span style="font-size:.8rem;color:#888">
+          Meta: <strong style="color:var(--gray)">${meta}</strong>
+          · ${tipo}
+          · ${!kr.q_asignado||kr.q_asignado==='todos' ? 'Todo el año' : kr.q_asignado}
+        </span>
+        <strong style="color:${barColor}">${ponderado}% ponderado</strong>
       </div>
       <div style="background:#e0e0e0;border-radius:4px;height:8px">
-        <div style="width:${ponderadoActual}%;background:${barColor};height:8px;border-radius:4px"></div>
+        <div style="width:${ponderado}%;background:${barColor};height:8px;border-radius:4px;transition:width .3s"></div>
+      </div>
+      <div style="font-size:.72rem;color:#aaa;margin-top:5px">
+        Ponderado = promedio del último avance registrado en cada Q
       </div>
     </div>
 
-    <!-- Registro del mes actual -->
-    <div style="border:2px solid ${checkinEsteMes?'#43a047':'var(--red)'};border-radius:10px;padding:12px 14px;margin-bottom:8px">
-      <div style="font-size:.8rem;font-weight:700;color:${checkinEsteMes?'#43a047':'var(--gray)'};margin-bottom:10px">
-        ${checkinEsteMes ? '✅ Ya registraste este mes — puedes actualizar' : '📅 Registro de ' + meses[mesActual] + ' ' + now.getFullYear()}
-        ${!isJefe ? '' : ' <span style="font-size:.72rem;color:#aaa;font-weight:400">(editando como jefe)</span>'}
+    <!-- Nuevo registro -->
+    <div style="border:2px solid var(--red);border-radius:10px;padding:12px 14px;margin-bottom:12px">
+      <div style="font-size:.82rem;font-weight:700;color:var(--gray);margin-bottom:10px">
+        ➕ Registrar avance
+        ${isJefe ? '<span style="font-size:.72rem;color:#aaa;font-weight:400"> (como jefe)</span>' : ''}
+      </div>
+      <div class="form-row" style="margin-bottom:8px">
+        <div class="form-field">
+          <label>Pertenece al Q <small style="color:#888">— puedes registrar en Qs cerrados</small></label>
+          <select id="ciQ" style="padding:6px 10px;border:1.5px solid var(--gray-mid);border-radius:6px;font-family:Asap;font-size:.88rem">
+            ${qOpts}
+          </select>
+        </div>
+        <div class="form-field">
+          <label>Fecha del registro</label>
+          <input type="date" id="ciFecha" value="${new Date().toISOString().split('T')[0]}"
+            style="padding:6px 10px;border:1.5px solid var(--gray-mid);border-radius:6px;font-family:Asap">
+        </div>
       </div>
       ${isBinario
         ? `<div class="form-field">
-            <label>¿Completado este mes?</label>
-            <select id="ciActual" style="padding:6px;border:1.5px solid var(--gray-mid);border-radius:6px;font-family:Asap">
-              <option value="no" ${(checkinEsteMes?.valor_actual||'no')!=='si'?'selected':''}>No completado</option>
-              <option value="si" ${checkinEsteMes?.valor_actual==='si'?'selected':''}>Sí, completado ✓</option>
+            <label>¿Completado?</label>
+            <select id="ciActual" style="padding:6px 10px;border:1.5px solid var(--gray-mid);border-radius:6px;font-family:Asap">
+              <option value="no">No completado</option>
+              <option value="si">Sí, completado ✓</option>
             </select>
-            <input type="hidden" id="ciProgreso" value="${checkinEsteMes?.progreso||0}">`
+            <input type="hidden" id="ciProgreso" value="0">`
         : `<div class="form-row">
             <div class="form-field">
-              <label>Valor alcanzado este mes <small style="color:#888">(${tipo})</small></label>
-              <input type="text" id="ciActual" value="${checkinEsteMes?.valor_actual||''}"
-                placeholder="¿Cuánto lograste este mes?"
-                oninput="calcCheckinPct(this.value,'${meta}','${tipo}')"
+              <label>Valor alcanzado <small style="color:#888">(${tipo})</small></label>
+              <input type="text" id="ciActual" placeholder="¿Cuánto lograste?"
+                oninput="calcCheckinPct(this.value,'${meta.replace(/'/g,"\\'")}','${tipo}')"
                 style="padding:7px 10px;border:1.5px solid var(--gray-mid);border-radius:6px;font-family:Asap">
             </div>
             <div class="form-field">
-              <label>% de avance este mes</label>
-              <div id="ciProgresoDisplay" style="font-size:1.4rem;font-weight:800;color:#888;padding:4px 0">${checkinEsteMes?.progreso||0}%</div>
-              <input type="hidden" id="ciProgreso" value="${checkinEsteMes?.progreso||0}">
+              <label>% calculado</label>
+              <div id="ciProgresoDisplay" style="font-size:1.4rem;font-weight:800;color:#888;padding:4px 0">0%</div>
+              <input type="hidden" id="ciProgreso" value="0">
             </div>
           </div>`}
       <div class="form-field" style="margin-top:8px">
-        <label>Nota del mes <small style="color:#aaa">— ¿Qué lograste? ¿Qué bloqueó el avance?</small></label>
-        <textarea id="ciNota" rows="2" placeholder="Ej: Cerré 3 de 5 clientes. El bloqueo fue la feria de la semana 3..."
-          style="font-family:Asap;font-size:.88rem;padding:8px 10px;border:1.5px solid var(--gray-mid);border-radius:6px;width:100%;resize:vertical">${checkinEsteMes?.nota||''}</textarea>
+        <label>Nota <small style="color:#aaa">¿Qué lograste? ¿Qué bloqueó el avance?</small></label>
+        <textarea id="ciNota" rows="2"
+          placeholder="Ej: Cerré 3 clientes. El bloqueo fue la feria de la semana 3..."
+          style="font-family:Asap;font-size:.88rem;padding:8px 10px;border:1.5px solid var(--gray-mid);border-radius:6px;width:100%;resize:vertical"></textarea>
       </div>
     </div>
-    ${historialHTML}
+
+    <!-- Historial agrupado por Q -->
+    ${checkins.length > 0 ? `
+      <div>
+        <div style="font-size:.75rem;font-weight:700;color:#888;text-transform:uppercase;margin-bottom:8px">
+          Historial por Q
+        </div>
+        <div style="max-height:200px;overflow-y:auto">
+          ${cierresHTML || '<p style="color:#aaa;font-size:.82rem">Sin registros aún</p>'}
+        </div>
+      </div>` : ''}
   `, [
     { label:'Cancelar', cls:'btn-secondary', action:'closeModal()' },
-    { label:'Guardar seguimiento', cls:'btn-primary', action:`saveCheckin('${objId}','${krId}')` }
+    { label:'Guardar avance', cls:'btn-primary', action:`saveCheckin('${objId}','${krId}')` }
   ]);
 }
 
@@ -4354,11 +4409,12 @@ function calcCheckinPct(valorActual, meta, tipo) {
 }
 
 async function saveCheckin(objId, krId) {
-  const nota       = document.getElementById('ciNota')?.value.trim();
-  if (!nota) { showToast('Escribe una nota del mes', 'error'); return; }
+  const nota        = document.getElementById('ciNota')?.value.trim();
+  if (!nota) { showToast('Escribe una nota del avance', 'error'); return; }
   const valorActual = document.getElementById('ciActual')?.value || '';
-  const newPct     = parseInt(document.getElementById('ciProgreso')?.value || '0');
-  const mesStr     = new Date().toISOString().slice(0,7); // YYYY-MM
+  const newPct      = parseInt(document.getElementById('ciProgreso')?.value || '0');
+  const qSeleccion  = document.getElementById('ciQ')?.value || 'Q1';
+  const fechaReg    = document.getElementById('ciFecha')?.value || new Date().toISOString().split('T')[0];
 
   const obj = STATE.okr.find(o => o.id === objId);
   const kr  = obj?.krs?.find(k => k.id === krId);
@@ -4366,27 +4422,30 @@ async function saveCheckin(objId, krId) {
 
   if (!kr.checkins) kr.checkins = [];
 
-  // Update existing entry for this month OR add new one
-  const existIdx = kr.checkins.findIndex(c => (c.fecha||'').slice(0,7) === mesStr);
-  const entry = {
-    fecha:       new Date().toISOString().split('T')[0],
-    autor_id:    STATE.user.id,
+  // Always append — multiple entries per Q/month are allowed
+  kr.checkins.push({
+    id:           'CI' + Date.now(),
+    fecha:        fechaReg,
+    q:            qSeleccion,
+    autor_id:     STATE.user.id,
     nota,
     valor_actual: valorActual,
-    progreso:    newPct,
-  };
-  if (existIdx >= 0) kr.checkins[existIdx] = entry;
-  else kr.checkins.push(entry);
+    progreso:     newPct,
+  });
 
-  // Ponderado = promedio de todos los registros mensuales del período
-  const registros = kr.checkins.filter(c => c.progreso != null);
-  kr.progreso = registros.length
-    ? Math.round(registros.reduce((a,c) => a + (c.progreso||0), 0) / registros.length)
-    : newPct;
-
-  // Actualizar campo valor_actual con el más reciente
   kr.valor_actual = valorActual;
   kr.actual = valorActual; // compat
+
+  // Ponderado = average of LAST entry per Q (closing value of each Q)
+  const byQ = {};
+  kr.checkins.forEach(c => {
+    const q = c.q || 'sin-q';
+    if (!byQ[q] || c.fecha > byQ[q].fecha) byQ[q] = c;
+  });
+  const cierres = Object.values(byQ).map(c => c.progreso || 0);
+  kr.progreso = cierres.length
+    ? Math.round(cierres.reduce((a,b) => a+b, 0) / cierres.length)
+    : newPct;
 
   // Recalculate OKR score from all KRs
   obj.score = Math.round(obj.krs.reduce((a,k) => a + (k.progreso||0), 0) / obj.krs.length);
@@ -4394,7 +4453,7 @@ async function saveCheckin(objId, krId) {
   await apiCall('saveOKR', obj);
   closeModal();
   renderOKR();
-  showToast('✅ Seguimiento del mes guardado', 'success');
+  showToast('✅ Avance registrado en ' + qSeleccion, 'success');
 }
 
 // ═══════════════════════════════════════════
