@@ -538,7 +538,7 @@
     </div>
     <button class="btn-login" onclick="handleLogin()">Ingresar al sistema</button>
     <p class="login-error" id="loginError">Usuario o contraseña incorrectos</p>
-    <div style="text-align:center;margin-top:16px;font-size:.7rem;color:#bbb;font-family:monospace">v3.6</div>
+    <div style="text-align:center;margin-top:16px;font-size:.7rem;color:#bbb;font-family:monospace">v3.7</div>
   </div>
 
   <!-- Indicadores de impacto -->
@@ -593,7 +593,7 @@
         </svg>
         Actualizar
       </button>
-      <span style="font-size:.68rem;color:#ccc;font-family:monospace;opacity:.6">v3.6</span>
+      <span style="font-size:.68rem;color:#ccc;font-family:monospace;opacity:.6">v3.7</span>
     </div>
   </div>
 
@@ -1803,18 +1803,20 @@ function buildSidebar() {
   } else if (rol === 'jefe') {
     // Personal section (only if they also report to someone)
     if (hasJefeId) {
+      const cicloGradoJefe = parseInt(STATE.ciclos.find(c=>c.estado==='open')?.grado || '360');
       sections += makeSection('jefe-personal', 'Mis evaluaciones', '#ba0020', [
         { id:'autoevaluacion', icon:'self',     label:'Mi Autoevaluación' },
         { id:'eval-jefe',      icon:'eval',     label:'Evaluar a mi jefe' },
-        { id:'evaluar-pares',  icon:'pares',    label:'Mis evaluaciones de pares' },
+        ...(cicloGradoJefe >= 360 ? [{ id:'evaluar-pares', icon:'pares', label:'Mis evaluaciones de pares' }] : []),
         { id:'resultados',     icon:'results',  label:'Mis Resultados' },
         { id:'bitacora-per',   icon:'bitacora', label:'Mi Bitácora', _page:'bitacora' },
         { id:'mi-pdi',         icon:'pdi',      label:'Mi PDI' },
       ], true);
     }
+    const cicloGrado = parseInt(STATE.ciclos.find(c=>c.estado==='open')?.grado || '360');
     sections += makeSection('jefe-equipo', 'Mi equipo', '#1565c0', [
       { id:'mis-evaluaciones', icon:'eval',     label:'Evaluar equipo' },
-      { id:'pares',            icon:'pares',    label:'Asignar pares' },
+      ...(cicloGrado >= 360 ? [{ id:'pares', icon:'pares', label:'Asignar pares' }] : []),
       { id:'bitacora',         icon:'bitacora', label:'Bitácora del equipo' },
       { id:'ninebox',          icon:'ninebox',  label:'Nine Box' },
       { id:'okr',              icon:'okr',      label:'OKR del equipo' },
@@ -1823,10 +1825,11 @@ function buildSidebar() {
 
   } else {
     // Colaborador
+    const cicloGradoColab = parseInt(STATE.ciclos.find(c=>c.estado==='open')?.grado || '360');
     sections += makeSection('colab-personal', 'Mis evaluaciones', '#ba0020', [
       { id:'autoevaluacion', icon:'self',     label:'Mi Autoevaluación' },
       { id:'eval-jefe',      icon:'eval',     label:'Evaluar a mi jefe' },
-      { id:'evaluar-pares',  icon:'pares',    label:'Evaluar a mis pares' },
+      ...(cicloGradoColab >= 360 ? [{ id:'evaluar-pares', icon:'pares', label:'Evaluar a mis pares' }] : []),
       { id:'resultados',     icon:'results',  label:'Mis Resultados' },
     ], true);
     sections += makeSection('colab-desarrollo', 'Mi desarrollo', '#2e7d32', [
@@ -3721,6 +3724,16 @@ function renderPares() {
   const team = getEvaluablesByJefe(u.id);
   const cicloActivo = STATE.ciclos.find(c => c.estado === 'open');
   const periodo = cicloActivo?.nombre || STATE.periodo.nombre || '';
+  const gradoCiclo = parseInt(cicloActivo?.grado || '360');
+
+  // Pares only apply in 360° cycles
+  if (gradoCiclo < 360) {
+    cont.innerHTML = `<div class="card"><div class="info-banner" style="margin:0">
+      <svg width="16" height="16" viewBox="0 0 24 24" fill="currentColor"><path d="M12 2C6.48 2 2 6.48 2 12s4.48 10 10 10 10-4.48 10-10S17.52 2 12 2zm1 15h-2v-6h2v6zm0-8h-2V7h2v2z"/></svg>
+      <div>El ciclo activo es <strong>${gradoCiclo}°</strong> — la evaluación de pares solo aplica en ciclos <strong>360°</strong>. No es necesario asignar pares.</div>
+    </div></div>`;
+    return;
+  }
 
   let html = `<div class="card">
     <div class="card-header">
