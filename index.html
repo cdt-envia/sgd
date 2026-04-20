@@ -538,7 +538,7 @@
     </div>
     <button class="btn-login" onclick="handleLogin()">Ingresar al sistema</button>
     <p class="login-error" id="loginError">Usuario o contraseña incorrectos</p>
-    <div style="text-align:center;margin-top:16px;font-size:.7rem;color:#bbb;font-family:monospace">v4.2</div>
+    <div style="text-align:center;margin-top:16px;font-size:.7rem;color:#bbb;font-family:monospace">v4.3</div>
   </div>
 
   <!-- Indicadores de impacto -->
@@ -593,7 +593,7 @@
         </svg>
         Actualizar
       </button>
-      <span style="font-size:.68rem;color:#ccc;font-family:monospace;opacity:.6">v4.2</span>
+      <span style="font-size:.68rem;color:#ccc;font-family:monospace;opacity:.6">v4.3</span>
     </div>
   </div>
 
@@ -3327,7 +3327,9 @@ function getMyOKRs() {
 
 function renderOKR() {
   const u = STATE.user;
-  const isReadOnly = u.rol !== 'jefe'; // Solo el jefe crea y edita OKR
+  const isJefe     = u.rol === 'jefe' || u.rol === 'admin';
+  const isReadOnly = !isJefe; // solo jefe puede crear/editar objetivos
+  // Both jefe and colaborador can register monthly tracking on KRs
 
   // Populate filter dropdowns
   const periods = [...new Set(STATE.okr.map(o => o.periodo).filter(Boolean))];
@@ -3474,25 +3476,35 @@ function renderKRRow(kr, objId, isReadOnly) {
   const barColor = pct >= 70 ? '#43a047' : pct >= 40 ? '#f57c00' : '#e53935';
   const conf = CONF_CONFIG[kr.confianza] || CONF_CONFIG.mid;
   const checkinCount = (kr.checkins || []).length;
+  const mesStr = new Date().toISOString().slice(0,7);
+  const hayCheckinEsteMes = (kr.checkins||[]).some(c => (c.fecha||'').slice(0,7) === mesStr);
+
+  // Display meta and last actual value
+  const metaDisplay = kr.valor_meta || kr.meta || '—';
+  const actualDisplay = kr.valor_actual || kr.actual || (checkinCount > 0 ? [...kr.checkins].sort((a,b)=>b.fecha.localeCompare(a.fecha))[0]?.valor_actual : null) || '—';
+  const qLabel = !kr.q_asignado || kr.q_asignado === 'todos' ? '📅 Todo el año' : kr.q_asignado;
 
   return `<div class="okr-kr-row">
     <div class="okr-kr-name">
-      ${kr.descripcion}
-      <small>👤 ${resp?.nombre || '—'} &nbsp;|&nbsp; <span class="confidence-pill ${conf.cls}">${conf.label}</span>
-        ${checkinCount ? `&nbsp;|&nbsp; 💬 ${checkinCount} check-in(s)` : ''}</small>
-    </div>
-    <div style="font-size:.82rem;text-align:center">
-      <div style="font-weight:600;color:var(--gray)">${kr.actual || '—'}</div>
-      <div style="color:#aaa;font-size:.75rem">meta: ${kr.meta || '—'}</div>
+      <span style="font-weight:600">${kr.descripcion}</span>
+      <small style="display:flex;gap:8px;flex-wrap:wrap;margin-top:3px">
+        <span style="color:#888">${qLabel}</span>
+        <span>Meta: <strong>${metaDisplay}</strong></span>
+        ${actualDisplay !== '—' ? `<span>Actual: <strong>${actualDisplay}</strong></span>` : ''}
+        ${checkinCount ? `<span style="color:#1565c0">💬 ${checkinCount} seguimiento(s)</span>` : ''}
+        ${hayCheckinEsteMes ? '<span style="color:#43a047">✅ Mes registrado</span>' : '<span style="color:#f57c00">⏳ Sin registro este mes</span>'}
+      </small>
     </div>
     <div>
       <div style="display:flex;justify-content:space-between;font-size:.75rem;margin-bottom:3px">
-        <span style="color:#888">Avance</span><strong style="color:${barColor}">${pct}%</strong>
+        <span style="color:#888">Ponderado</span><strong style="color:${barColor}">${pct}%</strong>
       </div>
       <div class="progress-bar-wrap"><div class="progress-bar" style="width:${pct}%;background:${barColor}"></div></div>
     </div>
     <div class="okr-kr-actions">
-      ${!isReadOnly ? `<button class="btn btn-secondary btn-sm" onclick="openCheckinModal('${objId}','${kr.id}')" title="Registrar check-in">💬 Check-in</button>` : ''}
+      <button class="btn btn-primary btn-sm" onclick="openCheckinModal('${objId}','${kr.id}')" title="Registrar seguimiento del mes">
+        ${hayCheckinEsteMes ? '✏️ Actualizar' : '📊 Seguimiento'}
+      </button>
       ${!isReadOnly ? `<button class="btn btn-secondary btn-sm" onclick="openEditKRModal('${objId}','${kr.id}')" title="Editar KR">✏️</button>` : ''}
     </div>
   </div>
@@ -3664,33 +3676,28 @@ function openOKRModal(objId) {
 
 
 function buildKRRow(kr, idx, qOptions) {
-  const id = kr?.id || ('KR' + Date.now() + idx);
+  const id       = kr?.id || ('KR' + Date.now() + idx);
   const tipo     = kr?.tipo_metrica || 'numero';
-  const inicio   = kr?.valor_inicio  ?? '';
-  const meta     = kr?.valor_meta    ?? '';
-  const actual   = kr?.valor_actual  ?? '';
+  const meta     = kr?.valor_meta || kr?.meta || '';
+  const pct      = kr?.progreso || 0;
+  const barColor = pct >= 70 ? '#43a047' : pct >= 40 ? '#f57c00' : '#e53935';
 
-  // Calculate % automatically from start→current→target
-  const pct = calcKRProgreso(tipo, inicio, meta, actual, kr?.progreso || 0);
-
-  const qOptsWithAll = '<option value="todos"' + ((!kr?.q_asignado || kr?.q_asignado === 'todos') ? ' selected' : '') + '>📅 Todo el año</option>' +
-    qOptions.replace(
-      new RegExp(`value="${kr?.q_asignado || ''}"(?!\\s*selected)`),
-      `value="${kr?.q_asignado || ''}" selected`
+  // "Todos" + Q options, pre-select q_asignado
+  const qVal = kr?.q_asignado || 'todos';
+  const qOptsWithAll = '<option value="todos"' + (qVal==='todos'?' selected':'') + '>📅 Todo el año</option>' +
+    (window._okrQOptions||'').replace(
+      'value="'+qVal+'"', 'value="'+qVal+'" selected'
     );
 
   const tipoOpts = [
-    { val:'numero', label:'#  Número',    ph_inicio:'Ej: 0',    ph_meta:'Ej: 100',  ph_actual:'Ej: 65' },
-    { val:'pct',    label:'%  Porcentaje', ph_inicio:'Ej: 0',    ph_meta:'Ej: 95',   ph_actual:'Ej: 72' },
-    { val:'dinero', label:'$  Dinero',     ph_inicio:'Ej: 0',    ph_meta:'Ej: 50M',  ph_actual:'Ej: 32M'},
-    { val:'binario',label:'✓  Sí / No',   ph_inicio:'',         ph_meta:'Completar',ph_actual:'' },
+    { val:'numero',  label:'#  Número',     ph_meta:'Ej: 100 tickets'  },
+    { val:'pct',     label:'%  Porcentaje', ph_meta:'Ej: 95'           },
+    { val:'dinero',  label:'$  Dinero',     ph_meta:'Ej: 50000000'     },
+    { val:'binario', label:'✓  Sí / No',    ph_meta:''                 },
   ];
-  const t = tipoOpts.find(t => t.val === tipo) || tipoOpts[0];
-
-  const barColor = pct >= 70 ? '#43a047' : pct >= 40 ? '#f57c00' : '#e53935';
+  const t = tipoOpts.find(x => x.val === tipo) || tipoOpts[0];
 
   return `<div id="kr-row-${id}" style="background:white;border:1.5px solid var(--gray-mid);border-radius:10px;padding:12px 14px;margin-bottom:8px">
-    <!-- Fila 1: descripción + Q + eliminar -->
     <div style="display:flex;gap:8px;align-items:center;margin-bottom:10px">
       <input type="text" value="${kr?.descripcion||''}" placeholder="¿Qué resultado hay que lograr?"
         id="kr-desc-${id}"
@@ -3702,54 +3709,34 @@ function buildKRRow(kr, idx, qOptions) {
       <button onclick="document.getElementById('kr-row-${id}').remove()" type="button"
         style="background:none;border:none;color:#e53935;cursor:pointer;font-size:1.2rem;line-height:1;flex-shrink:0" title="Eliminar KR">✕</button>
     </div>
-    <!-- Fila 2: tipo métrica + valores -->
-    <div style="display:flex;gap:8px;align-items:flex-end;flex-wrap:wrap">
-      <div style="min-width:130px">
+    <div style="display:flex;gap:10px;align-items:flex-end;flex-wrap:wrap">
+      <div>
         <div style="font-size:.7rem;font-weight:700;color:#888;margin-bottom:3px;text-transform:uppercase">Tipo de métrica</div>
-        <select id="kr-tipo-${id}" onchange="recalcKRProgress('${id}')"
-          style="width:100%;padding:5px 8px;border:1px solid var(--gray-mid);border-radius:6px;font-size:.78rem;font-family:Asap">
-          ${tipoOpts.map(t => `<option value="${t.val}" ${tipo===t.val?'selected':''}>${t.label}</option>`).join('')}
+        <select id="kr-tipo-${id}"
+          style="padding:5px 8px;border:1px solid var(--gray-mid);border-radius:6px;font-size:.78rem;font-family:Asap">
+          ${tipoOpts.map(x => `<option value="${x.val}" ${tipo===x.val?'selected':''}>${x.label}</option>`).join('')}
         </select>
       </div>
-      ${tipo === 'binario'
-        ? `<div>
-            <div style="font-size:.7rem;font-weight:700;color:#888;margin-bottom:3px;text-transform:uppercase">¿Completado?</div>
-            <select id="kr-actual-${id}" onchange="recalcKRProgress('${id}')"
-              style="padding:5px 8px;border:1px solid var(--gray-mid);border-radius:6px;font-size:.78rem;font-family:Asap">
-              <option value="no" ${actual!=='si'?'selected':''}>No</option>
-              <option value="si" ${actual==='si'?'selected':''}>Sí ✓</option>
-            </select>
-            <input type="hidden" id="kr-inicio-${id}" value="0">
-            <input type="hidden" id="kr-meta-${id}" value="si">
-           </div>`
-        : `<div>
-            <div style="font-size:.7rem;font-weight:700;color:#888;margin-bottom:3px;text-transform:uppercase">Valor inicial</div>
-            <input type="text" value="${inicio}" placeholder="${t.ph_inicio}" id="kr-inicio-${id}" onchange="recalcKRProgress('${id}')"
-              style="width:80px;padding:5px 8px;border:1px solid var(--gray-mid);border-radius:6px;font-size:.82rem;font-family:Asap">
-          </div>
-          <div>
-            <div style="font-size:.7rem;font-weight:700;color:#888;margin-bottom:3px;text-transform:uppercase">Meta</div>
-            <input type="text" value="${meta}" placeholder="${t.ph_meta}" id="kr-meta-${id}" onchange="recalcKRProgress('${id}')"
-              style="width:80px;padding:5px 8px;border:1px solid var(--gray-mid);border-radius:6px;font-size:.82rem;font-family:Asap">
-          </div>
-          <div>
-            <div style="font-size:.7rem;font-weight:700;color:#888;margin-bottom:3px;text-transform:uppercase">Valor actual</div>
-            <input type="text" value="${actual}" placeholder="${t.ph_actual}" id="kr-actual-${id}" onchange="recalcKRProgress('${id}')"
-              style="width:80px;padding:5px 8px;border:1px solid var(--gray-mid);border-radius:6px;font-size:.82rem;font-family:Asap">
-          </div>`
-      }
-      <!-- Progreso calculado -->
-      <div style="flex:1;min-width:120px">
-        <div style="font-size:.7rem;font-weight:700;color:#888;margin-bottom:3px;text-transform:uppercase">Avance</div>
+      ${tipo !== 'binario' ? `<div>
+        <div style="font-size:.7rem;font-weight:700;color:#888;margin-bottom:3px;text-transform:uppercase">Meta a alcanzar</div>
+        <input type="text" value="${meta}" placeholder="${t.ph_meta}"
+          id="kr-meta-${id}"
+          style="width:120px;padding:5px 10px;border:1px solid var(--gray-mid);border-radius:6px;font-size:.85rem;font-family:Asap">
+      </div>` : `<div style="font-size:.82rem;color:#888;align-self:center">Meta: completar la tarea</div>
+        <input type="hidden" id="kr-meta-${id}" value="si">`}
+      ${pct > 0 ? `<div style="flex:1;min-width:120px">
+        <div style="font-size:.7rem;font-weight:700;color:#888;margin-bottom:3px;text-transform:uppercase">Avance acumulado</div>
         <div style="display:flex;align-items:center;gap:8px">
-          <div style="flex:1;background:#e0e0e0;border-radius:4px;height:8px">
-            <div id="kr-bar-${id}" style="width:${pct}%;background:${barColor};height:8px;border-radius:4px;transition:width .3s"></div>
+          <div style="flex:1;background:#e0e0e0;border-radius:4px;height:6px">
+            <div style="width:${pct}%;background:${barColor};height:6px;border-radius:4px"></div>
           </div>
-          <strong id="kr-pct-${id}" style="font-size:.85rem;color:${barColor};min-width:36px;text-align:right">${pct}%</strong>
+          <span style="font-size:.82rem;font-weight:700;color:${barColor}">${pct}%</span>
         </div>
-      </div>
+      </div>` : ''}
     </div>
     <input type="hidden" id="kr-prog-${id}" value="${pct}">
+    <input type="hidden" id="kr-inicio-${id}" value="0">
+    <input type="hidden" id="kr-actual-${id}" value="${kr?.valor_actual||''}">
     <input type="hidden" id="kr-id-${id}" value="${id}">
   </div>`;
 }
@@ -3986,104 +3973,146 @@ async function saveKR(objId, krId) {
 // ─── MODAL: CHECK-IN ───
 function openCheckinModal(objId, krId) {
   const obj = STATE.okr.find(o => o.id === objId);
-  const kr = obj?.krs?.find(k => k.id === krId);
+  const kr  = obj?.krs?.find(k => k.id === krId);
   if (!kr) return;
 
-  const tipo = kr.tipo_metrica || 'numero';
-  const pct  = kr.progreso || 0;
+  const tipo     = kr.tipo_metrica || 'numero';
+  const meta     = kr.valor_meta || kr.meta || '—';
+  const pct      = kr.progreso || 0;
   const barColor = pct>=70?'#43a047':pct>=40?'#f57c00':'#e53935';
   const isBinario = tipo === 'binario';
+  const isJefe    = STATE.user.rol === 'jefe' || STATE.user.rol === 'admin';
 
-  openModal(`Check-in: ${kr.descripcion.substring(0, 50)}`, `
+  // Build monthly tracking table
+  const checkins = kr.checkins || [];
+  const meses = ['Ene','Feb','Mar','Abr','May','Jun','Jul','Ago','Sep','Oct','Nov','Dic'];
+  const now   = new Date();
+  const mesActual = now.getMonth(); // 0-11
+
+  // Ponderado = promedio de checkins del período
+  const checkinsConPct = checkins.filter(c => c.progreso != null);
+  const ponderadoActual = checkinsConPct.length
+    ? Math.round(checkinsConPct.reduce((a,c)=>a+(c.progreso||0),0) / checkinsConPct.length)
+    : pct;
+
+  // Ya existe check-in este mes?
+  const mesStr = now.toISOString().slice(0,7); // YYYY-MM
+  const checkinEsteMes = checkins.find(c => (c.fecha||'').slice(0,7) === mesStr);
+
+  const historialHTML = checkins.length > 0 ? `
+    <div style="margin-top:12px">
+      <div style="font-size:.75rem;font-weight:700;color:#888;text-transform:uppercase;margin-bottom:6px">Historial de seguimiento</div>
+      <div style="max-height:150px;overflow-y:auto;display:flex;flex-direction:column;gap:4px">
+        ${[...checkins].reverse().map(c => {
+          const autor = getUserById(c.autor_id);
+          const bc = (c.progreso||0)>=70?'#43a047':(c.progreso||0)>=40?'#f57c00':'#e53935';
+          return `<div style="display:flex;align-items:center;gap:8px;background:var(--gray-light);border-radius:6px;padding:6px 10px;font-size:.78rem">
+            <span style="color:#aaa;min-width:56px">${c.fecha?.slice(0,7)||''}</span>
+            <span style="flex:1;color:var(--gray)">${c.nota}</span>
+            ${c.valor_actual ? `<span style="color:#888;font-size:.72rem">${c.valor_actual}</span>` : ''}
+            <strong style="color:${bc};min-width:32px;text-align:right">${c.progreso||0}%</strong>
+            <span style="font-size:.7rem;color:#aaa">${autor?.nombre?.split(' ')[0]||''}</span>
+          </div>`;
+        }).join('')}
+      </div>
+    </div>` : '';
+
+  openModal(`📊 Seguimiento: ${kr.descripcion.substring(0,50)}`, `
+    <!-- KR info -->
     <div style="background:var(--gray-light);border-radius:8px;padding:10px 14px;margin-bottom:14px">
       <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:6px">
-        <span style="font-size:.8rem;color:#888">Progreso acumulado</span>
-        <strong style="color:${barColor}">${pct}%</strong>
+        <span style="font-size:.8rem;color:#888">Meta: <strong style="color:var(--gray)">${meta}</strong> · ${tipo} · ${kr.q_asignado==='todos'?'Todo el año':kr.q_asignado||''}</span>
+        <strong style="color:${barColor}">${ponderadoActual}% ponderado</strong>
       </div>
       <div style="background:#e0e0e0;border-radius:4px;height:8px">
-        <div style="width:${pct}%;background:${barColor};height:8px;border-radius:4px"></div>
-      </div>
-      <div style="font-size:.75rem;color:#aaa;margin-top:4px">
-        ${kr.valor_inicio||'—'} → meta: ${kr.valor_meta||kr.meta||'—'}
-        ${kr.q_asignado === 'todos' ? '· Todo el año' : '· ' + (kr.q_asignado||'')}
+        <div style="width:${ponderadoActual}%;background:${barColor};height:8px;border-radius:4px"></div>
       </div>
     </div>
-    ${isBinario
-      ? `<div class="form-field">
-          <label>¿Completado?</label>
-          <select id="ciActual">
-            <option value="no" ${kr.valor_actual!=='si'?'selected':''}>No</option>
-            <option value="si" ${kr.valor_actual==='si'?'selected':''}>Sí ✓</option>
-          </select>
-        </div>`
-      : `<div class="form-row">
-          <div class="form-field">
-            <label>Valor actual <small style="color:#888">(tipo: ${tipo})</small></label>
-            <input type="text" id="ciActual" value="${kr.valor_actual||''}" placeholder="Ej: ${kr.valor_meta||''}">
-          </div>
-          <div class="form-field">
-            <label>Avance calculado</label>
-            <div id="ciProgresoDisplay" style="font-size:1.3rem;font-weight:700;color:${barColor};padding:6px 0">${pct}%</div>
-            <input type="hidden" id="ciProgreso" value="${pct}">
-          </div>
-        </div>`
-    }
-    <div class="form-field">
-      <label>Nota del check-in *</label>
-      <textarea id="ciNota" rows="3" placeholder="¿Qué avances hubo? ¿Qué bloqueos? ¿Qué sigue?"></textarea>
+
+    <!-- Registro del mes actual -->
+    <div style="border:2px solid ${checkinEsteMes?'#43a047':'var(--red)'};border-radius:10px;padding:12px 14px;margin-bottom:8px">
+      <div style="font-size:.8rem;font-weight:700;color:${checkinEsteMes?'#43a047':'var(--gray)'};margin-bottom:10px">
+        ${checkinEsteMes ? '✅ Ya registraste este mes — puedes actualizar' : '📅 Registro de ' + meses[mesActual] + ' ' + now.getFullYear()}
+        ${!isJefe ? '' : ' <span style="font-size:.72rem;color:#aaa;font-weight:400">(editando como jefe)</span>'}
+      </div>
+      ${isBinario
+        ? `<div class="form-field">
+            <label>¿Completado este mes?</label>
+            <select id="ciActual" style="padding:6px;border:1.5px solid var(--gray-mid);border-radius:6px;font-family:Asap">
+              <option value="no" ${(checkinEsteMes?.valor_actual||'no')!=='si'?'selected':''}>No completado</option>
+              <option value="si" ${checkinEsteMes?.valor_actual==='si'?'selected':''}>Sí, completado ✓</option>
+            </select>
+            <input type="hidden" id="ciProgreso" value="${checkinEsteMes?.progreso||0}">`
+        : `<div class="form-row">
+            <div class="form-field">
+              <label>Valor alcanzado este mes <small style="color:#888">(${tipo})</small></label>
+              <input type="text" id="ciActual" value="${checkinEsteMes?.valor_actual||''}"
+                placeholder="¿Cuánto lograste este mes?"
+                oninput="calcCheckinPct(this.value,'${meta}','${tipo}')"
+                style="padding:7px 10px;border:1.5px solid var(--gray-mid);border-radius:6px;font-family:Asap">
+            </div>
+            <div class="form-field">
+              <label>% de avance este mes</label>
+              <div id="ciProgresoDisplay" style="font-size:1.4rem;font-weight:800;color:#888;padding:4px 0">${checkinEsteMes?.progreso||0}%</div>
+              <input type="hidden" id="ciProgreso" value="${checkinEsteMes?.progreso||0}">
+            </div>
+          </div>`}
+      <div class="form-field" style="margin-top:8px">
+        <label>Nota del mes <small style="color:#aaa">— ¿Qué lograste? ¿Qué bloqueó el avance?</small></label>
+        <textarea id="ciNota" rows="2" placeholder="Ej: Cerré 3 de 5 clientes. El bloqueo fue la feria de la semana 3..."
+          style="font-family:Asap;font-size:.88rem;padding:8px 10px;border:1.5px solid var(--gray-mid);border-radius:6px;width:100%;resize:vertical">${checkinEsteMes?.nota||''}</textarea>
+      </div>
     </div>
-    <div style="font-size:.75rem;color:#aaa">
-      ${(kr.checkins||[]).length} check-in(s) previos registrados
-    </div>
+    ${historialHTML}
   `, [
     { label:'Cancelar', cls:'btn-secondary', action:'closeModal()' },
-    { label:'Registrar check-in', cls:'btn-primary', action:`saveCheckin('${objId}','${krId}')` }
+    { label:'Guardar seguimiento', cls:'btn-primary', action:`saveCheckin('${objId}','${krId}')` }
   ]);
+}
 
-  // Live recalc as user types
-  if (!isBinario) {
-    setTimeout(() => {
-      document.getElementById('ciActual')?.addEventListener('input', function() {
-        const newPct = calcKRProgreso(tipo, kr.valor_inicio||'0', kr.valor_meta||kr.meta||'0', this.value, 0);
-        const c = newPct>=70?'#43a047':newPct>=40?'#f57c00':'#e53935';
-        const d = document.getElementById('ciProgresoDisplay');
-        const h = document.getElementById('ciProgreso');
-        if (d) { d.textContent = newPct + '%'; d.style.color = c; }
-        if (h) h.value = newPct;
-      });
-    }, 100);
-  }
+function calcCheckinPct(valorActual, meta, tipo) {
+  const pct = calcKRProgreso(tipo, '0', meta, valorActual, 0);
+  const color = pct>=70?'#43a047':pct>=40?'#f57c00':'#e53935';
+  const d = document.getElementById('ciProgresoDisplay');
+  const h = document.getElementById('ciProgreso');
+  if (d) { d.textContent = pct + '%'; d.style.color = color; }
+  if (h) h.value = pct;
 }
 
 async function saveCheckin(objId, krId) {
-  const nota = document.getElementById('ciNota')?.value.trim();
-  if (!nota) { showToast('Escribe una nota para el check-in', 'error'); return; }
+  const nota       = document.getElementById('ciNota')?.value.trim();
+  if (!nota) { showToast('Escribe una nota del mes', 'error'); return; }
+  const valorActual = document.getElementById('ciActual')?.value || '';
+  const newPct     = parseInt(document.getElementById('ciProgreso')?.value || '0');
+  const mesStr     = new Date().toISOString().slice(0,7); // YYYY-MM
 
   const obj = STATE.okr.find(o => o.id === objId);
-  const kr = obj?.krs?.find(k => k.id === krId);
+  const kr  = obj?.krs?.find(k => k.id === krId);
   if (!kr) return;
 
-  const valorActual = document.getElementById('ciActual')?.value || kr.valor_actual || '';
-  const newPct = calcKRProgreso(
-    kr.tipo_metrica || 'numero',
-    kr.valor_inicio || '0',
-    kr.valor_meta || kr.meta || '0',
-    valorActual,
-    parseInt(document.getElementById('ciProgreso')?.value || kr.progreso || 0)
-  );
-
   if (!kr.checkins) kr.checkins = [];
-  kr.checkins.push({
-    fecha:    new Date().toISOString().split('T')[0],
-    autor_id: STATE.user.id,
-    nota,
-    progreso:      newPct,
-    valor_actual:  valorActual,
-  });
 
+  // Update existing entry for this month OR add new one
+  const existIdx = kr.checkins.findIndex(c => (c.fecha||'').slice(0,7) === mesStr);
+  const entry = {
+    fecha:       new Date().toISOString().split('T')[0],
+    autor_id:    STATE.user.id,
+    nota,
+    valor_actual: valorActual,
+    progreso:    newPct,
+  };
+  if (existIdx >= 0) kr.checkins[existIdx] = entry;
+  else kr.checkins.push(entry);
+
+  // Ponderado = promedio de todos los registros mensuales del período
+  const registros = kr.checkins.filter(c => c.progreso != null);
+  kr.progreso = registros.length
+    ? Math.round(registros.reduce((a,c) => a + (c.progreso||0), 0) / registros.length)
+    : newPct;
+
+  // Actualizar campo valor_actual con el más reciente
   kr.valor_actual = valorActual;
-  kr.actual       = valorActual; // backward compat
-  kr.progreso     = newPct;
+  kr.actual = valorActual; // compat
 
   // Recalculate OKR score from all KRs
   obj.score = Math.round(obj.krs.reduce((a,k) => a + (k.progreso||0), 0) / obj.krs.length);
@@ -4091,7 +4120,7 @@ async function saveCheckin(objId, krId) {
   await apiCall('saveOKR', obj);
   closeModal();
   renderOKR();
-  showToast('✅ Check-in registrado — avance actualizado', 'success');
+  showToast('✅ Seguimiento del mes guardado', 'success');
 }
 
 // ═══════════════════════════════════════════
