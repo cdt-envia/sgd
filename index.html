@@ -81,6 +81,11 @@
   .topbar h1 { font-size: 1.05rem; font-weight: 700; color: var(--gray); }
   .topbar-right { display: flex; align-items: center; gap: 14px; }
   @keyframes spin { from { transform: rotate(0deg); } to { transform: rotate(360deg); } }
+  .test-btn {
+    width:100%;padding:8px 12px;border-radius:8px;cursor:pointer;font-family:Asap,sans-serif;
+    font-size:.82rem;text-align:left;transition:opacity .15s;
+  }
+  .test-btn:hover { opacity:.8; }
   .user-badge {
     display: flex; align-items: center; gap: 8px;
     background: var(--red-light); border-radius: 20px; padding: 6px 14px 6px 8px;
@@ -538,7 +543,7 @@
     </div>
     <button class="btn-login" onclick="handleLogin()">Ingresar al sistema</button>
     <p class="login-error" id="loginError">Usuario o contraseña incorrectos</p>
-    <div style="text-align:center;margin-top:16px;font-size:.7rem;color:#bbb;font-family:monospace">v4.3</div>
+    <div style="text-align:center;margin-top:16px;font-size:.7rem;color:#bbb;font-family:monospace">v4.4</div>
   </div>
 
   <!-- Indicadores de impacto -->
@@ -569,6 +574,81 @@
 
 <!-- ═══════════════ APP ═══════════════ -->
 <div id="appShell">
+
+  <!-- ══════════════════════════════════════════════════════════════
+       🧪 PANEL DE PRUEBAS — Solo en modo demo (sin Google Sheets)
+       Para eliminar: borrar este bloque completo + la función initTestPanel()
+       ══════════════════════════════════════════════════════════════ -->
+  <div id="testPanelBtn" onclick="toggleTestPanel()" title="Panel de pruebas"
+    style="display:none;position:fixed;bottom:20px;right:20px;z-index:9999;
+      background:#6a1b9a;color:white;border:none;border-radius:50%;width:48px;height:48px;
+      cursor:pointer;font-size:1.3rem;box-shadow:0 4px 16px rgba(0,0,0,.3);
+      display:none;align-items:center;justify-content:center">🧪</div>
+
+  <div id="testPanel" style="display:none;position:fixed;bottom:78px;right:20px;z-index:9998;
+    width:340px;background:white;border-radius:14px;box-shadow:0 8px 32px rgba(0,0,0,.2);
+    border:2px solid #6a1b9a;font-family:Asap,sans-serif;overflow:hidden">
+    <div style="background:#6a1b9a;color:white;padding:12px 16px;display:flex;align-items:center;justify-content:space-between">
+      <span style="font-weight:700;font-size:.9rem">🧪 Panel de Pruebas</span>
+      <button onclick="toggleTestPanel()" style="background:none;border:none;color:white;font-size:1.1rem;cursor:pointer">✕</button>
+    </div>
+    <div style="padding:14px;max-height:70vh;overflow-y:auto">
+
+      <!-- Simular Q -->
+      <div style="margin-bottom:16px">
+        <div style="font-size:.75rem;font-weight:700;color:#6a1b9a;text-transform:uppercase;margin-bottom:8px">📅 Simular periodo activo</div>
+        <div style="display:flex;flex-direction:column;gap:6px">
+          <button onclick="simularQ('Q1')" class="test-btn" style="background:#ffebee;color:#c62828;border:1.5px solid #ef9a9a">
+            Activar Q1 — Competencias + OKR
+          </button>
+          <button onclick="simularQ('Q2')" class="test-btn" style="background:#e3f2fd;color:#1565c0;border:1.5px solid #90caf9">
+            Activar Q2 — Solo seguimiento OKR
+          </button>
+          <button onclick="simularQ('Q3')" class="test-btn" style="background:#e8f5e9;color:#2e7d32;border:1.5px solid #a5d6a7">
+            Activar Q3 — Solo seguimiento OKR
+          </button>
+          <button onclick="simularQ('Q4')" class="test-btn" style="background:#fff8e1;color:#f57c00;border:1.5px solid #ffcc80">
+            Activar Q4 — Solo seguimiento OKR
+          </button>
+        </div>
+        <div id="qActivoInfo" style="margin-top:8px;font-size:.78rem;color:#888;padding:6px 10px;background:#f5f5f5;border-radius:6px"></div>
+      </div>
+
+      <hr style="border:none;border-top:1px solid #eee;margin:12px 0">
+
+      <!-- Generar datos de prueba -->
+      <div style="margin-bottom:16px">
+        <div style="font-size:.75rem;font-weight:700;color:#6a1b9a;text-transform:uppercase;margin-bottom:8px">⚡ Generar datos de prueba</div>
+        <div style="display:flex;flex-direction:column;gap:6px">
+          <button onclick="generarDatosPrueba('evaluaciones')" class="test-btn" style="background:#f3e5f5;color:#6a1b9a;border:1.5px solid #ce93d8">
+            📋 Generar evaluaciones enviadas
+          </button>
+          <button onclick="generarDatosPrueba('okr')" class="test-btn" style="background:#f3e5f5;color:#6a1b9a;border:1.5px solid #ce93d8">
+            🎯 Generar OKRs con avance mensual
+          </button>
+          <button onclick="generarDatosPrueba('bitacora')" class="test-btn" style="background:#f3e5f5;color:#6a1b9a;border:1.5px solid #ce93d8">
+            📝 Generar entradas de bitácora
+          </button>
+          <button onclick="generarDatosPrueba('todo')" class="test-btn" style="background:#6a1b9a;color:white;border:1.5px solid #6a1b9a;font-weight:700">
+            🚀 Generar TODO de una vez
+          </button>
+        </div>
+      </div>
+
+      <hr style="border:none;border-top:1px solid #eee;margin:12px 0">
+
+      <!-- Reset -->
+      <div>
+        <div style="font-size:.75rem;font-weight:700;color:#e53935;text-transform:uppercase;margin-bottom:8px">🗑️ Resetear</div>
+        <button onclick="resetearDatosPrueba()" class="test-btn" style="background:#ffebee;color:#c62828;border:1.5px solid #ef9a9a">
+          Limpiar todos los datos de prueba
+        </button>
+      </div>
+
+      <div id="testPanelLog" style="margin-top:12px;font-size:.75rem;color:#666;background:#f5f5f5;border-radius:6px;padding:8px;min-height:40px;max-height:100px;overflow-y:auto"></div>
+    </div>
+  </div>
+
   <!-- TOPBAR -->
   <div class="topbar">
     <div class="topbar-left">
@@ -593,7 +673,7 @@
         </svg>
         Actualizar
       </button>
-      <span style="font-size:.68rem;color:#ccc;font-family:monospace;opacity:.6">v4.3</span>
+      <span style="font-size:.68rem;color:#ccc;font-family:monospace;opacity:.6">v4.4</span>
     </div>
   </div>
 
@@ -1700,6 +1780,199 @@ function showError(msg) {
   e.textContent = msg; e.style.display = 'block';
   setTimeout(() => e.style.display = 'none', 3000);
 }
+// ══════════════════════════════════════════════════════════════════
+//  🧪 PANEL DE PRUEBAS — Solo modo demo. Eliminar antes de producción
+// ══════════════════════════════════════════════════════════════════
+function initTestPanel() {
+  if (!SCRIPT_URL) { // solo si está en modo demo (sin Google Sheets)
+    const btn = document.getElementById('testPanelBtn');
+    if (btn) btn.style.display = 'flex';
+  }
+}
+
+function toggleTestPanel() {
+  const p = document.getElementById('testPanel');
+  if (!p) return;
+  p.style.display = p.style.display === 'none' ? 'block' : 'none';
+  if (p.style.display === 'block') updateQActivoInfo();
+}
+
+function updateQActivoInfo() {
+  const info = document.getElementById('qActivoInfo');
+  if (!info) return;
+  const abiertos = STATE.ciclos.filter(c => c.estado === 'open');
+  info.textContent = abiertos.length
+    ? 'Activos: ' + abiertos.map(c => c.nombre + ' (' + (c.trimestre||'anual') + ')').join(', ')
+    : 'Sin ciclo activo';
+}
+
+function testLog(msg) {
+  const el = document.getElementById('testPanelLog');
+  if (!el) return;
+  const t = new Date().toLocaleTimeString();
+  el.innerHTML = `<div style="color:#6a1b9a">[${t}] ${msg}</div>` + el.innerHTML;
+}
+
+function simularQ(q) {
+  // Close all Q cycles and open only the requested one
+  STATE.ciclos.forEach(c => {
+    if (c.trimestre) c.estado = (c.trimestre === q) ? 'open' : 'closed';
+  });
+  // If no Q cycle exists, create a minimal one
+  if (!STATE.ciclos.find(c => c.trimestre === q)) {
+    const hoy = new Date();
+    const qDates = {
+      Q1: { inicio: hoy.getFullYear()+'-01-01', fin: hoy.getFullYear()+'-03-31', tipo:'completo' },
+      Q2: { inicio: hoy.getFullYear()+'-04-01', fin: hoy.getFullYear()+'-06-30', tipo:'revision' },
+      Q3: { inicio: hoy.getFullYear()+'-07-01', fin: hoy.getFullYear()+'-09-30', tipo:'revision' },
+      Q4: { inicio: hoy.getFullYear()+'-10-01', fin: hoy.getFullYear()+'-12-31', tipo:'revision' },
+    };
+    const d = qDates[q];
+    STATE.ciclos.push({
+      id: 'CIC_TEST_'+q, nombre: 'Ciclo Prueba — '+q, tipo: d.tipo,
+      trimestre: q, grado: '360', inicio: d.inicio, fin: d.fin, estado: 'open',
+      peso_jefe:25, peso_auto:25, peso_pares:25, peso_okr:25
+    });
+  }
+  // Sync periodo
+  const active = STATE.ciclos.find(c => c.estado === 'open' && c.trimestre === q);
+  if (active) STATE.periodo = { ...STATE.periodo, ...active, nombre: active.nombre };
+
+  updateQActivoInfo();
+  buildSidebar(); // rebuild menu to show/hide pares based on new grado
+  navigateTo('dashboard');
+  testLog('✅ Simulando ' + q + ' — ' + (active?.tipo === 'completo' ? 'competencias + OKR' : 'solo seguimiento OKR'));
+  showToast('🧪 Simulando ' + q, 'success');
+}
+
+async function generarDatosPrueba(tipo) {
+  const cicloActivo = STATE.ciclos.find(c => c.estado === 'open');
+  if (!cicloActivo) {
+    simularQ('Q1');
+    testLog('⚠️ No había ciclo activo — activé Q1 automáticamente');
+  }
+  const periodo = cicloActivo?.nombre || STATE.ciclos.find(c=>c.estado==='open')?.nombre || 'Q1-TEST';
+  const colaboradores = getAllEvaluables().filter(c => c.jefe_id);
+  let count = 0;
+
+  if (tipo === 'evaluaciones' || tipo === 'todo') {
+    colaboradores.forEach(colab => {
+      const jefe = getUserById(colab.jefe_id);
+      if (!jefe) return;
+      const scores = { C001:3, C002:4, C003:3, C004:3, C005:4, C006:3, C007:4, C008:3, C009:3 };
+      const scoreComp = parseFloat((Object.values(scores).reduce((a,b)=>a+b,0)/Object.keys(scores).length).toFixed(2));
+
+      // Eval jefe → colaborador
+      if (!STATE.evaluaciones.find(e => e.evaluado_id===colab.id && e.tipo==='jefe' && e.periodo===periodo)) {
+        STATE.evaluaciones.push({
+          id: 'ET_J_'+colab.id, evaluado_id: colab.id, evaluador_id: jefe.id,
+          tipo:'jefe', periodo, estado:'enviado',
+          score_comp: scoreComp + (Math.random()*.4-.2),
+          score_okr: Math.round(60+Math.random()*35),
+          score_final: parseFloat((scoreComp*.7 + (65+Math.random()*30)/100).toFixed(2)),
+          comp_scores: scores, fortalezas:'Buen desempeño general.', mejoras:'Mejorar comunicación.',
+          fecha_envio: new Date().toISOString().split('T')[0]
+        }); count++;
+      }
+      // Autoevaluación
+      if (!STATE.evaluaciones.find(e => e.evaluado_id===colab.id && e.tipo==='auto' && e.periodo===periodo)) {
+        const autoScores = { C001:3, C002:3, C003:4, C004:3, C005:3, C006:4, C007:3, C008:3, C009:4 };
+        STATE.evaluaciones.push({
+          id: 'ET_A_'+colab.id, evaluado_id: colab.id, evaluador_id: colab.id,
+          tipo:'auto', periodo, estado:'enviado',
+          score_comp: parseFloat((Object.values(autoScores).reduce((a,b)=>a+b,0)/9).toFixed(2)),
+          score_okr: 0, score_final: null,
+          comp_scores: autoScores, fortalezas:'Me considero comprometido.', mejoras:'Fortalecer análisis.',
+          fecha_envio: new Date().toISOString().split('T')[0]
+        }); count++;
+      }
+    });
+    testLog('📋 ' + count + ' evaluaciones generadas para el periodo ' + periodo);
+  }
+
+  if (tipo === 'okr' || tipo === 'todo') {
+    const meses = ['2026-01','2026-02','2026-03'];
+    colaboradores.forEach((colab, i) => {
+      const objId = 'OBJ_TEST_' + colab.id;
+      if (STATE.okr.find(o => o.id === objId)) return;
+      const metaNum = 100 + i * 10;
+      const krs = [
+        {
+          id: 'KR_T1_'+colab.id,
+          descripcion: 'Cerrar nuevos clientes del segmento asignado',
+          tipo_metrica: 'numero', valor_meta: String(metaNum), valor_actual: String(Math.round(metaNum*.72)),
+          q_asignado: 'todos', progreso: 72,
+          checkins: meses.map((m, mi) => ({
+            fecha: m+'-'+(10+mi*7), autor_id: colab.id,
+            nota: 'Avance mes '+(mi+1)+'. Todo va según plan.',
+            valor_actual: String(Math.round(metaNum*(0.3+mi*.2))),
+            progreso: Math.round(30+mi*21)
+          }))
+        },
+        {
+          id: 'KR_T2_'+colab.id,
+          descripcion: 'Mantener NPS del cliente ≥ 80',
+          tipo_metrica: 'numero', valor_meta: '80', valor_actual: '76',
+          q_asignado: 'Q1', progreso: 55,
+          checkins: meses.slice(0,2).map((m, mi) => ({
+            fecha: m+'-15', autor_id: colab.id,
+            nota: 'NPS en proceso de mejora.',
+            valor_actual: String(65+mi*11), progreso: Math.round(45+mi*25)
+          }))
+        }
+      ];
+      STATE.okr.push({
+        id: objId, jefe_id: colab.jefe_id, tipo: 'individual',
+        colaborador_id: colab.id, titulo: 'Objetivos '+colab.nombre.split(' ')[0]+' — '+periodo,
+        descripcion: 'OKR de prueba generado automáticamente.',
+        periodo, estado: 'on_track',
+        fecha_inicio: cicloActivo?.inicio||'', fecha_fin: cicloActivo?.fin||'',
+        score: 64, krs, miembros: []
+      }); count++;
+    });
+    testLog('🎯 OKRs con seguimiento mensual generados: ' + count);
+  }
+
+  if (tipo === 'bitacora' || tipo === 'todo') {
+    const tipos = ['reconocimiento','feedback','reunion','observacion'];
+    const notas = [
+      'Excelente trabajo en el proyecto del cliente. Superó expectativas.',
+      'Necesita mejorar la comunicación con el equipo en las reuniones.',
+      '1:1 mensual. Se hablaron los objetivos del Q y el PDI.',
+      'Se observó buena actitud ante los retos del mes.'
+    ];
+    colaboradores.slice(0,4).forEach((colab, i) => {
+      const bitId = 'BIT_TEST_'+colab.id;
+      if (STATE.bitacora.find(b => b.id === bitId)) return;
+      STATE.bitacora.push({
+        id: bitId, colaborador_id: colab.id, jefe_id: colab.jefe_id,
+        tipo: tipos[i%4], nota: notas[i%4],
+        fecha: new Date().toISOString().split('T')[0],
+        visible_colab: true
+      }); count++;
+    });
+    testLog('📝 Entradas de bitácora generadas: ' + count);
+  }
+
+  // Re-render current page
+  const pg = document.querySelector('.page.active')?.id?.replace('page-','');
+  if (pg) navigateTo(pg);
+  showToast('🧪 Datos de prueba generados', 'success');
+}
+
+function resetearDatosPrueba() {
+  if (!confirm('¿Limpiar todos los datos de prueba (ET_*, OBJ_TEST_*, BIT_TEST_*, CIC_TEST_*)?')) return;
+  STATE.evaluaciones = STATE.evaluaciones.filter(e => !e.id.startsWith('ET_'));
+  STATE.okr          = STATE.okr.filter(o => !o.id.startsWith('OBJ_TEST_'));
+  STATE.bitacora     = STATE.bitacora.filter(b => !b.id.startsWith('BIT_TEST_'));
+  STATE.ciclos       = STATE.ciclos.filter(c => !c.id.startsWith('CIC_TEST_'));
+  const pg = document.querySelector('.page.active')?.id?.replace('page-','');
+  if (pg) navigateTo(pg);
+  testLog('🗑️ Datos de prueba eliminados');
+  showToast('Datos de prueba limpiados', 'success');
+}
+// ══ FIN PANEL DE PRUEBAS ══════════════════════════════════════════
+
 function handleLogout() {
   STATE = { user:null, users:[], competencias:[], evaluaciones:[], pdi:[], okr:[], pares:[], potencial:[], potencial_config:{}, ciclos:[], revisiones:[], bitacora:[], periodo:{}, currentEval:null, charts:{} };
   document.getElementById('appShell').style.display = 'none';
@@ -1766,6 +2039,7 @@ function initApp() {
   document.getElementById('userRoleTag').textContent = roleLabels[u.rol] || u.rol;
   buildSidebar();
   navigateTo('dashboard');
+  initTestPanel(); // 🧪 solo modo demo — eliminar en producción
 }
 
 // ═══════════════════════════════════════════
