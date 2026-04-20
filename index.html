@@ -538,7 +538,7 @@
     </div>
     <button class="btn-login" onclick="handleLogin()">Ingresar al sistema</button>
     <p class="login-error" id="loginError">Usuario o contraseña incorrectos</p>
-    <div style="text-align:center;margin-top:16px;font-size:.7rem;color:#bbb;font-family:monospace">v3.7</div>
+    <div style="text-align:center;margin-top:16px;font-size:.7rem;color:#bbb;font-family:monospace">v4.0</div>
   </div>
 
   <!-- Indicadores de impacto -->
@@ -593,7 +593,7 @@
         </svg>
         Actualizar
       </button>
-      <span style="font-size:.68rem;color:#ccc;font-family:monospace;opacity:.6">v3.7</span>
+      <span style="font-size:.68rem;color:#ccc;font-family:monospace;opacity:.6">v4.0</span>
     </div>
   </div>
 
@@ -843,10 +843,19 @@
       <!-- ─── PÁGINA: BITÁCORA ─── -->
       <div class="page" id="page-bitacora">
         <div class="page-header">
-          <h2>Bitácora</h2>
+          <h2>Bitácora del Equipo</h2>
           <p>Reconocimientos, feedback y reuniones 1:1 del equipo</p>
         </div>
         <div id="bitacoraContent"></div>
+      </div>
+
+      <!-- ─── PÁGINA: MI BITÁCORA (personal del jefe evaluable y colaborador) ─── -->
+      <div class="page" id="page-mi-bitacora">
+        <div class="page-header">
+          <h2>Mi Bitácora</h2>
+          <p>Reconocimientos y feedback que tu jefe ha compartido contigo</p>
+        </div>
+        <div id="miBitacoraContent"></div>
       </div>
 
       <!-- ─── PÁGINA: PARES ─── -->
@@ -1115,7 +1124,7 @@
 // ═══════════════════════════════════════════
 //  CONFIG — Reemplaza con tu URL de Google Apps Script
 // ═══════════════════════════════════════════
-const SCRIPT_URL = 'https://script.google.com/macros/s/AKfycbziXywM84qrwJIbrj9Neoh32-WWlufTtDps2XXVtS11UYvu_xe-DQQll07tzX5jSXaK/exec';
+const SCRIPT_URL = 'https://script.google.com/macros/s/AKfycbwzv9VnN_-THfi76n-zhU3CMRDXFswuPWiWJ9gkq1sBQhwoq9qPqLbzxzhC55n5zpnh/exec';
 
 // ═══════════════════════════════════════════
 //  STATE
@@ -1809,8 +1818,8 @@ function buildSidebar() {
         { id:'eval-jefe',      icon:'eval',     label:'Evaluar a mi jefe' },
         ...(cicloGradoJefe >= 360 ? [{ id:'evaluar-pares', icon:'pares', label:'Mis evaluaciones de pares' }] : []),
         { id:'resultados',     icon:'results',  label:'Mis Resultados' },
-        { id:'bitacora-per',   icon:'bitacora', label:'Mi Bitácora', _page:'bitacora' },
         { id:'mi-pdi',         icon:'pdi',      label:'Mi PDI' },
+        { id:'mi-bitacora',    icon:'bitacora', label:'Mi Bitácora' },
       ], true);
     }
     const cicloGrado = parseInt(STATE.ciclos.find(c=>c.estado==='open')?.grado || '360');
@@ -1833,9 +1842,9 @@ function buildSidebar() {
       { id:'resultados',     icon:'results',  label:'Mis Resultados' },
     ], true);
     sections += makeSection('colab-desarrollo', 'Mi desarrollo', '#2e7d32', [
-      { id:'bitacora', icon:'bitacora', label:'Mi Bitácora' },
-      { id:'okr',      icon:'okr',      label:'Mis OKR' },
-      { id:'pdi',      icon:'pdi',      label:'Mi PDI' },
+      { id:'mi-bitacora', icon:'bitacora', label:'Mi Bitácora' },
+      { id:'okr',         icon:'okr',      label:'Mis OKR' },
+      { id:'pdi',         icon:'pdi',      label:'Mi PDI' },
     ], true);
   }
 
@@ -1890,6 +1899,13 @@ function navigateTo(pageId) {
     case 'evaluar-pares': renderEvaluarPares(); break;
     case 'ninebox': renderNineBox(); break;
     case 'bitacora': renderBitacora(); break;
+    case 'mi-bitacora': {
+      apiCall('getBitacora').then(res => {
+        if (res?.data) STATE.bitacora = res.data;
+        renderMiBitacora();
+      }).catch(() => renderMiBitacora());
+      break;
+    }
     case 'admin': renderAdmin(); break;
   }
 }
@@ -2556,10 +2572,13 @@ async function saveEvalDraft() {
   if (!STATE.currentEval) return;
   const data = buildEvalPayload('borrador');
   await apiCall('saveEval', data);
-  // Update local
-  const idx = STATE.evaluaciones.findIndex(e => e.id === STATE.currentEval.id);
-  if (idx >= 0) Object.assign(STATE.evaluaciones[idx], data);
-  showToast('Borrador guardado exitosamente', 'success');
+  let idx = STATE.evaluaciones.findIndex(e => e.id === STATE.currentEval.id);
+  if (idx < 0) idx = STATE.evaluaciones.findIndex(e =>
+    e.evaluado_id === data.evaluado_id && e.evaluador_id === data.evaluador_id &&
+    e.tipo === data.tipo && e.periodo === data.periodo);
+  if (idx >= 0) STATE.evaluaciones[idx] = { ...STATE.evaluaciones[idx], ...data,
+    comp_scores: STATE.currentEval.comp_scores || {}, estado: 'borrador' };
+  showToast('Borrador guardado', 'success');
 }
 
 function onPotencialChange(nivel) {
@@ -2641,26 +2660,41 @@ async function submitEval() {
   const data = buildEvalPayload('enviado');
   data.score_final = parseFloat(calcFinalScore());
   data.fecha_envio = new Date().toISOString().split('T')[0];
+  data.estado = 'enviado'; // explicit
 
   await apiCall('saveEval', data);
-  const idx = STATE.evaluaciones.findIndex(ev => ev.id === STATE.currentEval.id);
-  if (idx >= 0) Object.assign(STATE.evaluaciones[idx], data);
 
-  // Guardar potencial si es evaluación del jefe (puede actualizarse independientemente también)
-  if (e.tipo === 'jefe') {
+  // Update local STATE — match by id OR by evaluado+evaluador+tipo+periodo
+  let idx = STATE.evaluaciones.findIndex(ev => ev.id === STATE.currentEval.id);
+  if (idx < 0) {
+    idx = STATE.evaluaciones.findIndex(ev =>
+      ev.evaluado_id === data.evaluado_id &&
+      ev.evaluador_id === data.evaluador_id &&
+      ev.tipo === data.tipo &&
+      ev.periodo === data.periodo
+    );
   }
+  if (idx >= 0) {
+    // Preserve comp_scores as object (not stringified)
+    STATE.evaluaciones[idx] = { ...STATE.evaluaciones[idx], ...data,
+      comp_scores: STATE.currentEval.comp_scores || {},
+      estado: 'enviado'
+    };
+  }
+  // Also update currentEval state
+  STATE.currentEval.estado = 'enviado';
 
   showToast('✅ Evaluación enviada exitosamente', 'success');
 
-  // Redirigir según tipo de evaluación
+  // Redirect and re-render
   if (e.tipo === 'colab_a_jefe') {
-    navigateTo('eval-jefe');
+    navigateTo('eval-jefe'); renderEvalJefe();
   } else if (e.tipo === 'auto') {
-    navigateTo('autoevaluacion');
+    navigateTo('autoevaluacion'); renderAutoEval();
   } else if (e.tipo === 'par') {
-    navigateTo('evaluar-pares');
+    navigateTo('evaluar-pares'); renderEvaluarPares();
   } else {
-    navigateTo('mis-evaluaciones');
+    navigateTo('mis-evaluaciones'); renderTeam();
   }
 }
 
@@ -2668,15 +2702,24 @@ function buildEvalPayload(estado) {
   const e = STATE.currentEval;
   const comps = getCompsByRole(e._evaluado.cargo);
 
-  // Recopilar calificaciones y comentarios por competencia
+  // Recalculate comp_scores from current dropdown values (don't trust stale state)
   const compScores = { ...e.comp_scores };
+  document.querySelectorAll('.rating-select').forEach(sel => {
+    const cid = sel.dataset.comp;
+    if (cid && sel.value > 0) compScores[cid] = parseInt(sel.value);
+  });
   document.querySelectorAll('.comp-comment[placeholder="Comentario específico (opcional)..."]').forEach((ta, i) => {
     const comp = comps[i];
     if (comp) compScores['comment_' + comp.id] = ta.value;
   });
 
-  // Expandir comp_scores a columnas individuales (comp_C001, comp_C002, etc.)
-  // para que sea legible en Google Sheets
+  // Recalculate score_comp from scores
+  const scoreVals = comps.map(c => compScores[c.id] || 0).filter(v => v > 0);
+  const scoreComp = scoreVals.length
+    ? parseFloat((scoreVals.reduce((a,b)=>a+b,0)/scoreVals.length).toFixed(2))
+    : (e.score_comp || null);
+
+  // Expand comp_scores to individual columns for Google Sheets
   const compColumnas = {};
   comps.forEach(c => {
     compColumnas['comp_' + c.id] = compScores[c.id] || 0;
@@ -2692,14 +2735,14 @@ function buildEvalPayload(estado) {
     tipo: e.tipo,
     periodo: e.periodo,
     estado,
-    score_comp: e.score_comp,
+    score_comp: scoreComp,
     score_okr: e.score_okr || 0,
     score_final: e.score_final || null,
-    comp_scores: JSON.stringify(compScores), // para compatibilidad interna
-    ...compColumnas,                          // columnas individuales legibles en Sheets
-    fortalezas: document.getElementById('evalFortalezas').value,
-    mejoras: document.getElementById('evalMejoras').value,
-    comentario: '',  // campo eliminado
+    comp_scores: JSON.stringify(compScores),
+    ...compColumnas,
+    fortalezas: document.getElementById('evalFortalezas')?.value || '',
+    mejoras:    document.getElementById('evalMejoras')?.value || '',
+    comentario: '',
     fecha_envio: e.fecha_envio || null,
   };
 }
@@ -2907,15 +2950,14 @@ function renderResultados() {
   const cont = document.getElementById('resultadosContent');
 
   if (!evalJefe) {
-    cont.innerHTML = `<div class="empty-state"><svg viewBox="0 0 24 24" fill="currentColor"><path d="M12 2C6.48 2 2 6.48 2 12s4.48 10 10 10 10-4.48 10-10S17.52 2 12 2zm1 15h-2v-6h2v6zm0-8h-2V7h2v2z"/></svg><p>Tus resultados estarán disponibles cuando tu evaluador complete y publique tu evaluación.</p></div>`;
+    cont.innerHTML = `<div class="empty-state"><svg viewBox="0 0 24 24" fill="currentColor"><path d="M12 2C6.48 2 2 6.48 2 12s4.48 10 10 10 10-4.48 10-10S17.52 2 12 2zm1 15h-2v-6h2v6zm0-8h-2V7h2v2z"/></svg><p>Tus resultados estarán disponibles cuando tu evaluador complete y envíe tu evaluación.</p></div>`;
     return;
   }
 
   const cat = getCategory(evalJefe.score_final);
   const comps = getCompsByRole(u.cargo);
-  const compLabels = comps.map(c => c.nombre.substring(0, 18));
+  const compLabels = comps.map(c => c.nombre.substring(0, 20));
 
-  // Leer calificación de comp_scores o de columna individual comp_CXXX
   function getCompScore(eval_, compId) {
     const fromJson = eval_.comp_scores?.[compId];
     if (fromJson > 0) return fromJson;
@@ -2926,42 +2968,83 @@ function renderResultados() {
   const jefeScores = comps.map(c => getCompScore(evalJefe, c.id));
   const autoScores = evalAuto ? comps.map(c => getCompScore(evalAuto, c.id)) : [];
 
+  const potencial = calcScorePotencial(u.id);
+  const okrPct    = evalJefe.score_okr ?? 0;
+  const evPar     = STATE.evaluaciones.filter(e => e.evaluado_id === u.id && e.tipo === 'par' && e.estado === 'enviado');
+  const evEq      = STATE.evaluaciones.filter(e => e.evaluado_id === u.id && e.tipo === 'colab_a_jefe' && e.estado === 'enviado');
+  const catColor  = cat?.color || 'var(--red)';
+
   cont.innerHTML = `
-    <div class="results-grid">
-      <div>
-        <div class="score-big">
-          <div class="val">${evalJefe.score_final?.toFixed(2)}</div>
-          <div class="label">Calificación Final</div>
-          <div class="cat">${cat.label}</div>
-        </div>
-        <div class="card" style="margin-top:16px">
-          <div class="card-title" style="margin-bottom:10px">Potencial 360° — Competencias</div>
-          ${[
-            { label:'Jefe → Colaborador (25%)',   val: evalJefe.score_comp?.toFixed(2), ok: !!evalJefe.score_comp },
-            { label:'Autoevaluación (25%)',        val: evalAuto?.score_comp?.toFixed(2), ok: !!evalAuto?.score_comp },
-            { label:'Pares (25%)',                 val: (() => { const evPar = STATE.evaluaciones.filter(e => e.evaluado_id === u.id && e.tipo === 'par' && e.estado === 'enviado'); return evPar.length ? (evPar.reduce((a,e)=>a+(e.score_comp||0),0)/evPar.length).toFixed(2)+' ('+evPar.length+' eval.)' : null; })(), ok: STATE.evaluaciones.some(e=>e.evaluado_id===u.id&&e.tipo==='par'&&e.estado==='enviado') },
-            { label:'Equipo → Jefe (25%)',        val: (() => { const evEq = STATE.evaluaciones.filter(e => e.evaluado_id === u.id && e.tipo === 'colab_a_jefe' && e.estado === 'enviado'); return evEq.length ? (evEq.reduce((a,e)=>a+(e.score_comp||0),0)/evEq.length).toFixed(2)+' ('+evEq.length+' eval.)' : null; })(), ok: STATE.evaluaciones.some(e=>e.evaluado_id===u.id&&e.tipo==='colab_a_jefe'&&e.estado==='enviado') },
-          ].map(f => `<div style="display:flex;justify-content:space-between;padding:7px 0;border-bottom:1px solid var(--gray-light)">
-            <span style="color:${f.ok?'var(--gray)':'#aaa'}">${f.label}</span>
-            <strong style="color:${f.ok?'var(--gray)':'#aaa'}">${f.val || '—'} ${f.ok?'/ 4':''}</strong>
-          </div>`).join('')}
-          <div style="display:flex;justify-content:space-between;padding:8px 0;border-bottom:1px solid var(--gray-light)">
-            <strong>Potencial Final</strong>
-            <strong style="color:#1565c0;font-size:1.1rem">${calcScorePotencial(u.id) > 0 ? calcScorePotencial(u.id).toFixed(2)+' / 4' : '—'}</strong>
-          </div>
-          <div style="display:flex;justify-content:space-between;padding:8px 0">
-            <span style="color:#888">🎯 Desempeño OKR (registrado por trimestre)</span>
-            <strong style="color:#2e7d32">${evalJefe.score_okr != null ? evalJefe.score_okr + '%' : '—'}</strong>
-          </div>
-        </div>
+    <!-- ── CALIFICACIÓN FINAL MINIMALISTA ───────────────────────────── -->
+    <div style="display:flex;gap:12px;align-items:center;background:white;border-radius:14px;padding:18px 24px;box-shadow:0 2px 12px rgba(0,0,0,.08);margin-bottom:16px;flex-wrap:wrap">
+      <div style="flex-shrink:0;width:72px;height:72px;border-radius:50%;background:${catColor};display:flex;align-items:center;justify-content:center;box-shadow:0 4px 16px ${catColor}55">
+        <span style="color:white;font-size:1.6rem;font-weight:800">${evalJefe.score_final?.toFixed(1)||'—'}</span>
       </div>
-      <div class="card">
-        <div class="card-title" style="margin-bottom:10px">Perfil de Competencias</div>
-        <div class="radar-container"><canvas id="chartRadarResult"></canvas></div>
+      <div style="flex:1;min-width:140px">
+        <div style="font-size:1.15rem;font-weight:800;color:var(--gray)">${cat?.label||'Sin categoría'}</div>
+        <div style="font-size:.82rem;color:#888;margin-top:2px">${cat?.desc||''}</div>
+      </div>
+      <div style="display:flex;gap:20px;flex-wrap:wrap">
+        ${[
+          { label:'Potencial 360°', val: potencial>0 ? potencial.toFixed(2)+' / 4' : '—', color:'#1565c0' },
+          { label:'Desempeño OKR',  val: okrPct+'%', color:'#2e7d32' },
+        ].map(k => `<div style="text-align:center">
+          <div style="font-size:1.3rem;font-weight:800;color:${k.color}">${k.val}</div>
+          <div style="font-size:.72rem;color:#aaa;text-transform:uppercase;letter-spacing:.05em">${k.label}</div>
+        </div>`).join('')}
       </div>
     </div>
-    <div class="card" style="margin-top:0">
-      <div class="card-title" style="margin-bottom:14px">💬 Retroalimentación del Evaluador</div>
+
+    <!-- ── DOS GRÁFICAS ─────────────────────────────────────────────── -->
+    <div style="display:grid;grid-template-columns:1fr 1fr;gap:16px;margin-bottom:16px">
+
+      <!-- Gráfica barras: competencias -->
+      <div class="card" style="margin:0">
+        <div class="card-title" style="margin-bottom:14px;font-size:.88rem">📊 Competencias por fuente</div>
+        <div style="position:relative;height:240px">
+          <canvas id="chartBarComp"></canvas>
+        </div>
+        <div style="display:flex;gap:10px;justify-content:center;margin-top:10px;flex-wrap:wrap;font-size:.72rem">
+          <span style="display:flex;align-items:center;gap:4px"><span style="width:10px;height:10px;background:#ba0020;border-radius:2px;display:inline-block"></span>Jefe</span>
+          ${evalAuto ? '<span style="display:flex;align-items:center;gap:4px"><span style="width:10px;height:10px;background:#4e4e4e;border-radius:2px;display:inline-block"></span>Auto</span>' : ''}
+        </div>
+      </div>
+
+      <!-- Gráfica OKR: dona -->
+      <div class="card" style="margin:0">
+        <div class="card-title" style="margin-bottom:14px;font-size:.88rem">🎯 Cumplimiento OKR</div>
+        <div style="position:relative;height:200px;display:flex;align-items:center;justify-content:center">
+          <canvas id="chartDonutOKR"></canvas>
+          <div style="position:absolute;text-align:center;pointer-events:none">
+            <div style="font-size:1.8rem;font-weight:800;color:#2e7d32">${okrPct}%</div>
+            <div style="font-size:.72rem;color:#aaa">cumplimiento</div>
+          </div>
+        </div>
+        <!-- OKR por Q si hay datos -->
+        <div id="okrQBreakdown" style="margin-top:10px"></div>
+      </div>
+    </div>
+
+    <!-- ── DESGLOSE 360° COMPACTO ────────────────────────────────────── -->
+    <div class="card" style="margin-bottom:16px">
+      <div class="card-title" style="margin-bottom:10px;font-size:.88rem">🔍 Desglose 360°</div>
+      <div style="display:grid;grid-template-columns:repeat(4,1fr);gap:8px">
+        ${[
+          { label:'Jefe', pct:25, val:evalJefe.score_comp?.toFixed(2), ok:!!evalJefe.score_comp },
+          { label:'Auto', pct:25, val:evalAuto?.score_comp?.toFixed(2), ok:!!evalAuto?.score_comp },
+          { label:'Pares', pct:25, val:evPar.length?(evPar.reduce((a,e)=>a+(e.score_comp||0),0)/evPar.length).toFixed(2):null, ok:evPar.length>0 },
+          { label:'Equipo', pct:25, val:evEq.length?(evEq.reduce((a,e)=>a+(e.score_comp||0),0)/evEq.length).toFixed(2):null, ok:evEq.length>0 },
+        ].map(f => `<div style="background:${f.ok?'#e8f5e9':'#f5f5f5'};border-radius:10px;padding:10px;text-align:center">
+          <div style="font-size:.65rem;color:#888;font-weight:700;text-transform:uppercase;margin-bottom:4px">${f.label} · ${f.pct}%</div>
+          <div style="font-size:1.2rem;font-weight:800;color:${f.ok?'#2e7d32':'#ccc'}">${f.val||'—'}</div>
+          <div style="font-size:.65rem;color:#aaa">/ 4</div>
+        </div>`).join('')}
+      </div>
+    </div>
+
+    <!-- ── RETROALIMENTACIÓN ─────────────────────────────────────────── -->
+    <div class="card" style="margin-bottom:16px">
+      <div class="card-title" style="margin-bottom:14px;font-size:.88rem">💬 Retroalimentación</div>
       <div class="form-row">
         <div class="form-field">
           <label>✅ Fortalezas</label>
@@ -2973,32 +3056,79 @@ function renderResultados() {
         </div>
       </div>
     </div>
-    <!-- HISTORIAL DE EVOLUCIÓN -->
-    <div class="card" style="margin-top:0" id="evolucionCard">
-      <div class="card-title" style="margin-bottom:14px">📈 Evolución por ciclo</div>
+
+    <!-- ── EVOLUCIÓN ─────────────────────────────────────────────────── -->
+    <div class="card" id="evolucionCard">
+      <div class="card-title" style="margin-bottom:14px;font-size:.88rem">📈 Evolución por ciclo</div>
       <div id="evolucionContent"><p style="color:#aaa;font-size:.88rem">Cargando historial...</p></div>
     </div>
     <div id="insigniasContainer"></div>
   `;
 
   setTimeout(() => {
-    const datasets = [{ label:'Evaluación Jefe', data:jefeScores, borderColor:'#ba0020', backgroundColor:'rgba(186,0,32,.15)', pointBackgroundColor:'#ba0020' }];
-    if (evalAuto && autoScores.some(s=>s>0)) {
-      datasets.push({ label:'Autoevaluación', data:autoScores, borderColor:'#4e4e4e', backgroundColor:'rgba(78,78,78,.1)', pointBackgroundColor:'#4e4e4e', borderDash:[5,5] });
-    }
-    if (STATE.charts['chartRadarResult']) STATE.charts['chartRadarResult'].destroy();
-    const ctx = document.getElementById('chartRadarResult')?.getContext('2d');
-    if (ctx) {
-      STATE.charts['chartRadarResult'] = new Chart(ctx, {
-        type: 'radar',
-        data: { labels: compLabels, datasets },
-        options: { responsive:true, maintainAspectRatio:false, scales: { r: { min:0, max:4, ticks:{ stepSize:1, font:{family:'Asap',size:10} }, pointLabels:{ font:{family:'Asap',size:10} } } }, plugins: { legend: { labels: { font:{family:'Asap'} } } } }
+    // ── Gráfica barras competencias ──────────────────────────────────
+    const ctxBar = document.getElementById('chartBarComp')?.getContext('2d');
+    if (ctxBar) {
+      if (STATE.charts['chartBarComp']) STATE.charts['chartBarComp'].destroy();
+      const barDatasets = [
+        { label:'Jefe', data:jefeScores, backgroundColor:'rgba(186,0,32,.8)', borderRadius:4 }
+      ];
+      if (evalAuto && autoScores.some(s=>s>0)) {
+        barDatasets.push({ label:'Auto', data:autoScores, backgroundColor:'rgba(78,78,78,.5)', borderRadius:4 });
+      }
+      STATE.charts['chartBarComp'] = new Chart(ctxBar, {
+        type:'bar',
+        data:{ labels:compLabels, datasets:barDatasets },
+        options:{ responsive:true, maintainAspectRatio:false, indexAxis:'y',
+          scales:{ x:{ min:0, max:4, ticks:{ stepSize:1, font:{family:'Asap',size:10} } }, y:{ ticks:{ font:{family:'Asap',size:10} } } },
+          plugins:{ legend:{ display:false } }
+        }
       });
     }
 
-    // Render evolution history chart
+    // ── Gráfica dona OKR ─────────────────────────────────────────────
+    const ctxDonut = document.getElementById('chartDonutOKR')?.getContext('2d');
+    if (ctxDonut) {
+      if (STATE.charts['chartDonutOKR']) STATE.charts['chartDonutOKR'].destroy();
+      STATE.charts['chartDonutOKR'] = new Chart(ctxDonut, {
+        type:'doughnut',
+        data:{ datasets:[{ data:[okrPct, 100-okrPct],
+          backgroundColor:['#2e7d32','#e8f5e9'], borderWidth:0, cutout:'75%' }] },
+        options:{ responsive:true, maintainAspectRatio:false,
+          plugins:{ legend:{ display:false }, tooltip:{ enabled:false } } }
+      });
+    }
+
+    // ── OKR por Q breakdown ──────────────────────────────────────────
+    const okrMios = STATE.okr.filter(o =>
+      (o.tipo==='individual' && o.colaborador_id===u.id) ||
+      (o.tipo==='equipo' && o.jefe_id===u.jefe_id)
+    );
+    if (okrMios.length) {
+      const qBreakdown = document.getElementById('okrQBreakdown');
+      if (qBreakdown) {
+        const byQ = {};
+        okrMios.forEach(obj => (obj.krs||[]).forEach(kr => {
+          const q = kr.q_asignado || 'Sin Q';
+          if (!byQ[q]) byQ[q] = [];
+          byQ[q].push(kr.progreso || 0);
+        }));
+        qBreakdown.innerHTML = Object.entries(byQ).sort().map(([q, progs]) => {
+          const avg = Math.round(progs.reduce((a,b)=>a+b,0)/progs.length);
+          const barColor = avg>=70?'#43a047':avg>=40?'#f57c00':'#e53935';
+          return `<div style="display:flex;align-items:center;gap:8px;margin-bottom:4px;font-size:.78rem">
+            <span style="width:28px;font-weight:700;color:${barColor}">${q}</span>
+            <div style="flex:1;background:#e8f5e9;border-radius:4px;height:8px">
+              <div style="width:${avg}%;background:${barColor};height:8px;border-radius:4px;transition:width .4s"></div>
+            </div>
+            <span style="font-weight:700;color:${barColor};width:32px;text-align:right">${avg}%</span>
+          </div>`;
+        }).join('');
+      }
+    }
+
+    // ── Evolución e insignias ────────────────────────────────────────
     renderEvolucionHistorial(u.id);
-    // Render insignias/badges
     renderInsignias(u.id, 'insigniasContainer');
   }, 150);
 }
@@ -3436,61 +3566,66 @@ function openOKRModal(objId) {
   const obj = objId ? STATE.okr.find(o => o.id === objId) : null;
   const newId = 'OBJ' + Date.now();
   const team = STATE.users.filter(x => x.jefe_id === STATE.user.id);
+  const isIndividual = obj ? obj.tipo === 'individual' : true; // default individual
 
-  // Get available Q cycles (and open annual cycles as fallback)
-  const qCiclos = STATE.ciclos
-    .filter(c => c.trimestre) // only Q sub-cycles
-    .sort((a,b) => (a.nombre||'').localeCompare(b.nombre||''));
-  const cicloActivo = STATE.ciclos.find(c => c.estado === 'open');
+  // Annual cycle for individual OKRs
+  const anualCiclo = STATE.ciclos.find(c => !c.trimestre && c.estado === 'open') ||
+                     STATE.ciclos.find(c => !c.trimestre) ||
+                     STATE.ciclos.find(c => c.estado === 'open');
+  const qCiclos = STATE.ciclos.filter(c => c.trimestre)
+    .sort((a,b) => (a.trimestre||'').localeCompare(b.trimestre||''));
 
-  // Build Q options
-  const qOpts = qCiclos.length > 0
-    ? qCiclos.map(q => {
-        const isSelected = obj?.periodo === q.nombre || (!obj && q.estado === 'open');
-        const estadoBadge = q.estado === 'open' ? ' 🟢 Activo' : q.estado === 'closed' ? '' : '';
-        return `<option value="${q.nombre}" data-inicio="${q.inicio||''}" data-fin="${q.fin||''}" ${isSelected?'selected':''}>${q.trimestre} — ${q.nombre.replace(/.*—\s*/,'')} (${q.inicio?String(q.inicio).slice(0,7):''} → ${q.fin?String(q.fin).slice(0,7):''})${estadoBadge}</option>`;
-      }).join('')
-    : `<option value="${cicloActivo?.nombre||''}">${cicloActivo?.nombre||'Sin ciclos Q definidos'}</option>`;
+  const qOptions = qCiclos.map(q =>
+    `<option value="${q.trimestre}" data-nombre="${q.nombre}">${q.trimestre} — ${q.nombre.replace(/.*—\s*/,'')} (${String(q.inicio||'').slice(0,7)} → ${String(q.fin||'').slice(0,7)})${q.estado==='open'?' 🟢':''}</option>`
+  ).join('') || '<option value="Q1">Q1</option><option value="Q2">Q2</option><option value="Q3">Q3</option><option value="Q4">Q4</option>';
 
-  // Pre-fill dates from selected Q
-  const defaultQ = qCiclos.find(q => obj?.periodo === q.nombre) ||
-                   qCiclos.find(q => q.estado === 'open') ||
-                   qCiclos[0];
-  const defaultInicio = obj?.fecha_inicio || defaultQ?.inicio || '';
-  const defaultFin    = obj?.fecha_fin    || defaultQ?.fin    || '';
-  const defaultPeriodo = obj?.periodo || defaultQ?.nombre || cicloActivo?.nombre || '';
+  // Build existing KRs HTML
+  const krsHtml = (obj?.krs||[]).map((kr,i) => buildKRRow(kr, i, qOptions)).join('');
 
   openModal(obj ? 'Editar Objetivo' : 'Nuevo Objetivo', `
     <div class="form-row">
       <div class="form-field">
         <label>Tipo de OKR *</label>
         <select id="okrTipo" onchange="toggleOKRColabField(this.value)">
-          <option value="equipo"    ${(!obj||obj.tipo==='equipo')?'selected':''}>🏆 OKR de Equipo</option>
-          <option value="individual" ${obj?.tipo==='individual'?'selected':''}>👤 OKR Individual</option>
+          <option value="individual" ${isIndividual?'selected':''}>👤 OKR Individual (por colaborador)</option>
+          <option value="equipo"    ${!isIndividual?'selected':''}>🏆 OKR de Equipo (meta compartida)</option>
         </select>
       </div>
-      <div class="form-field" id="okrColabField" style="display:${obj?.tipo==='individual'?'block':'none'}">
-        <label>Colaborador asignado *</label>
+      <div class="form-field" id="okrColabField" style="display:${isIndividual?'block':'none'}">
+        <label>Colaborador *</label>
         <select id="okrColabId">
           ${team.map(t => `<option value="${t.id}" ${obj?.colaborador_id===t.id?'selected':''}>${t.nombre} — ${t.cargo}</option>`).join('')}
         </select>
       </div>
     </div>
     <div class="form-field">
-      <label>Título del objetivo *</label>
-      <input type="text" id="okrTitulo" value="${obj?.titulo||''}" placeholder="Ej: Incrementar la satisfacción del cliente">
+      <label>Objetivo *</label>
+      <input type="text" id="okrTitulo" value="${obj?.titulo||''}" placeholder="Ej: Aumentar la retención de clientes">
     </div>
     <div class="form-field">
       <label>Descripción / contexto</label>
       <textarea id="okrDesc" rows="2" placeholder="¿Por qué este objetivo es importante?">${obj?.descripcion||''}</textarea>
     </div>
-    <div class="form-row">
-      <div class="form-field">
-        <label>Trimestre (Q) *</label>
-        <select id="okrQ" onchange="syncOKRDatesFromQ(this)" style="border:2px solid var(--red)">
-          ${qOpts}
-        </select>
+    <div style="background:#e3f2fd;border-radius:8px;padding:8px 14px;font-size:.8rem;color:#1565c0;margin-bottom:4px">
+      📋 Este OKR cubre <strong>todo el ciclo anual</strong>: ${anualCiclo ? anualCiclo.nombre : 'ciclo activo'}. Cada KR se asigna a un Q específico.
+    </div>
+    <input type="hidden" id="okrPeriodo" value="${obj?.periodo || anualCiclo?.nombre || ''}">
+    <input type="hidden" id="okrFechaInicio" value="${obj?.fecha_inicio || anualCiclo?.inicio || ''}">
+    <input type="hidden" id="okrFechaFin" value="${obj?.fecha_fin || anualCiclo?.fin || ''}">
+
+    <div style="margin-top:16px">
+      <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:10px">
+        <strong style="font-size:.9rem;color:var(--gray)">Resultados Clave (KRs)</strong>
+        <button onclick="addKRRow('${qOptions.replace(/'/g,'\\x27')}')" type="button"
+          style="background:var(--red);color:white;border:none;border-radius:6px;padding:5px 12px;font-size:.8rem;cursor:pointer;font-family:Asap">
+          + Agregar KR
+        </button>
       </div>
+      <div id="krContainer">
+        ${krsHtml || `<div style="color:#aaa;font-size:.82rem;padding:8px 0">Agrega al menos un resultado clave.</div>`}
+      </div>
+    </div>
+    <div class="form-row" style="margin-top:12px">
       <div class="form-field">
         <label>Estado</label>
         <select id="okrEstado">
@@ -3500,46 +3635,131 @@ function openOKRModal(objId) {
         </select>
       </div>
     </div>
-    <div class="form-row" style="display:none">
-      <input type="hidden" id="okrFechaInicio" value="${defaultInicio}">
-      <input type="hidden" id="okrFechaFin"    value="${defaultFin}">
-      <input type="hidden" id="okrPeriodo"     value="${defaultPeriodo}">
-    </div>
-    <div style="background:var(--gray-light);border-radius:8px;padding:8px 14px;font-size:.82rem;color:#888;margin-top:4px">
-      📅 Fechas del Q seleccionado: <strong id="okrQDateDisplay">${defaultInicio ? String(defaultInicio).slice(0,10)+' → '+String(defaultFin).slice(0,10) : 'Selecciona un Q'}</strong>
-    </div>
   `, [
     { label:'Cancelar', cls:'btn-secondary', action:'closeModal()' },
     { label: obj ? 'Guardar cambios' : 'Crear objetivo', cls:'btn-primary', action:`saveOKRObjective('${obj?.id||newId}')` }
   ]);
 }
 
-function toggleOKRColabField(val) {
-  document.getElementById('okrColabField').style.display = val === 'individual' ? 'block' : 'none';
+function buildKRRow(kr, idx, qOptions) {
+  const id = kr?.id || ('KR' + Date.now() + idx);
+  const pct = kr?.progreso || 0;
+  return `<div id="kr-row-${id}" style="background:var(--gray-light);border-radius:8px;padding:10px 12px;margin-bottom:8px">
+    <div style="display:flex;gap:8px;align-items:flex-start;flex-wrap:wrap">
+      <div style="flex:1;min-width:180px">
+        <input type="text" value="${kr?.descripcion||''}" placeholder="¿Qué hay que lograr?"
+          id="kr-desc-${id}"
+          style="width:100%;padding:6px 10px;border:1.5px solid var(--gray-mid);border-radius:6px;font-family:Asap;font-size:.85rem">
+      </div>
+      <div style="display:flex;gap:6px;flex-wrap:wrap;align-items:center">
+        <select id="kr-q-${id}" style="padding:5px 8px;border:1.5px solid var(--gray-mid);border-radius:6px;font-size:.78rem;font-family:Asap">
+          ${qOptions.replace(`value="${kr?.q_asignado||'Q1'}"`, `value="${kr?.q_asignado||'Q1'}" selected`)}
+        </select>
+        <div style="display:flex;align-items:center;gap:4px">
+          <input type="number" min="0" max="100" value="${pct}"
+            id="kr-prog-${id}"
+            style="width:64px;padding:5px 8px;border:1.5px solid var(--gray-mid);border-radius:6px;font-size:.82rem;font-family:Asap"
+            placeholder="%">
+          <span style="font-size:.75rem;color:#888">%</span>
+        </div>
+        <button onclick="document.getElementById('kr-row-${id}').remove()" type="button"
+          style="background:none;border:none;color:#e53935;cursor:pointer;font-size:1.1rem;padding:2px 6px" title="Eliminar KR">✕</button>
+      </div>
+    </div>
+    <div style="margin-top:6px;display:flex;gap:8px;align-items:center;font-size:.75rem;color:#888;flex-wrap:wrap">
+      <span>Meta:</span>
+      <input type="text" value="${kr?.meta||''}" placeholder="Ej: 95%" id="kr-meta-${id}"
+        style="width:80px;padding:3px 8px;border:1px solid var(--gray-mid);border-radius:5px;font-size:.75rem;font-family:Asap">
+      <span style="margin-left:8px">Avance actual:</span>
+      <input type="text" value="${kr?.actual||''}" placeholder="Ej: 78%" id="kr-actual-${id}"
+        style="width:80px;padding:3px 8px;border:1px solid var(--gray-mid);border-radius:5px;font-size:.75rem;font-family:Asap">
+      <input type="hidden" id="kr-id-${id}" value="${id}">
+    </div>
+  </div>`;
+}
+
+let _krCounter = 0;
+function addKRRow(qOptions) {
+  const container = document.getElementById('krContainer');
+  if (!container) return;
+  // Remove placeholder text if present
+  if (container.querySelector('div[style*="color:#aaa"]')) container.innerHTML = '';
+  const tempId = 'KR_NEW_' + Date.now() + (++_krCounter);
+  const div = document.createElement('div');
+  div.innerHTML = buildKRRow(null, _krCounter, qOptions);
+  container.appendChild(div.firstElementChild);
 }
 
 async function saveOKRObjective(id) {
-  const titulo = document.getElementById('okrTitulo').value.trim();
+  const titulo = document.getElementById('okrTitulo')?.value.trim();
   if (!titulo) { showToast('El título del objetivo es obligatorio', 'error'); return; }
   const tipo = document.getElementById('okrTipo').value;
   if (tipo === 'individual' && !document.getElementById('okrColabId')?.value) {
     showToast('Selecciona el colaborador para el OKR individual', 'error'); return;
   }
+
+  // Collect KRs from inline form rows
+  const krRows = document.querySelectorAll('#krContainer [id^="kr-row-"]');
+  const krs = [];
   const existing = STATE.okr.find(o => o.id === id);
+
+  krRows.forEach(row => {
+    const rowId = row.id.replace('kr-row-', '');
+    const desc = document.getElementById('kr-desc-' + rowId)?.value?.trim();
+    if (!desc) return; // skip empty rows
+    const qAsignado = document.getElementById('kr-q-' + rowId)?.value || 'Q1';
+    const progreso  = parseInt(document.getElementById('kr-prog-' + rowId)?.value || '0');
+    const meta      = document.getElementById('kr-meta-' + rowId)?.value || '';
+    const actual    = document.getElementById('kr-actual-' + rowId)?.value || '';
+
+    // Find existing KR to preserve history
+    const existingKR = (existing?.krs || []).find(k => k.id === rowId);
+
+    // Carry-over logic: if KR didn't complete in its Q, remaining % becomes new 100%
+    let progresoFinal = progreso;
+    if (existingKR && existingKR.progreso < 100) {
+      const activeQs = STATE.ciclos.filter(c => c.estado === 'open' && c.trimestre).map(c => c.trimestre);
+      const krQ = existingKR.q_asignado;
+      const currentQ = activeQs[activeQs.length - 1]; // latest active Q
+      if (krQ && currentQ && krQ < currentQ && existingKR.progreso < 100) {
+        // KR carried over — recalibrate: existing % becomes base, remaining is new target
+        // e.g. Q1 had 80% → Q2 the remaining 20% is the new 100%
+        const remaining = 100 - (existingKR.progreso || 0);
+        progresoFinal = existingKR.progreso + Math.round((progreso / 100) * remaining);
+      }
+    }
+
+    krs.push({
+      id: rowId,
+      descripcion: desc,
+      q_asignado: qAsignado,
+      progreso: progresoFinal,
+      meta,
+      actual,
+      confianza: existingKR?.confianza || 'mid',
+      historial: existingKR?.historial || [],
+    });
+  });
+
+  if (tipo === 'individual' && krs.length === 0) {
+    showToast('Agrega al menos un resultado clave (KR)', 'error'); return;
+  }
+
   const data = {
     id,
     jefe_id: STATE.user.id,
     tipo,
     colaborador_id: tipo === 'individual' ? document.getElementById('okrColabId').value : null,
     titulo,
-    descripcion: document.getElementById('okrDesc').value,
-    periodo: document.getElementById('okrPeriodo').value,
+    descripcion: document.getElementById('okrDesc')?.value || '',
+    periodo: document.getElementById('okrPeriodo')?.value || '',
     estado: document.getElementById('okrEstado').value,
-    fecha_inicio: document.getElementById('okrFechaInicio').value,
-    fecha_fin: document.getElementById('okrFechaFin').value,
-    score: 0, // calculado automáticamente del promedio de KRs
-    krs: existing?.krs || [],
+    fecha_inicio: document.getElementById('okrFechaInicio')?.value || '',
+    fecha_fin: document.getElementById('okrFechaFin')?.value || '',
+    score: krs.length ? Math.round(krs.reduce((a,k)=>a+(k.progreso||0),0)/krs.length) : 0,
+    krs,
   };
+
   await apiCall('saveOKR', data);
   const idx = STATE.okr.findIndex(o => o.id === id);
   if (idx >= 0) Object.assign(STATE.okr[idx], data); else STATE.okr.push(data);
@@ -3983,11 +4203,13 @@ function renderNineBox() {
 
   // Calcular scores por colaborador: competencias (Y) y OKR (X)
   const data = colabs.map(colab => {
-    const scoreComp = calcScoreCompetencias(colab.id); // Eje Y: potencial
-    const scoreOKR  = calcScoreOKR(colab.id);          // Eje X: desempeño
+    const scoreComp = calcScoreCompetencias(colab.id); // Eje Y: potencial (0-4)
+    const scoreOKR  = calcScoreOKR(colab.id);          // Eje X: desempeño (0-4)
+    // Ponderado: 60% potencial + 40% desempeño (escala 0-4, luego a 0-100)
+    const ponderado = parseFloat(((scoreComp * 0.6 + scoreOKR * 0.4) * 25).toFixed(1));
     const cell      = getNineBoxCell(scoreOKR, scoreComp);
     const potNivel  = scoreComp >= 2.5 ? 3 : scoreComp >= 1.5 ? 2 : 1;
-    return { colab, scoreComp, scoreOKR, potNivel, cell };
+    return { colab, scoreComp, scoreOKR, ponderado, potNivel, cell };
   });
 
   // Colaboradores sin datos suficientes (ningún score)
@@ -4039,7 +4261,7 @@ function renderNineBox() {
                 ${row.map(cell => {
                   const matching = data.filter(d => d.cell === cell);
                   const avatars = matching.map(d =>
-                    `<div class="nb-avatar" data-tip="${d.colab.nombre} · Comp ${d.scoreComp.toFixed(1)} · OKR ${(d.scoreOKR*25).toFixed(0)}%"
+                    `<div class="nb-avatar" data-tip="${d.colab.nombre} · Ponderado ${d.ponderado}% · Potencial ${d.scoreComp.toFixed(1)} · OKR ${(d.scoreOKR*25).toFixed(0)}%"
                       onclick="showNineBoxDetail('${d.colab.id}')">${d.colab.nombre.charAt(0)}</div>`
                   ).join('');
                   return `<div class="nb-cell" style="background:${cell.color};min-height:110px">
@@ -4077,13 +4299,17 @@ function renderNineBox() {
   // Tabla detalle
   html += `<hr class="divider">
     <div style="font-size:.88rem;font-weight:700;color:var(--gray);margin-bottom:10px">Detalle por colaborador</div>
+    <div style="background:#f8f9fa;border-radius:8px;padding:8px 14px;font-size:.78rem;color:#666;margin-bottom:10px">
+      Ponderado = Potencial × 60% + Desempeño OKR × 40%
+    </div>
     <div class="table-wrap"><table>
-      <thead><tr><th>Colaborador</th><th>Cargo</th><th>Competencias (Y)</th><th>OKR Desempeño (X)</th><th>Cuadrante</th></tr></thead>
+      <thead><tr><th>Colaborador</th><th>Cargo</th><th>Potencial (Y)</th><th>Desempeño OKR (X)</th><th>Ponderado</th><th>Cuadrante</th></tr></thead>
       <tbody>
-        ${data.map(d => {
+        ${data.sort((a,b) => b.ponderado - a.ponderado).map(d => {
           const cellInfo = d.cell;
           const compColor = d.scoreComp>=2.5?'#43a047':d.scoreComp>=1.5?'#f57c00':'#e53935';
           const okrColor  = d.scoreOKR>=2.5?'#43a047':d.scoreOKR>=1.5?'#f57c00':'#e53935';
+          const pondColor = d.ponderado>=62.5?'#43a047':d.ponderado>=37.5?'#f57c00':'#e53935';
           return `<tr>
             <td><strong>${d.colab.nombre}</strong></td>
             <td>${d.colab.cargo}</td>
@@ -4094,6 +4320,9 @@ function renderNineBox() {
             <td>
               <strong style="color:${okrColor}">${(d.scoreOKR*25).toFixed(0)}%</strong>
               <span style="font-size:.75rem;color:#888;margin-left:4px">${d.scoreOKR>=2.5?'Alto':d.scoreOKR>=1.5?'Medio':'Bajo'}</span>
+            </td>
+            <td>
+              <strong style="color:${pondColor};font-size:1rem">${d.ponderado}%</strong>
             </td>
             <td>${cellInfo
               ? `<span style="background:${cellInfo.color};color:white;padding:2px 10px;border-radius:10px;font-size:.78rem;font-weight:600">${cellInfo.label}</span>`
@@ -5788,6 +6017,40 @@ function renderBitacora() {
           </div>`}
       </div>`;
   }
+}
+
+function renderMiBitacora() {
+  const u = STATE.user;
+  const cont = document.getElementById('miBitacoraContent');
+  if (!cont) return;
+
+  const TIPOS = { reconocimiento:'🏆 Reconocimiento', feedback:'💬 Feedback', reunion:'🤝 1:1', observacion:'📝 Observación' };
+  const TIPO_COLORS = { reconocimiento:'#2e7d32', feedback:'#1565c0', reunion:'#6a1b9a', observacion:'#e65100' };
+
+  const visibles = (STATE.bitacora || [])
+    .filter(e => e.colaborador_id === u.id)
+    .sort((a,b) => (b.fecha||'').localeCompare(a.fecha||''));
+
+  cont.innerHTML = `
+    <div class="card">
+      <div class="card-header">
+        <div><div class="card-title">Mi Bitácora</div><div class="card-subtitle">Reconocimientos y feedback de tu jefe</div></div>
+      </div>
+      ${visibles.length === 0
+        ? `<div class="empty-state" style="padding:24px"><p>Aún no tienes entradas en tu bitácora.</p></div>`
+        : `<div style="display:grid;gap:10px">
+          ${visibles.map(e => {
+            const color = TIPO_COLORS[e.tipo] || '#888';
+            return `<div style="border-left:4px solid ${color};background:var(--gray-light);border-radius:0 8px 8px 0;padding:12px 16px">
+              <div style="display:flex;align-items:center;gap:10px;margin-bottom:6px;flex-wrap:wrap">
+                <span style="background:${color};color:white;border-radius:8px;padding:2px 10px;font-size:.75rem;font-weight:700">${TIPOS[e.tipo]||e.tipo}</span>
+                <span style="font-size:.78rem;color:#aaa">${e.fecha||''}</span>
+              </div>
+              <p style="font-size:.88rem;color:var(--gray);margin:0;line-height:1.5">${e.nota}</p>
+            </div>`;
+          }).join('')}
+        </div>`}
+    </div>`;
 }
 
 function openBitacoraModal(colabId) {
