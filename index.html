@@ -543,7 +543,7 @@
     </div>
     <button class="btn-login" onclick="handleLogin()">Ingresar al sistema</button>
     <p class="login-error" id="loginError">Usuario o contraseña incorrectos</p>
-    <div style="text-align:center;margin-top:16px;font-size:.7rem;color:#bbb;font-family:monospace">v5.1</div>
+    <div style="text-align:center;margin-top:16px;font-size:.7rem;color:#bbb;font-family:monospace">v5.2</div>
   </div>
 
   <!-- Indicadores de impacto -->
@@ -673,7 +673,7 @@
         </svg>
         Actualizar
       </button>
-      <span style="font-size:.68rem;color:#ccc;font-family:monospace;opacity:.6">v5.1</span>
+      <span style="font-size:.68rem;color:#ccc;font-family:monospace;opacity:.6">v5.2</span>
     </div>
   </div>
 
@@ -3332,6 +3332,22 @@ function renderResultados() {
           </div>
         </div>
         <div id="okrQBreakdown" style="margin-top:10px"></div>
+
+        <!-- Desglose 360° dentro del card OKR para llenar el espacio -->
+        <hr style="border:none;border-top:1px solid var(--gray-light);margin:14px 0 12px">
+        <div style="font-size:.75rem;font-weight:700;color:#888;text-transform:uppercase;letter-spacing:.05em;margin-bottom:8px">🔍 Desglose 360°</div>
+        <div style="display:grid;grid-template-columns:repeat(2,1fr);gap:6px">
+          ${[
+            { label:'Jefe', val:evalJefe.score_comp?.toFixed(2), ok:!!evalJefe.score_comp },
+            { label:'Auto', val:evalAuto?.score_comp?.toFixed(2), ok:!!evalAuto?.score_comp },
+            { label:'Pares', val:evPar.length?(evPar.reduce((a,e)=>a+(e.score_comp||0),0)/evPar.length).toFixed(2):null, ok:evPar.length>0 },
+            { label:'Equipo', val:evEq.length?(evEq.reduce((a,e)=>a+(e.score_comp||0),0)/evEq.length).toFixed(2):null, ok:evEq.length>0 },
+          ].map(f => `<div style="background:${f.ok?'#e8f5e9':'#f5f5f5'};border-radius:8px;padding:8px 10px;text-align:center">
+            <div style="font-size:.65rem;color:#888;font-weight:700;text-transform:uppercase;margin-bottom:2px">${f.label} · 25%</div>
+            <div style="font-size:1.1rem;font-weight:800;color:${f.ok?'#2e7d32':'#ccc'}">${f.val||'—'}</div>
+            <div style="font-size:.62rem;color:#aaa">/ 4</div>
+          </div>`).join('')}
+        </div>
       </div>
     </div>
 
@@ -3347,23 +3363,6 @@ function renderResultados() {
       </div>
       <div style="position:relative;height:${Math.max(180, comps.length * 36)}px">
         <canvas id="chartBarComp"></canvas>
-      </div>
-    </div>
-
-    <!-- ── DESGLOSE 360° COMPACTO ────────────────────────────────────── -->
-    <div class="card" style="margin-bottom:16px">
-      <div class="card-title" style="margin-bottom:10px;font-size:.88rem">🔍 Desglose 360°</div>
-      <div style="display:grid;grid-template-columns:repeat(4,1fr);gap:8px">
-        ${[
-          { label:'Jefe', pct:25, val:evalJefe.score_comp?.toFixed(2), ok:!!evalJefe.score_comp },
-          { label:'Auto', pct:25, val:evalAuto?.score_comp?.toFixed(2), ok:!!evalAuto?.score_comp },
-          { label:'Pares', pct:25, val:evPar.length?(evPar.reduce((a,e)=>a+(e.score_comp||0),0)/evPar.length).toFixed(2):null, ok:evPar.length>0 },
-          { label:'Equipo', pct:25, val:evEq.length?(evEq.reduce((a,e)=>a+(e.score_comp||0),0)/evEq.length).toFixed(2):null, ok:evEq.length>0 },
-        ].map(f => `<div style="background:${f.ok?'#e8f5e9':'#f5f5f5'};border-radius:10px;padding:10px;text-align:center">
-          <div style="font-size:.65rem;color:#888;font-weight:700;text-transform:uppercase;margin-bottom:4px">${f.label} · ${f.pct}%</div>
-          <div style="font-size:1.2rem;font-weight:800;color:${f.ok?'#2e7d32':'#ccc'}">${f.val||'—'}</div>
-          <div style="font-size:.65rem;color:#aaa">/ 4</div>
-        </div>`).join('')}
       </div>
     </div>
 
