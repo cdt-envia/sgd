@@ -543,7 +543,7 @@
     </div>
     <button class="btn-login" onclick="handleLogin()">Ingresar al sistema</button>
     <p class="login-error" id="loginError">Usuario o contraseña incorrectos</p>
-    <div style="text-align:center;margin-top:16px;font-size:.7rem;color:#bbb;font-family:monospace">v4.8</div>
+    <div style="text-align:center;margin-top:16px;font-size:.7rem;color:#bbb;font-family:monospace">v4.9</div>
   </div>
 
   <!-- Indicadores de impacto -->
@@ -673,7 +673,7 @@
         </svg>
         Actualizar
       </button>
-      <span style="font-size:.68rem;color:#ccc;font-family:monospace;opacity:.6">v4.8</span>
+      <span style="font-size:.68rem;color:#ccc;font-family:monospace;opacity:.6">v4.9</span>
     </div>
   </div>
 
@@ -3286,33 +3286,50 @@ function renderResultados() {
       </div>
     </div>
 
-    <!-- ── DOS GRÁFICAS ─────────────────────────────────────────────── -->
-    <div style="display:grid;grid-template-columns:1fr 1fr;gap:16px;margin-bottom:16px">
+    <!-- ── GRÁFICAS ──────────────────────────────────────────────────── -->
 
-      <!-- Gráfica barras: competencias -->
+    <!-- Fila 1: Radar (protagonista) + Dona OKR -->
+    <div style="display:grid;grid-template-columns:1fr 260px;gap:16px;margin-bottom:16px;align-items:start">
+
+      <!-- Radar: jefe vs auto vs pares -->
       <div class="card" style="margin:0">
-        <div class="card-title" style="margin-bottom:14px;font-size:.88rem">📊 Competencias por fuente</div>
-        <div style="position:relative;height:240px">
-          <canvas id="chartBarComp"></canvas>
+        <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:12px">
+          <div class="card-title" style="font-size:.88rem;margin:0">🕸️ Perfil de Competencias</div>
+          <div style="display:flex;gap:12px;font-size:.72rem">
+            <span style="display:flex;align-items:center;gap:4px"><span style="width:10px;height:3px;background:#ba0020;border-radius:2px;display:inline-block"></span>Jefe</span>
+            ${evalAuto ? '<span style="display:flex;align-items:center;gap:4px"><span style="width:10px;height:3px;background:#555;border-radius:2px;display:inline-block"></span>Auto</span>' : ''}
+            ${evPar.length > 0 ? '<span style="display:flex;align-items:center;gap:4px"><span style="width:10px;height:3px;background:#1565c0;border-radius:2px;display:inline-block"></span>Pares</span>' : ''}
+          </div>
         </div>
-        <div style="display:flex;gap:10px;justify-content:center;margin-top:10px;flex-wrap:wrap;font-size:.72rem">
-          <span style="display:flex;align-items:center;gap:4px"><span style="width:10px;height:10px;background:#ba0020;border-radius:2px;display:inline-block"></span>Jefe</span>
-          ${evalAuto ? '<span style="display:flex;align-items:center;gap:4px"><span style="width:10px;height:10px;background:#4e4e4e;border-radius:2px;display:inline-block"></span>Auto</span>' : ''}
-        </div>
+        <div class="radar-container" style="height:320px"><canvas id="chartRadarResult"></canvas></div>
       </div>
 
-      <!-- Gráfica OKR: dona -->
+      <!-- Dona OKR -->
       <div class="card" style="margin:0">
-        <div class="card-title" style="margin-bottom:14px;font-size:.88rem">🎯 Cumplimiento OKR</div>
-        <div style="position:relative;height:200px;display:flex;align-items:center;justify-content:center">
+        <div class="card-title" style="margin-bottom:12px;font-size:.88rem">🎯 Cumplimiento OKR</div>
+        <div style="position:relative;height:160px;display:flex;align-items:center;justify-content:center">
           <canvas id="chartDonutOKR"></canvas>
           <div style="position:absolute;text-align:center;pointer-events:none">
             <div style="font-size:1.8rem;font-weight:800;color:#2e7d32">${okrPct}%</div>
-            <div style="font-size:.72rem;color:#aaa">cumplimiento</div>
+            <div style="font-size:.7rem;color:#aaa">cumplimiento</div>
           </div>
         </div>
-        <!-- OKR por Q si hay datos -->
         <div id="okrQBreakdown" style="margin-top:10px"></div>
+      </div>
+    </div>
+
+    <!-- Fila 2: Barras de detalle (jefe vs auto vs pares por competencia) -->
+    <div class="card" style="margin-bottom:16px">
+      <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:12px">
+        <div class="card-title" style="font-size:.88rem;margin:0">📊 Detalle por competencia y fuente</div>
+        <div style="display:flex;gap:10px;font-size:.72rem">
+          <span style="display:flex;align-items:center;gap:4px"><span style="width:10px;height:10px;background:#ba0020;border-radius:2px;display:inline-block"></span>Jefe</span>
+          ${evalAuto ? '<span style="display:flex;align-items:center;gap:4px"><span style="width:10px;height:10px;background:rgba(85,85,85,.6);border-radius:2px;display:inline-block"></span>Auto</span>' : ''}
+          ${evPar.length > 0 ? '<span style="display:flex;align-items:center;gap:4px"><span style="width:10px;height:10px;background:rgba(21,101,192,.6);border-radius:2px;display:inline-block"></span>Pares</span>' : ''}
+        </div>
+      </div>
+      <div style="position:relative;height:${Math.max(180, comps.length * 36)}px">
+        <canvas id="chartBarComp"></canvas>
       </div>
     </div>
 
@@ -3357,40 +3374,96 @@ function renderResultados() {
   `;
 
   setTimeout(() => {
-    // ── Gráfica barras competencias ──────────────────────────────────
-    const ctxBar = document.getElementById('chartBarComp')?.getContext('2d');
-    if (ctxBar) {
-      if (STATE.charts['chartBarComp']) STATE.charts['chartBarComp'].destroy();
-      const barDatasets = [
-        { label:'Jefe', data:jefeScores, backgroundColor:'rgba(186,0,32,.8)', borderRadius:4 }
+    // ── Calcular pares scores ────────────────────────────────────────
+    const paresScores = comps.map(c => {
+      if (!evPar.length) return 0;
+      const vals = evPar.map(e => {
+        const fromJson = e.comp_scores?.[c.id];
+        if (fromJson > 0) return fromJson;
+        return Number(e['comp_' + c.id]) || 0;
+      }).filter(v => v > 0);
+      return vals.length ? parseFloat((vals.reduce((a,b)=>a+b,0)/vals.length).toFixed(2)) : 0;
+    });
+
+    // ── Radar: jefe + auto + pares ───────────────────────────────────
+    if (STATE.charts['chartRadarResult']) STATE.charts['chartRadarResult'].destroy();
+    const ctxRadar = document.getElementById('chartRadarResult')?.getContext('2d');
+    if (ctxRadar) {
+      const radarDatasets = [
+        { label:'Jefe', data:jefeScores,
+          borderColor:'#ba0020', backgroundColor:'rgba(186,0,32,.12)',
+          pointBackgroundColor:'#ba0020', borderWidth:2.5, pointRadius:4 }
       ];
       if (evalAuto && autoScores.some(s=>s>0)) {
-        barDatasets.push({ label:'Auto', data:autoScores, backgroundColor:'rgba(78,78,78,.5)', borderRadius:4 });
+        radarDatasets.push({
+          label:'Autoevaluación', data:autoScores,
+          borderColor:'#555', backgroundColor:'rgba(85,85,85,.08)',
+          pointBackgroundColor:'#555', borderWidth:1.5, borderDash:[5,4], pointRadius:3
+        });
       }
-      STATE.charts['chartBarComp'] = new Chart(ctxBar, {
-        type:'bar',
-        data:{ labels:compLabels, datasets:barDatasets },
-        options:{ responsive:true, maintainAspectRatio:false, indexAxis:'y',
-          scales:{ x:{ min:0, max:4, ticks:{ stepSize:1, font:{family:'Asap',size:10} } }, y:{ ticks:{ font:{family:'Asap',size:10} } } },
+      if (evPar.length && paresScores.some(s=>s>0)) {
+        radarDatasets.push({
+          label:'Pares', data:paresScores,
+          borderColor:'#1565c0', backgroundColor:'rgba(21,101,192,.1)',
+          pointBackgroundColor:'#1565c0', borderWidth:2, borderDash:[3,3], pointRadius:3
+        });
+      }
+      STATE.charts['chartRadarResult'] = new Chart(ctxRadar, {
+        type:'radar',
+        data:{ labels:compLabels, datasets:radarDatasets },
+        options:{
+          responsive:true, maintainAspectRatio:false,
+          scales:{ r:{
+            min:0, max:4, ticks:{ stepSize:1, font:{family:'Asap',size:10}, backdropColor:'transparent' },
+            pointLabels:{ font:{family:'Asap',size:11}, color:'#4e4e4e' },
+            grid:{ color:'rgba(0,0,0,.08)' }, angleLines:{ color:'rgba(0,0,0,.08)' }
+          }},
           plugins:{ legend:{ display:false } }
         }
       });
     }
 
-    // ── Gráfica dona OKR ─────────────────────────────────────────────
+    // ── Barras horizontales: jefe vs auto vs pares ───────────────────
+    const ctxBar = document.getElementById('chartBarComp')?.getContext('2d');
+    if (ctxBar) {
+      if (STATE.charts['chartBarComp']) STATE.charts['chartBarComp'].destroy();
+      const barDatasets = [
+        { label:'Jefe', data:jefeScores, backgroundColor:'rgba(186,0,32,.85)', borderRadius:3 }
+      ];
+      if (evalAuto && autoScores.some(s=>s>0)) {
+        barDatasets.push({ label:'Auto', data:autoScores, backgroundColor:'rgba(85,85,85,.5)', borderRadius:3 });
+      }
+      if (evPar.length && paresScores.some(s=>s>0)) {
+        barDatasets.push({ label:'Pares', data:paresScores, backgroundColor:'rgba(21,101,192,.6)', borderRadius:3 });
+      }
+      STATE.charts['chartBarComp'] = new Chart(ctxBar, {
+        type:'bar',
+        data:{ labels:compLabels, datasets:barDatasets },
+        options:{
+          responsive:true, maintainAspectRatio:false, indexAxis:'y',
+          scales:{
+            x:{ min:0, max:4, ticks:{ stepSize:1, font:{family:'Asap',size:10} }, grid:{color:'rgba(0,0,0,.06)'} },
+            y:{ ticks:{ font:{family:'Asap',size:10} }, grid:{display:false} }
+          },
+          plugins:{ legend:{ display:false },
+            tooltip:{ callbacks:{ label: ctx => ` ${ctx.dataset.label}: ${ctx.raw} / 4` } }
+          }
+        }
+      });
+    }
+
+    // ── Dona OKR ─────────────────────────────────────────────────────
     const ctxDonut = document.getElementById('chartDonutOKR')?.getContext('2d');
     if (ctxDonut) {
       if (STATE.charts['chartDonutOKR']) STATE.charts['chartDonutOKR'].destroy();
       STATE.charts['chartDonutOKR'] = new Chart(ctxDonut, {
         type:'doughnut',
         data:{ datasets:[{ data:[okrPct, 100-okrPct],
-          backgroundColor:['#2e7d32','#e8f5e9'], borderWidth:0, cutout:'75%' }] },
+          backgroundColor:['#2e7d32','#e8f5e9'], borderWidth:0, cutout:'72%' }] },
         options:{ responsive:true, maintainAspectRatio:false,
           plugins:{ legend:{ display:false }, tooltip:{ enabled:false } } }
       });
     }
-
-    // ── OKR por Q breakdown ──────────────────────────────────────────
     const okrMios = STATE.okr.filter(o =>
       (o.tipo==='individual' && o.colaborador_id===u.id) ||
       (o.tipo==='equipo' && o.jefe_id===u.jefe_id)
