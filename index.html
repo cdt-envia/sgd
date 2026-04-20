@@ -543,7 +543,7 @@
     </div>
     <button class="btn-login" onclick="handleLogin()">Ingresar al sistema</button>
     <p class="login-error" id="loginError">Usuario o contraseña incorrectos</p>
-    <div style="text-align:center;margin-top:16px;font-size:.7rem;color:#bbb;font-family:monospace">v5.8</div>
+    <div style="text-align:center;margin-top:16px;font-size:.7rem;color:#bbb;font-family:monospace">v5.9</div>
   </div>
 
   <!-- Indicadores de impacto -->
@@ -673,7 +673,7 @@
         </svg>
         Actualizar
       </button>
-      <span style="font-size:.68rem;color:#ccc;font-family:monospace;opacity:.6">v5.8</span>
+      <span style="font-size:.68rem;color:#ccc;font-family:monospace;opacity:.6">v5.9</span>
     </div>
   </div>
 
@@ -1441,8 +1441,21 @@ const DEMO_POTENCIAL = [
 // Ciclos de evaluación: cada ciclo puede ser 360° completo o revisión ligera
 // tipo: 'completo' (360° full) | 'revision' (OKR + retroalimentación ligera)
 const DEMO_CICLOS = [
-  { id:'CIC001', nombre:'Q1-2026', tipo:'completo', grado:'360', inicio:'2026-01-15', fin:'2026-03-31', estado:'open',
-    peso_jefe:40, peso_auto:20, peso_pares:25, peso_okr:15 },
+  { id:'CIC000', nombre:'Ciclo 2026', tipo:'completo', grado:'360', trimestre:'',
+    inicio:'2026-04-01', fin:'2027-03-31', estado:'open',
+    peso_jefe:25, peso_auto:25, peso_pares:25, peso_okr:25 },
+  { id:'CIC001', nombre:'Ciclo 2026 — Q1', tipo:'completo', grado:'360', trimestre:'Q1',
+    inicio:'2026-04-01', fin:'2026-06-30', estado:'open',
+    peso_jefe:25, peso_auto:25, peso_pares:25, peso_okr:25 },
+  { id:'CIC002', nombre:'Ciclo 2026 — Q2', tipo:'revision', grado:'360', trimestre:'Q2',
+    inicio:'2026-07-01', fin:'2026-09-30', estado:'closed',
+    peso_jefe:25, peso_auto:25, peso_pares:25, peso_okr:25 },
+  { id:'CIC003', nombre:'Ciclo 2026 — Q3', tipo:'revision', grado:'360', trimestre:'Q3',
+    inicio:'2026-10-01', fin:'2026-12-31', estado:'closed',
+    peso_jefe:25, peso_auto:25, peso_pares:25, peso_okr:25 },
+  { id:'CIC004', nombre:'Ciclo 2026 — Q4', tipo:'revision', grado:'360', trimestre:'Q4',
+    inicio:'2027-01-01', fin:'2027-03-31', estado:'closed',
+    peso_jefe:25, peso_auto:25, peso_pares:25, peso_okr:25 },
 ];
 
 // ── GAMIFICACIÓN: INSIGNIAS ────────────────────────────────────────────
@@ -4473,12 +4486,12 @@ function openCheckinModal(objId, krId) {
     : kr.progreso || 0;
   const barColor = ponderado>=70?'#43a047':ponderado>=40?'#f57c00':'#e53935';
 
-  // Q options for new entry — ALL Qs (including closed) so user can register retroactively
+  // Q options — store inicio/fin as data attrs so updateCiMeses doesn't need to re-search
   const qOpts = qCiclos.length > 0
     ? qCiclos.map(q =>
-        `<option value="${q.trimestre}" ${q.trimestre===activeQ?'selected':''}>${q.trimestre} — ${q.nombre.replace(/.*—\s*/,'')} (${String(q.inicio||'').slice(0,7)} → ${String(q.fin||'').slice(0,7)}) ${q.estado==='closed'?'🔒':'🟢'}</option>`
+        `<option value="${q.trimestre}" data-inicio="${q.inicio||''}" data-fin="${q.fin||''}" ${q.trimestre===activeQ?'selected':''}>${q.trimestre} — ${q.nombre.replace(/.*—\s*/,'')} (${String(q.inicio||'').slice(0,7)} → ${String(q.fin||'').slice(0,7)}) ${q.estado==='closed'?'🔒':'🟢'}</option>`
       ).join('')
-    : `<option value="Q1">Q1</option><option value="Q2">Q2</option><option value="Q3">Q3</option><option value="Q4">Q4</option>`;
+    : `<option value="Q1" data-inicio="" data-fin="">Q1</option><option value="Q2" data-inicio="" data-fin="">Q2</option><option value="Q3" data-inicio="" data-fin="">Q3</option><option value="Q4" data-inicio="" data-fin="">Q4</option>`;
 
   openModal(`📊 Seguimiento: ${kr.descripcion.substring(0,45)}`, `
     <!-- KR summary -->
@@ -4508,7 +4521,7 @@ function openCheckinModal(objId, krId) {
       <div class="form-row" style="margin-bottom:8px">
         <div class="form-field">
           <label>Trimestre <small style="color:#888">— incluye Qs cerrados</small></label>
-          <select id="ciQ" onchange="updateCiMeses(this.value)"
+          <select id="ciQ" onchange="updateCiMesesFromSelect(this)"
             style="padding:6px 10px;border:1.5px solid var(--gray-mid);border-radius:6px;font-family:Asap;font-size:.88rem">
             ${qOpts}
           </select>
@@ -4566,27 +4579,44 @@ function openCheckinModal(objId, krId) {
     { label:'Guardar avance', cls:'btn-primary', action:`saveCheckin('${objId}','${krId}')` }
   ]);
 
-  // Initialize month dropdown for the default Q
-  setTimeout(() => updateCiMeses(activeQ), 60);
+  // Initialize month dropdown from the pre-selected Q option
+  setTimeout(() => {
+    const qSel = document.getElementById('ciQ');
+    if (qSel) updateCiMesesFromSelect(qSel);
+  }, 60);
 }
 
-function updateCiMeses(qValue) {
+function updateCiMesesFromSelect(selectEl) {
+  const opt   = selectEl.options[selectEl.selectedIndex];
+  const inicio = opt.dataset.inicio || '';
+  const fin    = opt.dataset.fin    || '';
+  updateCiMeses(selectEl.value, inicio, fin);
+}
+
+function updateCiMeses(qValue, inicioOverride, finOverride) {
   const sel = document.getElementById('ciMes');
   if (!sel) return;
 
   const MESES = ['Enero','Febrero','Marzo','Abril','Mayo','Junio',
                  'Julio','Agosto','Septiembre','Octubre','Noviembre','Diciembre'];
 
-  // Find the Q ciclo — match by trimestre field
-  const cicloQ = STATE.ciclos.find(c => c.trimestre === qValue);
-  const now = new Date();
+  // Use override dates first, then look up in STATE.ciclos
+  let inicioStr = inicioOverride || '';
+  let finStr    = finOverride    || '';
 
+  if (!inicioStr) {
+    const cicloQ = STATE.ciclos.find(c => c.trimestre === qValue);
+    inicioStr = cicloQ?.inicio ? String(cicloQ.inicio).slice(0,10) : '';
+    finStr    = cicloQ?.fin    ? String(cicloQ.fin).slice(0,10)    : '';
+  } else {
+    inicioStr = String(inicioStr).slice(0,10);
+    finStr    = String(finStr).slice(0,10);
+  }
+
+  const now = new Date();
   let mesesDisponibles = [];
 
-  if (cicloQ?.inicio && cicloQ?.fin) {
-    // Parse dates safely (take only YYYY-MM-DD part)
-    const inicioStr = String(cicloQ.inicio).slice(0,10);
-    const finStr    = String(cicloQ.fin).slice(0,10);
+  if (inicioStr && finStr) {
     const start = new Date(inicioStr + 'T00:00:00');
     const end   = new Date(finStr   + 'T00:00:00');
     let cur = new Date(start.getFullYear(), start.getMonth(), 1);
@@ -4595,17 +4625,17 @@ function updateCiMeses(qValue) {
       cur.setMonth(cur.getMonth() + 1);
     }
   } else {
-    // Fallback: 3 months from today
-    for (let i = 0; i < 3; i++) {
+    // Fallback: current + 2 previous months
+    for (let i = 2; i >= 0; i--) {
       const d = new Date(now.getFullYear(), now.getMonth() - i, 1);
-      mesesDisponibles.unshift({ year: d.getFullYear(), month: d.getMonth() });
+      mesesDisponibles.push({ year: d.getFullYear(), month: d.getMonth() });
     }
   }
 
-  // Select current month if available, else last month of range
-  const curKey = now.getFullYear() * 12 + now.getMonth();
+  // Select current month if in range, else last available
+  const curKey  = now.getFullYear() * 12 + now.getMonth();
   const matchIdx = mesesDisponibles.findIndex(m => m.year*12+m.month === curKey);
-  const selIdx = matchIdx >= 0 ? matchIdx : mesesDisponibles.length - 1;
+  const selIdx   = matchIdx >= 0 ? matchIdx : mesesDisponibles.length - 1;
 
   sel.innerHTML = mesesDisponibles.map((m, i) =>
     `<option value="${m.year}-${String(m.month+1).padStart(2,'0')}" ${i===selIdx?'selected':''}>
