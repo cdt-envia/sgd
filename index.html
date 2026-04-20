@@ -543,7 +543,7 @@
     </div>
     <button class="btn-login" onclick="handleLogin()">Ingresar al sistema</button>
     <p class="login-error" id="loginError">Usuario o contraseña incorrectos</p>
-    <div style="text-align:center;margin-top:16px;font-size:.7rem;color:#bbb;font-family:monospace">v5.4</div>
+    <div style="text-align:center;margin-top:16px;font-size:.7rem;color:#bbb;font-family:monospace">v5.5</div>
   </div>
 
   <!-- Indicadores de impacto -->
@@ -673,7 +673,7 @@
         </svg>
         Actualizar
       </button>
-      <span style="font-size:.68rem;color:#ccc;font-family:monospace;opacity:.6">v5.4</span>
+      <span style="font-size:.68rem;color:#ccc;font-family:monospace;opacity:.6">v5.5</span>
     </div>
   </div>
 
@@ -3306,7 +3306,7 @@ function renderResultados() {
     <!-- ── GRÁFICAS ──────────────────────────────────────────────────── -->
 
     <!-- Fila 1: Radar (protagonista) + Dona OKR -->
-    <div style="display:grid;grid-template-columns:1fr 300px;gap:16px;margin-bottom:16px;align-items:start">
+    <div style="display:grid;grid-template-columns:1fr 320px;gap:16px;margin-bottom:16px;align-items:start">
 
       <!-- Radar: jefe vs auto vs pares -->
       <div class="card" style="margin:0">
@@ -3489,19 +3489,19 @@ function renderResultados() {
       if (qBreakdown) {
         const byQ = {};
         okrMios.forEach(obj => (obj.krs||[]).forEach(kr => {
-          const q = kr.q_asignado === 'todos' || !kr.q_asignado ? 'Todo el año' : kr.q_asignado;
+          const q = kr.q_asignado === 'todos' || !kr.q_asignado ? 'Anual' : kr.q_asignado;
           if (!byQ[q]) byQ[q] = [];
           byQ[q].push(kr.progreso || 0);
         }));
         qBreakdown.innerHTML = Object.entries(byQ).sort().map(([q, progs]) => {
           const avg = Math.round(progs.reduce((a,b)=>a+b,0)/progs.length);
           const barColor = avg>=70?'#43a047':avg>=40?'#f57c00':'#e53935';
-          return `<div style="display:flex;align-items:center;gap:8px;margin-bottom:4px;font-size:.78rem">
-            <span style="width:28px;font-weight:700;color:${barColor}">${q}</span>
+          return `<div style="display:flex;align-items:center;gap:6px;margin-bottom:5px;font-size:.76rem">
+            <span style="width:36px;font-weight:700;color:${barColor};flex-shrink:0">${q}</span>
             <div style="flex:1;background:#e8f5e9;border-radius:4px;height:8px">
               <div style="width:${avg}%;background:${barColor};height:8px;border-radius:4px;transition:width .4s"></div>
             </div>
-            <span style="font-weight:700;color:${barColor};width:32px;text-align:right">${avg}%</span>
+            <span style="font-weight:700;color:${barColor};width:34px;text-align:right;flex-shrink:0">${avg}%</span>
           </div>`;
         }).join('');
       }
@@ -3562,7 +3562,7 @@ function renderEvolucionHistorial(colabId) {
               ${isEval && potNivel
                 ? `<span style="background:${['','#e53935','#f57c00','#2e7d32'][potNivel]};color:white;border-radius:8px;padding:1px 8px;font-size:.72rem">P${potNivel}</span>`
                 : ''}
-              ${ev.okr != null ? `<span style="font-size:.78rem;color:#888">OKR: ${isEval ? ev.okr+'%' : ev.okr+'%'}</span>` : (isEval ? `<span style="font-size:.78rem;color:#888">OKR: ${Math.round(calcScoreOKR(colabId)*25)}%</span>` : '')}
+              ${isEval ? `<span style="font-size:.78rem;color:#2e7d32;font-weight:600">OKR: ${Math.round(calcScoreOKR(colabId)*25)}%</span>` : (ev.okr != null ? `<span style="font-size:.78rem;color:#888">OKR: ${ev.okr}%</span>` : '')}
             </div>
             ${isEval && ev.score
               ? `<div style="display:flex;align-items:center;gap:8px">
@@ -4357,7 +4357,7 @@ function openCheckinModal(objId, krId) {
   // Group checkins by Q for the history view
   const byQ = {};
   checkins.forEach(c => {
-    const q = c.q === 'todos' || !c.q ? 'Todo el año' : c.q;
+    const q = c.q === 'todos' || !c.q ? 'Anual' : c.q;
     if (!byQ[q]) byQ[q] = [];
     byQ[q].push(c);
   });
