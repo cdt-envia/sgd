@@ -543,7 +543,7 @@
     </div>
     <button class="btn-login" onclick="handleLogin()">Ingresar al sistema</button>
     <p class="login-error" id="loginError">Usuario o contraseña incorrectos</p>
-    <div style="text-align:center;margin-top:16px;font-size:.7rem;color:#bbb;font-family:monospace">v5.7</div>
+    <div style="text-align:center;margin-top:16px;font-size:.7rem;color:#bbb;font-family:monospace">v5.8</div>
   </div>
 
   <!-- Indicadores de impacto -->
@@ -673,7 +673,7 @@
         </svg>
         Actualizar
       </button>
-      <span style="font-size:.68rem;color:#ccc;font-family:monospace;opacity:.6">v5.7</span>
+      <span style="font-size:.68rem;color:#ccc;font-family:monospace;opacity:.6">v5.8</span>
     </div>
   </div>
 
@@ -3952,12 +3952,18 @@ function renderKRRow(kr, objId, isReadOnly) {
 }
 
 function renderCheckins(checkins) {
-  const recent = [...checkins].sort((a,b) => b.fecha.localeCompare(a.fecha)).slice(0, 3);
+  const MESES_S = ['Ene','Feb','Mar','Abr','May','Jun','Jul','Ago','Sep','Oct','Nov','Dic'];
+  const recent = [...checkins].sort((a,b) => (b.fecha||'').localeCompare(a.fecha||'')).slice(0, 5);
   return `<div class="checkin-list">
     ${recent.map(c => {
       const autor = getUserById(c.autor_id);
+      const fechaStr = (c.fecha||'').slice(0,10);
+      const fd = fechaStr ? new Date(fechaStr+'T00:00:00') : null;
+      const mesLabel = fd && !isNaN(fd) ? MESES_S[fd.getMonth()]+' '+fd.getFullYear() : fechaStr.slice(0,7);
+      const qLabel = c.q && c.q !== 'todos' ? c.q : 'Anual';
       return `<div class="checkin-item">
-        <span class="checkin-date">${c.fecha}</span>
+        <span class="checkin-date" style="color:#1565c0;font-weight:600">${mesLabel}</span>
+        <span style="font-size:.7rem;color:#aaa;margin-right:4px">${qLabel}</span>
         <span class="checkin-author">${autor?.nombre?.split(' ')[0] || '—'}</span>
         <span style="color:var(--gray);flex:1">${c.nota}</span>
         <span style="font-weight:600;color:#888;font-size:.75rem">${c.progreso}%</span>
@@ -4446,8 +4452,9 @@ function openCheckinModal(objId, krId) {
         const autor = getUserById(c.autor_id);
         const bc2 = (c.progreso||0)>=70?'#43a047':(c.progreso||0)>=40?'#f57c00':'#e53935';
         const MESES_S = ['Ene','Feb','Mar','Abr','May','Jun','Jul','Ago','Sep','Oct','Nov','Dic'];
-        const fd = c.fecha ? new Date(c.fecha+'T00:00:00') : null;
-        const mesLabel = fd ? MESES_S[fd.getMonth()]+' '+fd.getFullYear() : (c.fecha||'').slice(0,7);
+        const fechaStr = (c.fecha||'').slice(0,10); // take YYYY-MM-DD only, strips timezone
+        const fd = fechaStr ? new Date(fechaStr+'T00:00:00') : null;
+        const mesLabel = fd && !isNaN(fd) ? MESES_S[fd.getMonth()]+' '+fd.getFullYear() : fechaStr.slice(0,7);
         return `<div style="display:flex;align-items:center;gap:8px;background:var(--gray-light);border-radius:6px;padding:5px 10px;font-size:.76rem;margin-bottom:2px">
           <span style="color:#1565c0;min-width:64px;font-weight:600">${mesLabel}</span>
           <span style="flex:1;color:var(--gray)">${c.nota}</span>
@@ -4570,32 +4577,35 @@ function updateCiMeses(qValue) {
   const MESES = ['Enero','Febrero','Marzo','Abril','Mayo','Junio',
                  'Julio','Agosto','Septiembre','Octubre','Noviembre','Diciembre'];
 
-  // Find the Q ciclo to get its date range
+  // Find the Q ciclo — match by trimestre field
   const cicloQ = STATE.ciclos.find(c => c.trimestre === qValue);
   const now = new Date();
 
   let mesesDisponibles = [];
 
   if (cicloQ?.inicio && cicloQ?.fin) {
-    // Generate months between inicio and fin of this Q
-    const start = new Date(cicloQ.inicio + 'T00:00:00');
-    const end   = new Date(cicloQ.fin   + 'T00:00:00');
+    // Parse dates safely (take only YYYY-MM-DD part)
+    const inicioStr = String(cicloQ.inicio).slice(0,10);
+    const finStr    = String(cicloQ.fin).slice(0,10);
+    const start = new Date(inicioStr + 'T00:00:00');
+    const end   = new Date(finStr   + 'T00:00:00');
     let cur = new Date(start.getFullYear(), start.getMonth(), 1);
     while (cur <= end) {
       mesesDisponibles.push({ year: cur.getFullYear(), month: cur.getMonth() });
       cur.setMonth(cur.getMonth() + 1);
     }
   } else {
-    // Fallback: show all 12 months of current year
-    for (let m = 0; m < 12; m++) {
-      mesesDisponibles.push({ year: now.getFullYear(), month: m });
+    // Fallback: 3 months from today
+    for (let i = 0; i < 3; i++) {
+      const d = new Date(now.getFullYear(), now.getMonth() - i, 1);
+      mesesDisponibles.unshift({ year: d.getFullYear(), month: d.getMonth() });
     }
   }
 
-  // Default select: current month if within range, else last month of Q
-  const curYM = now.getFullYear() * 12 + now.getMonth();
-  const defaultIdx = mesesDisponibles.findIndex(m => m.year * 12 + m.month === curYM);
-  const selIdx = defaultIdx >= 0 ? defaultIdx : mesesDisponibles.length - 1;
+  // Select current month if available, else last month of range
+  const curKey = now.getFullYear() * 12 + now.getMonth();
+  const matchIdx = mesesDisponibles.findIndex(m => m.year*12+m.month === curKey);
+  const selIdx = matchIdx >= 0 ? matchIdx : mesesDisponibles.length - 1;
 
   sel.innerHTML = mesesDisponibles.map((m, i) =>
     `<option value="${m.year}-${String(m.month+1).padStart(2,'0')}" ${i===selIdx?'selected':''}>
