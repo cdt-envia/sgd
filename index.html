@@ -543,7 +543,7 @@
     </div>
     <button class="btn-login" onclick="handleLogin()">Ingresar al sistema</button>
     <p class="login-error" id="loginError">Usuario o contraseña incorrectos</p>
-    <div style="text-align:center;margin-top:16px;font-size:.7rem;color:#bbb;font-family:monospace">v4.9</div>
+    <div style="text-align:center;margin-top:16px;font-size:.7rem;color:#bbb;font-family:monospace">v5.1</div>
   </div>
 
   <!-- Indicadores de impacto -->
@@ -673,7 +673,7 @@
         </svg>
         Actualizar
       </button>
-      <span style="font-size:.68rem;color:#ccc;font-family:monospace;opacity:.6">v4.9</span>
+      <span style="font-size:.68rem;color:#ccc;font-family:monospace;opacity:.6">v5.1</span>
     </div>
   </div>
 
@@ -3246,7 +3246,24 @@ function renderResultados() {
 
   const cat = getCategory(evalJefe.score_final);
   const comps = getCompsByRole(u.cargo);
-  const compLabels = comps.map(c => c.nombre.substring(0, 20));
+  // Full names for bar chart, wrapped for radar (max 2 lines of ~14 chars each)
+  const compLabels     = comps.map(c => c.nombre);
+  const compLabelsWrap = comps.map(c => {
+    // Split long names into 2 lines for radar readability
+    const words = c.nombre.split(' ');
+    if (c.nombre.length <= 16) return c.nombre;
+    // Find best split point near middle
+    let best = 0, bestDiff = Infinity;
+    let acc = 0;
+    words.forEach((w,i) => {
+      acc += w.length + (i>0?1:0);
+      const diff = Math.abs(acc - c.nombre.length/2);
+      if (diff < bestDiff) { bestDiff = diff; best = i; }
+    });
+    const line1 = words.slice(0, best+1).join(' ');
+    const line2 = words.slice(best+1).join(' ');
+    return line2 ? [line1, line2] : line1;
+  });
 
   function getCompScore(eval_, compId) {
     const fromJson = eval_.comp_scores?.[compId];
@@ -3289,7 +3306,7 @@ function renderResultados() {
     <!-- ── GRÁFICAS ──────────────────────────────────────────────────── -->
 
     <!-- Fila 1: Radar (protagonista) + Dona OKR -->
-    <div style="display:grid;grid-template-columns:1fr 260px;gap:16px;margin-bottom:16px;align-items:start">
+    <div style="display:grid;grid-template-columns:1fr 300px;gap:16px;margin-bottom:16px;align-items:start">
 
       <!-- Radar: jefe vs auto vs pares -->
       <div class="card" style="margin:0">
@@ -3301,7 +3318,7 @@ function renderResultados() {
             ${evPar.length > 0 ? '<span style="display:flex;align-items:center;gap:4px"><span style="width:10px;height:3px;background:#1565c0;border-radius:2px;display:inline-block"></span>Pares</span>' : ''}
           </div>
         </div>
-        <div class="radar-container" style="height:320px"><canvas id="chartRadarResult"></canvas></div>
+        <div class="radar-container" style="height:360px"><canvas id="chartRadarResult"></canvas></div>
       </div>
 
       <!-- Dona OKR -->
@@ -3410,12 +3427,12 @@ function renderResultados() {
       }
       STATE.charts['chartRadarResult'] = new Chart(ctxRadar, {
         type:'radar',
-        data:{ labels:compLabels, datasets:radarDatasets },
+        data:{ labels:compLabelsWrap, datasets:radarDatasets },
         options:{
           responsive:true, maintainAspectRatio:false,
           scales:{ r:{
             min:0, max:4, ticks:{ stepSize:1, font:{family:'Asap',size:10}, backdropColor:'transparent' },
-            pointLabels:{ font:{family:'Asap',size:11}, color:'#4e4e4e' },
+            pointLabels:{ font:{family:'Asap',size:11.5, weight:'500'}, color:'#4e4e4e', padding:8 },
             grid:{ color:'rgba(0,0,0,.08)' }, angleLines:{ color:'rgba(0,0,0,.08)' }
           }},
           plugins:{ legend:{ display:false } }
@@ -3473,7 +3490,7 @@ function renderResultados() {
       if (qBreakdown) {
         const byQ = {};
         okrMios.forEach(obj => (obj.krs||[]).forEach(kr => {
-          const q = kr.q_asignado || 'Sin Q';
+          const q = kr.q_asignado === 'todos' || !kr.q_asignado ? 'Todo el año' : kr.q_asignado;
           if (!byQ[q]) byQ[q] = [];
           byQ[q].push(kr.progreso || 0);
         }));
@@ -4338,7 +4355,7 @@ function openCheckinModal(objId, krId) {
   // Group checkins by Q for the history view
   const byQ = {};
   checkins.forEach(c => {
-    const q = c.q || 'Sin Q';
+    const q = c.q === 'todos' || !c.q ? 'Todo el año' : c.q;
     if (!byQ[q]) byQ[q] = [];
     byQ[q].push(c);
   });
