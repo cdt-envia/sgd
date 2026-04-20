@@ -543,7 +543,7 @@
     </div>
     <button class="btn-login" onclick="handleLogin()">Ingresar al sistema</button>
     <p class="login-error" id="loginError">Usuario o contraseña incorrectos</p>
-    <div style="text-align:center;margin-top:16px;font-size:.7rem;color:#bbb;font-family:monospace">v5.2</div>
+    <div style="text-align:center;margin-top:16px;font-size:.7rem;color:#bbb;font-family:monospace">v5.4</div>
   </div>
 
   <!-- Indicadores de impacto -->
@@ -673,7 +673,7 @@
         </svg>
         Actualizar
       </button>
-      <span style="font-size:.68rem;color:#ccc;font-family:monospace;opacity:.6">v5.2</span>
+      <span style="font-size:.68rem;color:#ccc;font-family:monospace;opacity:.6">v5.4</span>
     </div>
   </div>
 
@@ -3562,10 +3562,12 @@ function renderEvolucionHistorial(colabId) {
               ${isEval && potNivel
                 ? `<span style="background:${['','#e53935','#f57c00','#2e7d32'][potNivel]};color:white;border-radius:8px;padding:1px 8px;font-size:.72rem">P${potNivel}</span>`
                 : ''}
-              ${ev.okr != null ? `<span style="font-size:.78rem;color:#888">OKR: ${isEval ? ev.okr+'%' : ev.okr+'%'}</span>` : ''}
+              ${ev.okr != null ? `<span style="font-size:.78rem;color:#888">OKR: ${isEval ? ev.okr+'%' : ev.okr+'%'}</span>` : (isEval ? `<span style="font-size:.78rem;color:#888">OKR: ${Math.round(calcScoreOKR(colabId)*25)}%</span>` : '')}
             </div>
             ${isEval && ev.score
-              ? `<div style="display:flex;align-items:center;gap:8px"><div style="height:6px;border-radius:3px;background:${cat?.color||'#ba0020'};width:${Math.round((ev.score/4)*100)}%;max-width:200px;min-width:4px"></div><span style="font-size:.78rem;color:#888">${Math.round((ev.score/4)*100)}%</span></div>`
+              ? `<div style="display:flex;align-items:center;gap:8px">
+                  <div style="height:6px;border-radius:3px;background:${cat?.color||'#ba0020'};width:${Math.round((ev.score/4)*100)}%;max-width:200px;min-width:4px"></div>
+                </div>`
               : ''
             }
             ${!isEval && ev.fortalezas ? `<div style="font-size:.8rem;color:var(--gray);margin-top:4px"><strong>Fortalezas:</strong> ${ev.fortalezas}</div>` : ''}
@@ -3583,27 +3585,28 @@ function renderEvolucionHistorial(colabId) {
         <table>
           <thead>
             <tr>
-              <th>Ciclo</th><th>Score Jefe</th><th>Score Auto</th><th>Score Pares</th><th>OKR</th><th>Score Final</th><th>Categoría</th><th>Potencial</th>
+              <th>Ciclo</th><th>Jefe</th><th>Auto</th><th>Pares</th><th>Equipo</th><th>OKR</th><th>Potencial Final</th><th>Categoría</th>
             </tr>
           </thead>
           <tbody>
             ${histEvals.map(e => {
-              const evalAutoH = STATE.evaluaciones.find(a => a.evaluado_id === colabId && a.tipo === 'auto' && a.periodo === e.periodo && a.estado === 'enviado');
-              const evalParesH = STATE.evaluaciones.filter(a => a.evaluado_id === colabId && a.tipo === 'par' && a.periodo === e.periodo && a.estado === 'enviado');
-              const avgPares = evalParesH.length ? (evalParesH.reduce((a,p) => a+(p.score_comp||0),0)/evalParesH.length).toFixed(2) : '—';
+              const evalAutoH   = STATE.evaluaciones.find(a => a.evaluado_id === colabId && a.tipo === 'auto' && a.periodo === e.periodo && a.estado === 'enviado');
+              const evalParesH  = STATE.evaluaciones.filter(a => a.evaluado_id === colabId && a.tipo === 'par' && a.periodo === e.periodo && a.estado === 'enviado');
+              const evalEquipoH = STATE.evaluaciones.filter(a => a.evaluado_id === colabId && a.tipo === 'colab_a_jefe' && a.periodo === e.periodo && a.estado === 'enviado');
+              const avgPares  = evalParesH.length  ? (evalParesH.reduce((a,p)  => a+(p.score_comp||0),0)/evalParesH.length).toFixed(2)  : '—';
+              const avgEquipo = evalEquipoH.length ? (evalEquipoH.reduce((a,p) => a+(p.score_comp||0),0)/evalEquipoH.length).toFixed(2) : '—';
+              const okrPctHist = Math.round(calcScoreOKR(colabId) * 25);
+              const potencialFinal = calcScorePotencial(colabId);
               const cat = getCategory(e.score_final);
-              const potObj = potHist.find(p => p.periodo === e.periodo);
-              const potNivel = potObj?.nivel;
-              const potColor = potNivel ? ['','#e53935','#f57c00','#2e7d32'][potNivel] : null;
               return `<tr>
                 <td><strong>${e.periodo}</strong></td>
                 <td>${e.score_comp?.toFixed(2)||'—'}</td>
                 <td>${evalAutoH?.score_comp?.toFixed(2)||'—'}</td>
                 <td>${avgPares}</td>
-                <td>${e.score_okr != null ? e.score_okr+'%' : '—'}</td>
-                <td><strong style="color:${cat?.color||'#ba0020'}">${e.score_final?.toFixed(2)||'—'}</strong></td>
+                <td>${avgEquipo}</td>
+                <td><strong style="color:${okrPctHist>=70?'#43a047':okrPctHist>=40?'#f57c00':'#e53935'}">${okrPctHist}%</strong></td>
+                <td><strong style="color:#1565c0">${potencialFinal>0?potencialFinal.toFixed(2)+' / 4':'—'}</strong></td>
                 <td><span style="background:${cat?.color||'#888'}20;color:${cat?.color||'#888'};padding:2px 8px;border-radius:8px;font-size:.78rem;font-weight:600">${cat?.label||'—'}</span></td>
-                <td>${potNivel ? `<span style="background:${potColor};color:white;padding:2px 8px;border-radius:8px;font-size:.78rem">P${potNivel}</span>` : '<span style="color:#aaa">—</span>'}</td>
               </tr>`;
             }).join('')}
           </tbody>
