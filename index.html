@@ -538,7 +538,7 @@
     </div>
     <button class="btn-login" onclick="handleLogin()">Ingresar al sistema</button>
     <p class="login-error" id="loginError">Usuario o contraseña incorrectos</p>
-    <div style="text-align:center;margin-top:16px;font-size:.7rem;color:#bbb;font-family:monospace">v4.0</div>
+    <div style="text-align:center;margin-top:16px;font-size:.7rem;color:#bbb;font-family:monospace">v4.1</div>
   </div>
 
   <!-- Indicadores de impacto -->
@@ -593,7 +593,7 @@
         </svg>
         Actualizar
       </button>
-      <span style="font-size:.68rem;color:#ccc;font-family:monospace;opacity:.6">v4.0</span>
+      <span style="font-size:.68rem;color:#ccc;font-family:monospace;opacity:.6">v4.1</span>
     </div>
   </div>
 
@@ -2505,22 +2505,38 @@ function calcScoreCompetencias(colaboradorId) {
 }
 
 function calcScoreOKR(colaboradorId) {
-  // Eje X del Nine Box: avance promedio de OKR (escala 0-4)
-  const evalJefe = STATE.evaluaciones.find(e =>
-    e.evaluado_id === colaboradorId && e.tipo === 'jefe' && e.estado === 'enviado'
-  );
-  const okrPct = evalJefe?.score_okr ?? null;
-  if (okrPct != null) return parseFloat((okrPct / 25).toFixed(2));
+  // Desempeño = promedio del avance de todos los KRs del colaborador (escala 0-4)
+  // Directly calculated from KR progreso — this is the source of truth for Nine Box
 
-  // Fallback: calcular directamente de los OKR
-  const colaborador = getUserById(colaboradorId);
-  const okrs = STATE.okr.filter(o =>
-    (o.tipo === 'individual' && o.colaborador_id === colaboradorId) ||
-    (o.tipo === 'equipo' && o.jefe_id === colaborador?.jefe_id) // team OKRs apply to all team members
+  // Individual OKRs assigned to this collaborator
+  const indivOKRs = STATE.okr.filter(o =>
+    o.tipo === 'individual' && o.colaborador_id === colaboradorId
   );
-  const krs = okrs.flatMap(o => o.krs || []);
-  const avg = krs.length ? krs.reduce((a, k) => a + (k.progreso || 0), 0) / krs.length : 0;
-  return parseFloat((avg / 25).toFixed(2));
+
+  // Equipo OKRs where this collaborator is a member (or all team if miembros is empty)
+  const colaborador = getUserById(colaboradorId);
+  const equipoOKRs = STATE.okr.filter(o => {
+    if (o.tipo !== 'equipo') return false;
+    if (o.jefe_id !== colaborador?.jefe_id) return false;
+    // If miembros list exists and is non-empty, check membership
+    if (o.miembros && o.miembros.length > 0) return o.miembros.includes(colaboradorId);
+    return true; // empty miembros = applies to whole team
+  });
+
+  const allOKRs = [...indivOKRs, ...equipoOKRs];
+  const allKRs  = allOKRs.flatMap(o => o.krs || []);
+
+  if (!allKRs.length) {
+    // Fallback: use score_okr from jefe's evaluation if KRs not yet defined
+    const evalJefe = STATE.evaluaciones.find(e =>
+      e.evaluado_id === colaboradorId && e.tipo === 'jefe' && e.estado === 'enviado'
+    );
+    const okrPct = evalJefe?.score_okr ?? 0;
+    return parseFloat((okrPct / 25).toFixed(2));
+  }
+
+  const avg = allKRs.reduce((a, k) => a + (k.progreso || 0), 0) / allKRs.length;
+  return parseFloat((avg / 25).toFixed(2)); // 0-100% → 0-4 scale
 }
 
 // ═══════════════════════════════════════════
@@ -3566,21 +3582,23 @@ function openOKRModal(objId) {
   const obj = objId ? STATE.okr.find(o => o.id === objId) : null;
   const newId = 'OBJ' + Date.now();
   const team = STATE.users.filter(x => x.jefe_id === STATE.user.id);
-  const isIndividual = obj ? obj.tipo === 'individual' : true; // default individual
+  const isIndividual = obj ? obj.tipo === 'individual' : true;
 
-  // Annual cycle for individual OKRs
   const anualCiclo = STATE.ciclos.find(c => !c.trimestre && c.estado === 'open') ||
                      STATE.ciclos.find(c => !c.trimestre) ||
                      STATE.ciclos.find(c => c.estado === 'open');
   const qCiclos = STATE.ciclos.filter(c => c.trimestre)
     .sort((a,b) => (a.trimestre||'').localeCompare(b.trimestre||''));
 
-  const qOptions = qCiclos.map(q =>
-    `<option value="${q.trimestre}" data-nombre="${q.nombre}">${q.trimestre} — ${q.nombre.replace(/.*—\s*/,'')} (${String(q.inicio||'').slice(0,7)} → ${String(q.fin||'').slice(0,7)})${q.estado==='open'?' 🟢':''}</option>`
+  // Store globally — avoids passing HTML through onclick attributes
+  window._okrQOptions = qCiclos.map(q =>
+    '<option value="' + q.trimestre + '">' + q.trimestre + ' — ' + q.nombre.replace(/.*—\s*/,'') +
+    ' (' + String(q.inicio||'').slice(0,7) + ' → ' + String(q.fin||'').slice(0,7) + ')' +
+    (q.estado==='open'?' 🟢':'') + '</option>'
   ).join('') || '<option value="Q1">Q1</option><option value="Q2">Q2</option><option value="Q3">Q3</option><option value="Q4">Q4</option>';
 
-  // Build existing KRs HTML
-  const krsHtml = (obj?.krs||[]).map((kr,i) => buildKRRow(kr, i, qOptions)).join('');
+  const krsHtml = (obj?.krs||[]).map((kr,i) => buildKRRow(kr, i, window._okrQOptions)).join('');
+  const equipoMiembros = obj?.miembros || [];
 
   openModal(obj ? 'Editar Objetivo' : 'Nuevo Objetivo', `
     <div class="form-row">
@@ -3594,8 +3612,16 @@ function openOKRModal(objId) {
       <div class="form-field" id="okrColabField" style="display:${isIndividual?'block':'none'}">
         <label>Colaborador *</label>
         <select id="okrColabId">
-          ${team.map(t => `<option value="${t.id}" ${obj?.colaborador_id===t.id?'selected':''}>${t.nombre} — ${t.cargo}</option>`).join('')}
+          ${team.map(t => '<option value="' + t.id + '" ' + (obj?.colaborador_id===t.id?'selected':'') + '>' + t.nombre + ' — ' + t.cargo + '</option>').join('')}
         </select>
+      </div>
+    </div>
+    <div id="okrEquipoField" style="display:${!isIndividual?'block':'none'}">
+      <div class="form-field">
+        <label>¿A quiénes aplica? <small style="color:#888;font-weight:400">— Si no seleccionas, aplica a todo el equipo</small></label>
+        <div style="display:flex;flex-wrap:wrap;gap:6px;padding:8px;border:1.5px solid var(--gray-mid);border-radius:8px">
+          ${team.map(t => '<label id="mchip-' + t.id + '" style="display:flex;align-items:center;gap:5px;padding:4px 10px;border:1.5px solid ' + (equipoMiembros.includes(t.id)?'var(--red)':'var(--gray-mid)') + ';border-radius:16px;cursor:pointer;font-size:.82rem;background:' + (equipoMiembros.includes(t.id)?'var(--red-light)':'white') + ';color:' + (equipoMiembros.includes(t.id)?'var(--red)':'var(--gray)') + '"><input type="checkbox" name="okrMiembro" value="' + t.id + '" ' + (equipoMiembros.includes(t.id)?'checked':'') + ' style="display:none" onchange="toggleMiembroChip(this)">' + t.nombre.split(' ')[0] + '</label>').join('')}
+        </div>
       </div>
     </div>
     <div class="form-field">
@@ -3607,39 +3633,34 @@ function openOKRModal(objId) {
       <textarea id="okrDesc" rows="2" placeholder="¿Por qué este objetivo es importante?">${obj?.descripcion||''}</textarea>
     </div>
     <div style="background:#e3f2fd;border-radius:8px;padding:8px 14px;font-size:.8rem;color:#1565c0;margin-bottom:4px">
-      📋 Este OKR cubre <strong>todo el ciclo anual</strong>: ${anualCiclo ? anualCiclo.nombre : 'ciclo activo'}. Cada KR se asigna a un Q específico.
+      📋 Ciclo anual: <strong>${anualCiclo ? anualCiclo.nombre : 'ciclo activo'}</strong>. Cada KR se asigna a un Q específico.
     </div>
     <input type="hidden" id="okrPeriodo" value="${obj?.periodo || anualCiclo?.nombre || ''}">
     <input type="hidden" id="okrFechaInicio" value="${obj?.fecha_inicio || anualCiclo?.inicio || ''}">
     <input type="hidden" id="okrFechaFin" value="${obj?.fecha_fin || anualCiclo?.fin || ''}">
-
     <div style="margin-top:16px">
       <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:10px">
         <strong style="font-size:.9rem;color:var(--gray)">Resultados Clave (KRs)</strong>
-        <button onclick="addKRRow('${qOptions.replace(/'/g,'\\x27')}')" type="button"
-          style="background:var(--red);color:white;border:none;border-radius:6px;padding:5px 12px;font-size:.8rem;cursor:pointer;font-family:Asap">
-          + Agregar KR
-        </button>
+        <button onclick="addKRRow()" type="button" style="background:var(--red);color:white;border:none;border-radius:6px;padding:5px 14px;font-size:.82rem;cursor:pointer;font-family:Asap;font-weight:600">+ Agregar KR</button>
       </div>
       <div id="krContainer">
-        ${krsHtml || `<div style="color:#aaa;font-size:.82rem;padding:8px 0">Agrega al menos un resultado clave.</div>`}
+        ${krsHtml || '<div id="kr-placeholder" style="color:#aaa;font-size:.82rem;padding:8px 0">Agrega al menos un resultado clave.</div>'}
       </div>
     </div>
     <div class="form-row" style="margin-top:12px">
       <div class="form-field">
         <label>Estado</label>
         <select id="okrEstado">
-          ${Object.entries(OKR_STATUS).map(([k,v]) =>
-            `<option value="${k}" ${obj?.estado===k?'selected':''}>${v.label}</option>`
-          ).join('')}
+          ${Object.entries(OKR_STATUS).map(([k,v]) => '<option value="' + k + '" ' + (obj?.estado===k?'selected':'') + '>' + v.label + '</option>').join('')}
         </select>
       </div>
     </div>
   `, [
     { label:'Cancelar', cls:'btn-secondary', action:'closeModal()' },
-    { label: obj ? 'Guardar cambios' : 'Crear objetivo', cls:'btn-primary', action:`saveOKRObjective('${obj?.id||newId}')` }
+    { label: obj ? 'Guardar cambios' : 'Crear objetivo', cls:'btn-primary', action:"saveOKRObjective('" + (obj?.id||newId) + "')" }
   ]);
 }
+
 
 function buildKRRow(kr, idx, qOptions) {
   const id = kr?.id || ('KR' + Date.now() + idx);
@@ -3678,15 +3699,30 @@ function buildKRRow(kr, idx, qOptions) {
   </div>`;
 }
 
+function toggleOKRColabField(val) {
+  const cf = document.getElementById('okrColabField');
+  const ef = document.getElementById('okrEquipoField');
+  if (cf) cf.style.display = val === 'individual' ? 'block' : 'none';
+  if (ef) ef.style.display = val === 'equipo'     ? 'block' : 'none';
+}
+
+function toggleMiembroChip(input) {
+  const lbl = document.getElementById('mchip-' + input.value);
+  if (!lbl) return;
+  lbl.style.borderColor = input.checked ? 'var(--red)' : 'var(--gray-mid)';
+  lbl.style.background  = input.checked ? 'var(--red-light)' : 'white';
+  lbl.style.color       = input.checked ? 'var(--red)' : 'var(--gray)';
+}
+
 let _krCounter = 0;
-function addKRRow(qOptions) {
+function addKRRow() {
   const container = document.getElementById('krContainer');
   if (!container) return;
-  // Remove placeholder text if present
-  if (container.querySelector('div[style*="color:#aaa"]')) container.innerHTML = '';
-  const tempId = 'KR_NEW_' + Date.now() + (++_krCounter);
+  const placeholder = document.getElementById('kr-placeholder');
+  if (placeholder) placeholder.remove();
+  const qOpts = window._okrQOptions || '<option value="Q1">Q1</option><option value="Q2">Q2</option><option value="Q3">Q3</option><option value="Q4">Q4</option>';
   const div = document.createElement('div');
-  div.innerHTML = buildKRRow(null, _krCounter, qOptions);
+  div.innerHTML = buildKRRow(null, ++_krCounter, qOpts);
   container.appendChild(div.firstElementChild);
 }
 
@@ -3750,6 +3786,10 @@ async function saveOKRObjective(id) {
     jefe_id: STATE.user.id,
     tipo,
     colaborador_id: tipo === 'individual' ? document.getElementById('okrColabId').value : null,
+    // Collect equipo members (checkboxes)
+    miembros: tipo === 'equipo'
+      ? [...document.querySelectorAll('input[name="okrMiembro"]:checked')].map(cb => cb.value)
+      : [],
     titulo,
     descripcion: document.getElementById('okrDesc')?.value || '',
     periodo: document.getElementById('okrPeriodo')?.value || '',
