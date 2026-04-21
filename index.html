@@ -543,7 +543,7 @@
     </div>
     <button class="btn-login" onclick="handleLogin()">Ingresar al sistema</button>
     <p class="login-error" id="loginError">Usuario o contraseña incorrectos</p>
-    <div style="text-align:center;margin-top:16px;font-size:.7rem;color:#bbb;font-family:monospace">v6.0</div>
+    <div style="text-align:center;margin-top:16px;font-size:.7rem;color:#bbb;font-family:monospace">v6.2</div>
   </div>
 
   <!-- Indicadores de impacto -->
@@ -673,7 +673,7 @@
         </svg>
         Actualizar
       </button>
-      <span style="font-size:.68rem;color:#ccc;font-family:monospace;opacity:.6">v6.0</span>
+      <span style="font-size:.68rem;color:#ccc;font-family:monospace;opacity:.6">v6.2</span>
     </div>
   </div>
 
@@ -4438,7 +4438,8 @@ function openCheckinModal(objId, krId) {
   // Build Q list from ciclos (all Q, including closed ones)
   const qCiclos = STATE.ciclos.filter(c => c.trimestre)
     .sort((a,b) => (a.trimestre||'').localeCompare(b.trimestre||''));
-  const activeQ = qCiclos.find(c => c.estado === 'open')?.trimestre || 'Q1';
+  const activeQ      = qCiclos.find(c => c.estado === 'open')?.trimestre || qCiclos[0]?.trimestre || 'Q1';
+  const activeQCiclo = qCiclos.find(c => c.trimestre === activeQ) || qCiclos[0] || null;
 
   // Group checkins by Q for the history view
   const byQ = {};
@@ -4530,7 +4531,7 @@ function openCheckinModal(objId, krId) {
           <label>Mes del avance</label>
           <select id="ciMes"
             style="padding:6px 10px;border:1.5px solid var(--gray-mid);border-radius:6px;font-family:Asap;font-size:.88rem">
-            <!-- populated by updateCiMeses() -->
+            ${buildMesesOpts(activeQCiclo?.inicio||'', activeQCiclo?.fin||'')}
           </select>
         </div>
       </div>
@@ -4579,20 +4580,50 @@ function openCheckinModal(objId, krId) {
     { label:'Guardar avance', cls:'btn-primary', action:`saveCheckin('${objId}','${krId}')` }
   ]);
 
-  // Initialize month dropdown — pass dates directly (no DOM dependency)
-  const activeQCiclo = qCiclos.find(c => c.trimestre === activeQ);
-  setTimeout(() => updateCiMeses(
-    activeQ,
-    activeQCiclo?.inicio || '',
-    activeQCiclo?.fin    || ''
-  ), 100);
+  // Month options pre-rendered in template via buildMesesOpts()
+}
+
+function buildMesesOpts(inicioStr, finStr) {
+  const MESES = ['Enero','Febrero','Marzo','Abril','Mayo','Junio',
+                 'Julio','Agosto','Septiembre','Octubre','Noviembre','Diciembre'];
+  const now = new Date();
+  let meses = [];
+
+  const iStr = String(inicioStr||'').slice(0,10);
+  const fStr = String(finStr||'').slice(0,10);
+
+  if (iStr && fStr) {
+    const start = new Date(iStr + 'T00:00:00');
+    const end   = new Date(fStr + 'T00:00:00');
+    let cur = new Date(start.getFullYear(), start.getMonth(), 1);
+    while (cur <= end) {
+      meses.push({ year: cur.getFullYear(), month: cur.getMonth() });
+      cur.setMonth(cur.getMonth() + 1);
+    }
+  } else {
+    for (let i = 2; i >= 0; i--) {
+      const d = new Date(now.getFullYear(), now.getMonth() - i, 1);
+      meses.push({ year: d.getFullYear(), month: d.getMonth() });
+    }
+  }
+
+  const curKey   = now.getFullYear() * 12 + now.getMonth();
+  const matchIdx = meses.findIndex(m => m.year*12+m.month === curKey);
+  const selIdx   = matchIdx >= 0 ? matchIdx : meses.length - 1;
+
+  return meses.map((m, i) =>
+    `<option value="${m.year}-${String(m.month+1).padStart(2,'0')}" ${i===selIdx?'selected':''}>
+      ${MESES[m.month]} ${m.year}
+    </option>`
+  ).join('');
 }
 
 function updateCiMesesFromSelect(selectEl) {
-  const opt   = selectEl.options[selectEl.selectedIndex];
+  const opt    = selectEl.options[selectEl.selectedIndex];
   const inicio = opt.dataset.inicio || '';
   const fin    = opt.dataset.fin    || '';
-  updateCiMeses(selectEl.value, inicio, fin);
+  const sel    = document.getElementById('ciMes');
+  if (sel) sel.innerHTML = buildMesesOpts(inicio, fin);
 }
 
 function updateCiMeses(qValue, inicioOverride, finOverride) {
