@@ -543,7 +543,7 @@
     </div>
     <button class="btn-login" onclick="handleLogin()">Ingresar al sistema</button>
     <p class="login-error" id="loginError">Usuario o contraseña incorrectos</p>
-    <div style="text-align:center;margin-top:16px;font-size:.7rem;color:#bbb;font-family:monospace">v6.8</div>
+    <div style="text-align:center;margin-top:16px;font-size:.7rem;color:#bbb;font-family:monospace">v6.9</div>
   </div>
 
   <!-- Indicadores de impacto -->
@@ -673,7 +673,7 @@
         </svg>
         Actualizar
       </button>
-      <span style="font-size:.68rem;color:#ccc;font-family:monospace;opacity:.6">v6.8</span>
+      <span style="font-size:.68rem;color:#ccc;font-family:monospace;opacity:.6">v6.9</span>
     </div>
   </div>
 
@@ -1222,7 +1222,7 @@
 // ═══════════════════════════════════════════
 //  CONFIG — Reemplaza con tu URL de Google Apps Script
 // ═══════════════════════════════════════════
-const SCRIPT_URL = 'https://script.google.com/macros/s/AKfycbwzv9VnN_-THfi76n-zhU3CMRDXFswuPWiWJ9gkq1sBQhwoq9qPqLbzxzhC55n5zpnh/exec';
+const SCRIPT_URL = 'https://script.google.com/macros/s/AKfycbzeZxWPRVC5eus5yUFY0W1BLSbhX1E03GfKg-lnA7du8vuNmqd75yVFZUpIAXggY_W2/exec';
 
 // ═══════════════════════════════════════════
 //  STATE
@@ -2377,7 +2377,8 @@ function renderTeam() {
     </tr>`;
   }).join('');
   // Show revision section if active ciclo is tipo 'revision' and user is jefe
-  if (u.rol === 'jefe') renderRevisionesEquipo();
+  // Revisión ligera replaced by OKR tracking in "OKR del equipo"
+  // if (u.rol === 'jefe') renderRevisionesEquipo();
 }
 
 async function refreshTeam() {
@@ -5336,13 +5337,75 @@ function renderResultadosEquipo() {
   const cat       = evalJefe ? getCategory(evalJefe.score_final) : null;
   const catColor  = cat?.color || 'var(--gray-mid)';
 
-  if (!evalJefe) {
+  // Check if selected period is a revision cycle (Q2-Q4 = no competency eval)
+  const cicloDelPeriodo = STATE.ciclos.find(c => c.nombre === periodo);
+  const esRevision = cicloDelPeriodo?.tipo === 'revision' ||
+    ['Q2','Q3','Q4'].includes(cicloDelPeriodo?.trimestre || '');
+
+  if (!evalJefe && !esRevision) {
     cont.innerHTML = periodoSelector + tabs + `<div class="card">
       <div class="info-banner">
         <svg width="16" height="16" viewBox="0 0 24 24" fill="currentColor"><path d="M12 2C6.48 2 2 6.48 2 12s4.48 10 10 10 10-4.48 10-10S17.52 2 12 2zm1 15h-2v-6h2v6zm0-8h-2V7h2v2z"/></svg>
         <div>No hay evaluación enviada de <strong>${colab.nombre}</strong> para el periodo <strong>${periodo}</strong>.</div>
       </div>
     </div>`;
+    return;
+  }
+
+  // For revision periods (Q2-Q4), show OKR tracking directly
+  if (esRevision && !evalJefe) {
+    const okrsMios = STATE.okr.filter(o =>
+      (o.tipo==='individual' && o.colaborador_id===colab.id) ||
+      (o.tipo==='equipo' && (!o.miembros?.length || o.miembros.includes(colab.id)))
+    );
+    const okrPctRev = Math.round(calcScoreOKR(colab.id) * 25);
+    const okrColor  = okrPctRev>=70?'#43a047':okrPctRev>=40?'#f57c00':'#e53935';
+
+    cont.innerHTML = periodoSelector + tabs + `
+      <div class="card" style="margin-bottom:16px">
+        <div style="display:flex;align-items:center;gap:16px;margin-bottom:16px;flex-wrap:wrap">
+          <div style="flex:1">
+            <div style="font-size:1rem;font-weight:700;color:var(--gray)">${colab.nombre}</div>
+            <div style="font-size:.82rem;color:#888">${colab.cargo||''}</div>
+          </div>
+          <div style="text-align:center">
+            <div style="font-size:1.8rem;font-weight:800;color:${okrColor}">${okrPctRev}%</div>
+            <div style="font-size:.7rem;color:#aaa;text-transform:uppercase">Avance OKR</div>
+          </div>
+        </div>
+        <div style="background:#e0e0e0;border-radius:4px;height:8px;margin-bottom:16px">
+          <div style="width:${okrPctRev}%;background:${okrColor};height:8px;border-radius:4px;transition:width .4s"></div>
+        </div>
+        <div style="font-size:.82rem;color:#888;background:var(--gray-light);padding:10px 14px;border-radius:8px;margin-bottom:14px">
+          📋 <strong>Periodo de revisión (${cicloDelPeriodo?.trimestre||'Q'})</strong> — En este periodo no se evalúan competencias.
+          El seguimiento se hace directamente en <strong>OKR del equipo → KRs → Registrar avance</strong>.
+        </div>
+        ${okrsMios.length ? okrsMios.map(obj => {
+          const krs = obj.krs || [];
+          const op  = krs.length ? Math.round(krs.reduce((a,k)=>a+(k.progreso||0),0)/krs.length) : 0;
+          const oc  = op>=70?'#43a047':op>=40?'#f57c00':'#e53935';
+          return `<div style="margin-bottom:14px;padding-bottom:12px;border-bottom:1px solid var(--gray-light)">
+            <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:8px">
+              <span style="font-weight:700;font-size:.88rem;color:var(--gray)">${obj.titulo}</span>
+              <strong style="color:${oc}">${op}%</strong>
+            </div>
+            ${krs.map(kr => {
+              const p=kr.progreso||0; const c=p>=70?'#43a047':p>=40?'#f57c00':'#e53935';
+              const qL=!kr.q_asignado||kr.q_asignado==='todos'?'Anual':kr.q_asignado;
+              return `<div style="margin-bottom:6px">
+                <div style="display:flex;justify-content:space-between;font-size:.78rem;margin-bottom:2px">
+                  <span style="color:#666;flex:1">${kr.descripcion}</span>
+                  <span style="color:#aaa;font-size:.72rem;margin:0 8px">${qL}</span>
+                  <strong style="color:${c}">${p}%</strong>
+                </div>
+                <div style="background:#e0e0e0;border-radius:3px;height:5px">
+                  <div style="width:${p}%;background:${c};height:5px;border-radius:3px"></div>
+                </div>
+              </div>`;
+            }).join('')}
+          </div>`;
+        }).join('') : '<p style="color:#aaa;font-size:.82rem">Sin OKRs definidos para este colaborador.</p>'}
+      </div>`;
     return;
   }
 
