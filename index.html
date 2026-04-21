@@ -543,7 +543,7 @@
     </div>
     <button class="btn-login" onclick="handleLogin()">Ingresar al sistema</button>
     <p class="login-error" id="loginError">Usuario o contraseña incorrectos</p>
-    <div style="text-align:center;margin-top:16px;font-size:.7rem;color:#bbb;font-family:monospace">v6.6</div>
+    <div style="text-align:center;margin-top:16px;font-size:.7rem;color:#bbb;font-family:monospace">v6.7</div>
   </div>
 
   <!-- Indicadores de impacto -->
@@ -673,7 +673,7 @@
         </svg>
         Actualizar
       </button>
-      <span style="font-size:.68rem;color:#ccc;font-family:monospace;opacity:.6">v6.6</span>
+      <span style="font-size:.68rem;color:#ccc;font-family:monospace;opacity:.6">v6.7</span>
     </div>
   </div>
 
@@ -1222,7 +1222,7 @@
 // ═══════════════════════════════════════════
 //  CONFIG — Reemplaza con tu URL de Google Apps Script
 // ═══════════════════════════════════════════
-const SCRIPT_URL = 'https://script.google.com/macros/s/AKfycbwzv9VnN_-THfi76n-zhU3CMRDXFswuPWiWJ9gkq1sBQhwoq9qPqLbzxzhC55n5zpnh/exec';
+const SCRIPT_URL = 'https://script.google.com/macros/s/AKfycbzeZxWPRVC5eus5yUFY0W1BLSbhX1E03GfKg-lnA7du8vuNmqd75yVFZUpIAXggY_W2/exec';
 
 // ═══════════════════════════════════════════
 //  STATE
@@ -2123,6 +2123,7 @@ function buildSidebar() {
         { id:'eval-jefe',      icon:'eval',     label:'Evaluar a mi jefe' },
         ...(cicloGradoJefe >= 360 ? [{ id:'evaluar-pares', icon:'pares', label:'Mis evaluaciones de pares' }] : []),
         { id:'resultados',     icon:'results',  label:'Mis Resultados' },
+        { id:'mis-okr',        icon:'okr',      label:'Mis OKR' },
         { id:'mi-pdi',         icon:'pdi',      label:'Mi PDI' },
         { id:'mi-bitacora',    icon:'bitacora', label:'Mi Bitácora' },
       ], true);
@@ -3390,14 +3391,7 @@ function renderResultados() {
 
       <!-- Ranking competencias (ordenado mayor a menor por score jefe) -->
       <div class="card" style="margin:0">
-        <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:12px">
-          <div class="card-title" style="font-size:.88rem;margin:0">🏅 Ranking de dominio</div>
-          <div style="display:flex;gap:10px;font-size:.72rem">
-            <span style="display:flex;align-items:center;gap:4px"><span style="width:10px;height:10px;background:#ba0020;border-radius:2px;display:inline-block"></span>Jefe</span>
-            ${evalAuto ? '<span style="display:flex;align-items:center;gap:4px"><span style="width:10px;height:10px;background:rgba(85,85,85,.6);border-radius:2px;display:inline-block"></span>Auto</span>' : ''}
-            ${evPar.length > 0 ? '<span style="display:flex;align-items:center;gap:4px"><span style="width:10px;height:10px;background:rgba(21,101,192,.6);border-radius:2px;display:inline-block"></span>Pares</span>' : ''}
-          </div>
-        </div>
+        <div class="card-title" style="font-size:.88rem;margin-bottom:12px">🏅 Ranking de dominio</div>
         <div style="position:relative;height:${Math.max(180, comps.length * 38)}px">
           <canvas id="chartBarComp"></canvas>
         </div>
@@ -3493,31 +3487,30 @@ function renderResultados() {
         .map((c, i) => ({ comp:c, idx:i, score:jefeScores[i]||0 }))
         .sort((a,b) => b.score - a.score);
 
-      const sortedLabels  = compOrder.map(x => x.comp.nombre);
-      const sortedJefe    = compOrder.map(x => jefeScores[x.idx]);
-      const sortedAuto    = compOrder.map(x => autoScores[x.idx]||0);
-      const sortedPares   = compOrder.map(x => paresScores[x.idx]||0);
+      const sortedLabels = compOrder.map(x => x.comp.nombre);
+      const sortedJefe   = compOrder.map(x => jefeScores[x.idx]);
 
-      const barDatasets = [
-        { label:'Jefe', data:sortedJefe, backgroundColor:'rgba(186,0,32,.85)', borderRadius:3 }
-      ];
-      if (evalAuto && sortedAuto.some(s=>s>0)) {
-        barDatasets.push({ label:'Auto', data:sortedAuto, backgroundColor:'rgba(85,85,85,.5)', borderRadius:3 });
-      }
-      if (evPar.length && sortedPares.some(s=>s>0)) {
-        barDatasets.push({ label:'Pares', data:sortedPares, backgroundColor:'rgba(21,101,192,.6)', borderRadius:3 });
-      }
+      // Color each bar by score level
+      const barColors = sortedJefe.map(s =>
+        s >= 3.5 ? 'rgba(46,125,50,.85)' : s >= 2.5 ? 'rgba(186,0,32,.85)' : 'rgba(186,0,32,.45)'
+      );
+
       STATE.charts['chartBarComp'] = new Chart(ctxBar, {
         type:'bar',
-        data:{ labels:sortedLabels, datasets:barDatasets },
+        data:{ labels:sortedLabels, datasets:[{
+          label:'Calificación', data:sortedJefe,
+          backgroundColor:barColors, borderRadius:4
+        }]},
         options:{
           responsive:true, maintainAspectRatio:false, indexAxis:'y',
           scales:{
             x:{ min:0, max:4, ticks:{ stepSize:1, font:{family:'Asap',size:10} }, grid:{color:'rgba(0,0,0,.06)'} },
             y:{ ticks:{ font:{family:'Asap',size:10} }, grid:{display:false} }
           },
-          plugins:{ legend:{ display:false },
-            tooltip:{ callbacks:{ label: ctx => ` ${ctx.dataset.label}: ${ctx.raw} / 4` } }
+          plugins:{
+            legend:{ display:false },
+            tooltip:{ callbacks:{ label: ctx => ` ${ctx.raw} / 4 (${Math.round(ctx.raw/4*100)}%)` } },
+            datalabels: false
           }
         }
       });
@@ -3756,11 +3749,9 @@ function renderEvolucionHistorial(colabId) {
 }
 
 function viewColabResults(colabId) {
-  // Temporarily switch to results view for colab
-  const origUser = STATE.user;
-  STATE.user = { ...getUserById(colabId), _viewing: true };
-  navigateTo('resultados');
-  STATE.user = origUser;
+  // Navigate to resultados-equipo and pre-select this collaborator
+  window._resEquipoSel = colabId;
+  navigateTo('resultados-equipo');
 }
 
 // ═══════════════════════════════════════════
