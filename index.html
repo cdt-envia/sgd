@@ -543,7 +543,7 @@
     </div>
     <button class="btn-login" onclick="handleLogin()">Ingresar al sistema</button>
     <p class="login-error" id="loginError">Usuario o contraseña incorrectos</p>
-    <div style="text-align:center;margin-top:16px;font-size:.7rem;color:#bbb;font-family:monospace">v5.9</div>
+    <div style="text-align:center;margin-top:16px;font-size:.7rem;color:#bbb;font-family:monospace">v6.0</div>
   </div>
 
   <!-- Indicadores de impacto -->
@@ -673,7 +673,7 @@
         </svg>
         Actualizar
       </button>
-      <span style="font-size:.68rem;color:#ccc;font-family:monospace;opacity:.6">v5.9</span>
+      <span style="font-size:.68rem;color:#ccc;font-family:monospace;opacity:.6">v6.0</span>
     </div>
   </div>
 
@@ -4579,11 +4579,13 @@ function openCheckinModal(objId, krId) {
     { label:'Guardar avance', cls:'btn-primary', action:`saveCheckin('${objId}','${krId}')` }
   ]);
 
-  // Initialize month dropdown from the pre-selected Q option
-  setTimeout(() => {
-    const qSel = document.getElementById('ciQ');
-    if (qSel) updateCiMesesFromSelect(qSel);
-  }, 60);
+  // Initialize month dropdown — pass dates directly (no DOM dependency)
+  const activeQCiclo = qCiclos.find(c => c.trimestre === activeQ);
+  setTimeout(() => updateCiMeses(
+    activeQ,
+    activeQCiclo?.inicio || '',
+    activeQCiclo?.fin    || ''
+  ), 100);
 }
 
 function updateCiMesesFromSelect(selectEl) {
