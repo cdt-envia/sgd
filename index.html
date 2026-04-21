@@ -543,7 +543,7 @@
     </div>
     <button class="btn-login" onclick="handleLogin()">Ingresar al sistema</button>
     <p class="login-error" id="loginError">Usuario o contraseña incorrectos</p>
-    <div style="text-align:center;margin-top:16px;font-size:.7rem;color:#bbb;font-family:monospace">v7.3</div>
+    <div style="text-align:center;margin-top:16px;font-size:.7rem;color:#bbb;font-family:monospace">v7.4</div>
   </div>
 
   <!-- Indicadores de impacto -->
@@ -673,7 +673,7 @@
         </svg>
         Actualizar
       </button>
-      <span style="font-size:.68rem;color:#ccc;font-family:monospace;opacity:.6">v7.3</span>
+      <span style="font-size:.68rem;color:#ccc;font-family:monospace;opacity:.6">v7.4</span>
     </div>
   </div>
 
@@ -2866,23 +2866,40 @@ function calcScoreOKR(colaboradorId) {
 //  P9: 4 fuentes × 25% fijos = score_potencial  |  OKR = score_desempeno
 // ═══════════════════════════════════════════
 function calcScorePotencial(colaboradorId) {
-  // Potencial = promedio ponderado de 4 fuentes × 25% cada una
-  const periodo = STATE.periodo.nombre || STATE.ciclos.find(c=>c.estado==='open')?.nombre || '';
-  const evals = STATE.evaluaciones.filter(e => e.evaluado_id === colaboradorId && e.estado === 'enviado' && (!periodo || e.periodo === periodo));
+  // Potencial = promedio de las fuentes disponibles (usa la eval más reciente por tipo)
+  // No filtra por periodo activo — así funciona aunque el Q haya cambiado
+  const allEvals = STATE.evaluaciones.filter(e =>
+    e.evaluado_id === colaboradorId && e.estado === 'enviado'
+  );
 
-  const evalJefe  = evals.find(e => e.tipo === 'jefe');
-  const evalAuto  = evals.find(e => e.tipo === 'auto');
-  const evalPares = evals.filter(e => e.tipo === 'par');
-  const evalEquipo = evals.filter(e => e.tipo === 'colab_a_jefe'); // equipo evalúa al jefe
+  // Take the most recent eval per type (by fecha_envio or periodo)
+  const latest = (tipo) => allEvals
+    .filter(e => e.tipo === tipo)
+    .sort((a,b) => (b.fecha_envio||b.periodo||'').localeCompare(a.fecha_envio||a.periodo||''))[0];
+
+  const latestMany = (tipo) => {
+    // For pares/equipo, take all from the most recent period
+    const byPeriodo = {};
+    allEvals.filter(e => e.tipo === tipo).forEach(e => {
+      if (!byPeriodo[e.periodo]) byPeriodo[e.periodo] = [];
+      byPeriodo[e.periodo].push(e);
+    });
+    const periods = Object.keys(byPeriodo).sort((a,b)=>b.localeCompare(a));
+    return periods.length ? byPeriodo[periods[0]] : [];
+  };
+
+  const evalJefe   = latest('jefe');
+  const evalAuto   = latest('auto');
+  const evalPares  = latestMany('par');
+  const evalEquipo = latestMany('colab_a_jefe');
 
   const scores = [];
-  if (evalJefe?.score_comp)   scores.push(evalJefe.score_comp);
-  if (evalAuto?.score_comp)   scores.push(evalAuto.score_comp);
-  if (evalPares.length) scores.push(evalPares.reduce((a,e)=>a+(e.score_comp||0),0)/evalPares.length);
+  if (evalJefe?.score_comp)  scores.push(evalJefe.score_comp);
+  if (evalAuto?.score_comp)  scores.push(evalAuto.score_comp);
+  if (evalPares.length)  scores.push(evalPares.reduce((a,e)=>a+(e.score_comp||0),0)/evalPares.length);
   if (evalEquipo.length) scores.push(evalEquipo.reduce((a,e)=>a+(e.score_comp||0),0)/evalEquipo.length);
 
   if (!scores.length) return 0;
-  // Promedio simple de las fuentes disponibles (cada una vale 25% cuando las 4 están)
   return parseFloat((scores.reduce((a,b)=>a+b,0)/scores.length).toFixed(2));
 }
 
@@ -3866,12 +3883,16 @@ function renderOKR() {
   const teamObjs = allObj.filter(o => o.tipo === 'equipo');
   const indivObjs = allObj.filter(o => o.tipo === 'individual');
   const avgScore = allObj.length
-    ? Math.round(allObj.reduce((a, o) => a + (o.score || 0), 0) / allObj.length)
+    ? Math.round(allObj.reduce((a, o) => {
+        const krs = o.krs || [];
+        const op = krs.length ? krs.reduce((s,k)=>s+getKRProgresoReal(k),0)/krs.length : 0;
+        return a + op;
+      }, 0) / allObj.length)
     : 0;
   const onTrack = allObj.filter(o => o.estado === 'on_track').length;
   const allKRs  = allObj.flatMap(o => o.krs || []);
   const avgKR   = allKRs.length
-    ? Math.round(allKRs.reduce((a, k) => a + (k.progreso || 0), 0) / allKRs.length)
+    ? Math.round(allKRs.reduce((a, k) => a + getKRProgresoReal(k), 0) / allKRs.length)
     : 0;
 
   document.getElementById('okrSummaryBar').innerHTML = [
@@ -3900,7 +3921,7 @@ function renderObjectiveCard(obj, isReadOnly) {
   const avgProg = krs.length
     ? Math.round(krs.reduce((a, k) => a + getKRProgresoReal(k), 0) / krs.length)
     : 0;
-  const scoreColor = obj.score >= 70 ? '#43a047' : obj.score >= 40 ? '#f57c00' : '#e53935';
+  const scoreColor = avgProg >= 70 ? '#43a047' : avgProg >= 40 ? '#f57c00' : '#e53935';
   const krRows = krs.map(kr => renderKRRow(kr, obj.id, isReadOnly)).join('');
   const canEdit = !isReadOnly;
   const isIndiv = obj.tipo === 'individual';
@@ -3935,7 +3956,7 @@ function renderObjectiveCard(obj, isReadOnly) {
         </div>
       </div>
       <div class="okr-obj-score">
-        <div class="score-num" style="color:${scoreColor}">${obj.score || 0}</div>
+        <div class="score-num" style="color:${scoreColor}">${avgProg}</div>
         <div class="score-lbl">Score OKR</div>
         ${canEdit ? `<div style="display:flex;gap:4px;margin-top:8px;justify-content:center">
           <button class="btn btn-secondary btn-sm" style="padding:4px 8px;font-size:.72rem" onclick="event.stopPropagation();openOKRModal('${obj.id}')">✏️</button>
