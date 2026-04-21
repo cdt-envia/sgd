@@ -543,7 +543,7 @@
     </div>
     <button class="btn-login" onclick="handleLogin()">Ingresar al sistema</button>
     <p class="login-error" id="loginError">Usuario o contraseña incorrectos</p>
-    <div style="text-align:center;margin-top:16px;font-size:.7rem;color:#bbb;font-family:monospace">v7.4</div>
+    <div style="text-align:center;margin-top:16px;font-size:.7rem;color:#bbb;font-family:monospace">v7.5</div>
   </div>
 
   <!-- Indicadores de impacto -->
@@ -673,7 +673,7 @@
         </svg>
         Actualizar
       </button>
-      <span style="font-size:.68rem;color:#ccc;font-family:monospace;opacity:.6">v7.4</span>
+      <span style="font-size:.68rem;color:#ccc;font-family:monospace;opacity:.6">v7.5</span>
     </div>
   </div>
 
@@ -2781,7 +2781,7 @@ function renderEvalOKRSection(colaboradorId, savedOKRScore, readOnly) {
 }
 
 function renderOKREvalKR(kr, objId, readOnly) {
-  const pct = kr.progreso || 0;
+  const pct = getKRProgresoReal(kr);
   const barColor = pct >= 70 ? '#43a047' : pct >= 40 ? '#f57c00' : '#e53935';
   const conf = CONF_CONFIG[kr.confianza] || CONF_CONFIG.mid;
   return `<div style="display:grid;grid-template-columns:1fr 100px 130px;gap:10px;align-items:center;padding:6px 0">
@@ -3575,7 +3575,7 @@ function renderResultados() {
           const objColor = objPct>=70?'#43a047':objPct>=40?'#f57c00':'#e53935';
 
           const krsHtml = krs.map(kr => {
-            const pct   = kr.progreso || 0;
+            const pct   = getKRProgresoReal(kr);
             const color = pct>=70?'#43a047':pct>=40?'#f57c00':'#e53935';
             const qLabel = !kr.q_asignado||kr.q_asignado==='todos'?'Anual':kr.q_asignado;
             return `<div style="margin-bottom:6px">
@@ -3625,7 +3625,7 @@ function renderResultados() {
         okrMios.forEach(obj => (obj.krs||[]).forEach(kr => {
           const q = kr.q_asignado === 'todos' || !kr.q_asignado ? 'Anual' : kr.q_asignado;
           if (!byQ[q]) byQ[q] = [];
-          byQ[q].push(kr.progreso || 0);
+          byQ[q].push(getKRProgresoReal(kr));
         }));
         qBreakdown.innerHTML = Object.entries(byQ).sort().map(([q, progs]) => {
           const avg = Math.round(progs.reduce((a,b)=>a+b,0)/progs.length);
@@ -5409,7 +5409,7 @@ function renderResultadosEquipo() {
       const oc  = op>=70?'#43a047':op>=40?'#f57c00':'#e53935';
 
       const krsHtml = krs.map(kr => {
-        const p   = kr.progreso || 0;
+        const p   = getKRProgresoReal(kr);
         const c   = p>=70?'#43a047':p>=40?'#f57c00':'#e53935';
         const qL  = !kr.q_asignado||kr.q_asignado==='todos'?'Anual':kr.q_asignado;
         const checkins = [...(kr.checkins||[])].sort((a,b)=>(b.fecha||'').localeCompare(a.fecha||''));
@@ -5700,7 +5700,7 @@ function renderResultadosEquipo() {
             <span style="font-size:.82rem;font-weight:700;color:var(--gray);flex:1">${obj.titulo}</span>
             <strong style="color:${oc}">${op}%</strong>
           </div>
-          ${krs.map(kr=>{const p=kr.progreso||0;const c=p>=70?'#43a047':p>=40?'#f57c00':'#e53935';
+          ${krs.map(kr=>{const p=getKRProgresoReal(kr);const c=p>=70?'#43a047':p>=40?'#f57c00':'#e53935';
             return `<div style="margin-bottom:5px">
               <div style="display:flex;justify-content:space-between;font-size:.75rem;margin-bottom:2px">
                 <span style="color:#666;flex:1;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;max-width:75%">${kr.descripcion}</span>
@@ -5746,7 +5746,7 @@ function renderMisOKR() {
     const activeQNow = STATE.ciclos.find(c=>c.estado==='open'&&c.trimestre)?.trimestre;
 
     const krsHtml = krs.map(kr => {
-      const pct   = kr.progreso || 0;
+      const pct   = getKRProgresoReal(kr);
       const color = pct>=70?'#43a047':pct>=40?'#f57c00':'#e53935';
       const qLabel = !kr.q_asignado||kr.q_asignado==='todos' ? 'Anual' : kr.q_asignado;
       const hayRegistroQ = activeQNow && (kr.checkins||[]).some(c => c.q === activeQNow);
