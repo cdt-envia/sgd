@@ -543,7 +543,7 @@
     </div>
     <button class="btn-login" onclick="handleLogin()">Ingresar al sistema</button>
     <p class="login-error" id="loginError">Usuario o contraseña incorrectos</p>
-    <div style="text-align:center;margin-top:16px;font-size:.7rem;color:#bbb;font-family:monospace">v7.0</div>
+    <div style="text-align:center;margin-top:16px;font-size:.7rem;color:#bbb;font-family:monospace">v7.2</div>
   </div>
 
   <!-- Indicadores de impacto -->
@@ -673,7 +673,7 @@
         </svg>
         Actualizar
       </button>
-      <span style="font-size:.68rem;color:#ccc;font-family:monospace;opacity:.6">v7.0</span>
+      <span style="font-size:.68rem;color:#ccc;font-family:monospace;opacity:.6">v7.2</span>
     </div>
   </div>
 
@@ -3393,7 +3393,7 @@ function renderResultados() {
       <!-- Ranking competencias (ordenado mayor a menor por score jefe) -->
       <div class="card" style="margin:0">
         <div class="card-title" style="font-size:.88rem;margin-bottom:12px">🏅 Ranking de dominio</div>
-        <div style="position:relative;height:${Math.max(180, comps.length * 38)}px">
+        <div style="position:relative;height:${Math.max(180, comps.filter((_,i)=>jefeScores[i]>0).length * 38)}px">
           <canvas id="chartBarComp"></canvas>
         </div>
       </div>
@@ -3486,6 +3486,7 @@ function renderResultados() {
       // Sort competencies by jefe score descending
       const compOrder = comps
         .map((c, i) => ({ comp:c, idx:i, score:jefeScores[i]||0 }))
+        .filter(x => x.score > 0) // hide unrated competencies
         .sort((a,b) => b.score - a.score);
 
       const sortedLabels = compOrder.map(x => x.comp.nombre);
@@ -4751,11 +4752,13 @@ async function saveCheckin(objId, krId) {
   kr.valor_actual = valorActual;
   kr.actual = valorActual; // compat
 
-  // Ponderado = average of LAST entry per Q (closing value of each Q)
+  // Ponderado del KR = último avance por Q (el más reciente por fecha)
+  // Si el KR abarca varios Qs → promedio de los cierres de cada Q
   const byQ = {};
   kr.checkins.forEach(c => {
-    const q = c.q || 'sin-q';
-    if (!byQ[q] || c.fecha > byQ[q].fecha) byQ[q] = c;
+    const q = c.q || 'anual';
+    const fechaC = (c.fecha||'').slice(0,10);
+    if (!byQ[q] || fechaC > (byQ[q].fecha||'').slice(0,10)) byQ[q] = c;
   });
   const cierres = Object.values(byQ).map(c => c.progreso || 0);
   kr.progreso = cierres.length
@@ -5484,6 +5487,11 @@ function renderResultadosEquipo() {
           <div style="font-size:.7rem;color:#888;text-transform:uppercase;letter-spacing:.05em">Avance OKR global</div>
         </div>
       </div>
+      <!-- Instrucción -->
+      <div style="background:#e3f2fd;border-radius:10px;padding:10px 16px;margin-bottom:16px;font-size:.82rem;color:#1565c0;display:flex;align-items:center;gap:10px">
+        <span style="font-size:1.1rem">💡</span>
+        <span>Para registrar o actualizar el avance de los KRs, ve a <strong>OKR del equipo</strong> → selecciona el objetivo → <strong>Registrar avance</strong>.</span>
+      </div>
       ${okrsHtml}`;
     return;
   }
@@ -5617,19 +5625,35 @@ function renderResultadosEquipo() {
     if (ctxD) STATE.charts['chartDonutEquipo'] = new Chart(ctxD, { type:'doughnut',
       data:{ datasets:[{ data:[okrPct,100-okrPct], backgroundColor:['#2e7d32','#e8f5e9'], borderWidth:0, cutout:'72%' }] },
       options:{ responsive:true, maintainAspectRatio:false, plugins:{ legend:{ display:false }, tooltip:{ enabled:false } } } });
-    // Bar ranking
+    // Bar ranking — solo jefe, ordenado desc, colores semáforo, sin ceros
     if (STATE.charts['chartBarEquipo']) STATE.charts['chartBarEquipo'].destroy();
     const ctxB = document.getElementById('chartBarEquipo')?.getContext('2d');
     if (ctxB) {
-      const order = comps.map((c,i)=>({c,i,s:jefeScores[i]||0})).sort((a,b)=>b.s-a.s);
-      const ds2 = [{ label:'Jefe', data:order.map(x=>jefeScores[x.i]), backgroundColor:'rgba(186,0,32,.85)', borderRadius:3 }];
-      if (evalAuto && autoScores.some(s=>s>0)) ds2.push({ label:'Auto', data:order.map(x=>autoScores[x.i]), backgroundColor:'rgba(85,85,85,.5)', borderRadius:3 });
-      if (evPar.length && paresScores.some(s=>s>0)) ds2.push({ label:'Pares', data:order.map(x=>paresScores[x.i]), backgroundColor:'rgba(21,101,192,.6)', borderRadius:3 });
-      STATE.charts['chartBarEquipo'] = new Chart(ctxB, { type:'bar', data:{ labels:order.map(x=>x.c.nombre), datasets:ds2 },
+      const order = comps
+        .map((c,i) => ({ c, i, s: jefeScores[i]||0 }))
+        .filter(x => x.s > 0) // ocultar competencias sin calificar
+        .sort((a,b) => b.s - a.s);
+
+      const barColors = order.map(x =>
+        x.s >= 3.5 ? 'rgba(46,125,50,.85)' : x.s >= 2.5 ? 'rgba(186,0,32,.85)' : 'rgba(186,0,32,.45)'
+      );
+
+      STATE.charts['chartBarEquipo'] = new Chart(ctxB, {
+        type:'bar',
+        data:{ labels: order.map(x=>x.c.nombre), datasets:[{
+          label:'Calificación', data: order.map(x=>x.s),
+          backgroundColor: barColors, borderRadius:4
+        }]},
         options:{ responsive:true, maintainAspectRatio:false, indexAxis:'y',
-          scales:{ x:{ min:0,max:4,ticks:{stepSize:1,font:{family:'Asap',size:9}},grid:{color:'rgba(0,0,0,.06)'} },
-                   y:{ ticks:{font:{family:'Asap',size:9}},grid:{display:false} } },
-          plugins:{ legend:{display:false}, tooltip:{callbacks:{label:ctx=>` ${ctx.dataset.label}: ${ctx.raw} / 4`}} } } });
+          scales:{
+            x:{ min:0, max:4, ticks:{stepSize:1,font:{family:'Asap',size:9}}, grid:{color:'rgba(0,0,0,.06)'} },
+            y:{ ticks:{font:{family:'Asap',size:9}}, grid:{display:false} }
+          },
+          plugins:{ legend:{display:false},
+            tooltip:{callbacks:{label:ctx=>` ${ctx.raw} / 4 (${Math.round(ctx.raw/4*100)}%)`}}
+          }
+        }
+      });
     }
     // OKR detalle
     const okrEl = document.getElementById('okrDetalleEquipo');
