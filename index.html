@@ -543,7 +543,7 @@
     </div>
     <button class="btn-login" onclick="handleLogin()">Ingresar al sistema</button>
     <p class="login-error" id="loginError">Usuario o contraseña incorrectos</p>
-    <div style="text-align:center;margin-top:16px;font-size:.7rem;color:#bbb;font-family:monospace">v6.4</div>
+    <div style="text-align:center;margin-top:16px;font-size:.7rem;color:#bbb;font-family:monospace">v6.6</div>
   </div>
 
   <!-- Indicadores de impacto -->
@@ -673,7 +673,7 @@
         </svg>
         Actualizar
       </button>
-      <span style="font-size:.68rem;color:#ccc;font-family:monospace;opacity:.6">v6.4</span>
+      <span style="font-size:.68rem;color:#ccc;font-family:monospace;opacity:.6">v6.6</span>
     </div>
   </div>
 
@@ -884,6 +884,24 @@
           <p>Tu plan de desarrollo individual acordado con tu líder</p>
         </div>
         <div id="miPdiContent"></div>
+      </div>
+
+      <!-- ─── PÁGINA: RESULTADOS DEL EQUIPO (jefe) ─── -->
+      <div class="page" id="page-resultados-equipo">
+        <div class="page-header">
+          <h2>Resultados del Equipo</h2>
+          <p>Resultados de evaluación de cada colaborador a tu cargo</p>
+        </div>
+        <div id="resultadosEquipoContent"></div>
+      </div>
+
+      <!-- ─── PÁGINA: MIS OKR (colaborador) ─── -->
+      <div class="page" id="page-mis-okr">
+        <div class="page-header">
+          <h2>Mis OKR</h2>
+          <p>Objetivos y Resultados Clave asignados por tu líder. Registra tu avance mensual.</p>
+        </div>
+        <div id="misOkrContent"></div>
       </div>
 
       <!-- ─── PÁGINA: OKR ─── -->
@@ -1204,7 +1222,7 @@
 // ═══════════════════════════════════════════
 //  CONFIG — Reemplaza con tu URL de Google Apps Script
 // ═══════════════════════════════════════════
-const SCRIPT_URL = 'https://script.google.com/macros/s/AKfycbzeZxWPRVC5eus5yUFY0W1BLSbhX1E03GfKg-lnA7du8vuNmqd75yVFZUpIAXggY_W2/exec';
+const SCRIPT_URL = 'https://script.google.com/macros/s/AKfycbwzv9VnN_-THfi76n-zhU3CMRDXFswuPWiWJ9gkq1sBQhwoq9qPqLbzxzhC55n5zpnh/exec';
 
 // ═══════════════════════════════════════════
 //  STATE
@@ -2111,12 +2129,13 @@ function buildSidebar() {
     }
     const cicloGrado = parseInt(STATE.ciclos.find(c=>c.estado==='open')?.grado || '360');
     sections += makeSection('jefe-equipo', 'Mi equipo', '#1565c0', [
-      { id:'mis-evaluaciones', icon:'eval',     label:'Evaluar equipo' },
+      { id:'mis-evaluaciones',    icon:'eval',     label:'Evaluar equipo' },
       ...(cicloGrado >= 360 ? [{ id:'pares', icon:'pares', label:'Asignar pares' }] : []),
-      { id:'bitacora',         icon:'bitacora', label:'Bitácora del equipo' },
-      { id:'ninebox',          icon:'ninebox',  label:'Nine Box' },
-      { id:'okr',              icon:'okr',      label:'OKR del equipo' },
-      { id:'pdi',              icon:'pdi',      label:'PDI del equipo' },
+      { id:'resultados-equipo',   icon:'results',  label:'Resultados del equipo' },
+      { id:'bitacora',            icon:'bitacora', label:'Bitácora del equipo' },
+      { id:'ninebox',             icon:'ninebox',  label:'Nine Box' },
+      { id:'okr',                 icon:'okr',      label:'OKR del equipo' },
+      { id:'pdi',                 icon:'pdi',      label:'PDI del equipo' },
     ], !hasJefeId);
 
   } else {
@@ -2130,8 +2149,8 @@ function buildSidebar() {
     ], true);
     sections += makeSection('colab-desarrollo', 'Mi desarrollo', '#2e7d32', [
       { id:'mi-bitacora', icon:'bitacora', label:'Mi Bitácora' },
-      { id:'okr',         icon:'okr',      label:'Mis OKR' },
-      { id:'pdi',         icon:'pdi',      label:'Mi PDI' },
+      { id:'mis-okr',     icon:'okr',      label:'Mis OKR' },
+      { id:'mi-pdi',      icon:'pdi',      label:'Mi PDI' },
     ], true);
   }
 
@@ -2181,6 +2200,8 @@ function navigateTo(pageId) {
     case 'resultados': renderResultados(); break;
     case 'pdi': renderPDI(); break;
     case 'mi-pdi': renderMiPDI(); break;
+    case 'mis-okr': renderMisOKR(); break;
+    case 'resultados-equipo': renderResultadosEquipo(); break;
     case 'okr': renderOKR(); break;
     case 'pares': renderPares(); break;
     case 'evaluar-pares': renderEvaluarPares(); break;
@@ -5238,6 +5259,334 @@ function showNineBoxDetail(colabId) {
 // ═══════════════════════════════════════════
 //  PDI — MI PDI (colaborador o jefe evaluable)
 // ═══════════════════════════════════════════
+function renderResultadosEquipo() {
+  const cont = document.getElementById('resultadosEquipoContent');
+  if (!cont) return;
+  const u     = STATE.user;
+  const team  = getEvaluablesByJefe(u.id);
+  const periodo = STATE.ciclos.find(c=>c.estado==='open')?.nombre || STATE.periodo.nombre || '';
+
+  if (!team.length) {
+    cont.innerHTML = `<div class="card"><p style="color:#aaa">No tienes colaboradores a cargo.</p></div>`;
+    return;
+  }
+
+  // Selector de colaborador
+  const [selId, setSelId] = (() => {
+    if (!window._resEquipoSel) window._resEquipoSel = team[0]?.id;
+    return [window._resEquipoSel, (id) => { window._resEquipoSel = id; renderResultadosEquipo(); }];
+  })();
+
+  const tabs = `<div style="display:flex;flex-wrap:wrap;gap:8px;margin-bottom:20px">
+    ${team.map(t => {
+      const evalJ = STATE.evaluaciones.find(e => e.evaluado_id===t.id && e.tipo==='jefe' && e.estado==='enviado' && (!periodo||e.periodo===periodo));
+      const cat   = evalJ ? getCategory(evalJ.score_final) : null;
+      const isActive = t.id === selId;
+      return `<button onclick="window._resEquipoSel='${t.id}';renderResultadosEquipo()"
+        style="padding:8px 16px;border-radius:20px;border:2px solid ${isActive?'var(--red)':'var(--gray-mid)'};
+        background:${isActive?'var(--red)':'white'};color:${isActive?'white':'var(--gray)'};
+        font-family:Asap;font-size:.82rem;font-weight:600;cursor:pointer;display:flex;align-items:center;gap:6px">
+        ${t.nombre.split(' ')[0]} ${t.nombre.split(' ')[2]||''}
+        ${cat ? `<span style="background:${isActive?'rgba(255,255,255,.3)':cat.color+'20'};color:${isActive?'white':cat.color};border-radius:8px;padding:1px 7px;font-size:.72rem">${cat.label}</span>` : '<span style="font-size:.72rem;opacity:.6">Sin eval</span>'}
+      </button>`;
+    }).join('')}
+  </div>`;
+
+  const colab = team.find(t => t.id === selId);
+  if (!colab) { cont.innerHTML = tabs; return; }
+
+  // Render the selected collaborator's results reusing renderResultados logic
+  const evalJefe  = STATE.evaluaciones.find(e => e.evaluado_id===colab.id && e.tipo==='jefe' && e.estado==='enviado' && (!periodo||e.periodo===periodo));
+  const evalAuto  = STATE.evaluaciones.find(e => e.evaluado_id===colab.id && e.tipo==='auto' && e.estado==='enviado' && (!periodo||e.periodo===periodo));
+  const evPar     = STATE.evaluaciones.filter(e => e.evaluado_id===colab.id && e.tipo==='par' && e.estado==='enviado');
+  const evEq      = STATE.evaluaciones.filter(e => e.evaluado_id===colab.id && e.tipo==='colab_a_jefe' && e.estado==='enviado');
+  const potencial = calcScorePotencial(colab.id);
+  const okrScore  = calcScoreOKR(colab.id);
+  const okrPct    = Math.round(okrScore * 25);
+  const cat       = evalJefe ? getCategory(evalJefe.score_final) : null;
+  const catColor  = cat?.color || 'var(--gray-mid)';
+
+  if (!evalJefe) {
+    cont.innerHTML = tabs + `<div class="card">
+      <div class="info-banner">
+        <svg width="16" height="16" viewBox="0 0 24 24" fill="currentColor"><path d="M12 2C6.48 2 2 6.48 2 12s4.48 10 10 10 10-4.48 10-10S17.52 2 12 2zm1 15h-2v-6h2v6zm0-8h-2V7h2v2z"/></svg>
+        <div>Aún no has enviado la evaluación de <strong>${colab.nombre}</strong> para este periodo.</div>
+      </div>
+    </div>`;
+    return;
+  }
+
+  const comps = STATE.competencias;
+  const getScore = (ev, cid) => {
+    if (!ev) return 0;
+    const j = ev.comp_scores?.[cid]; if (j>0) return j;
+    return Number(ev['comp_'+cid]) || 0;
+  };
+  const jefeScores  = comps.map(c => getScore(evalJefe, c.id));
+  const autoScores  = comps.map(c => getScore(evalAuto, c.id));
+  const paresScores = comps.map(c => {
+    if (!evPar.length) return 0;
+    const vals = evPar.map(e => getScore(e,c.id)).filter(v=>v>0);
+    return vals.length ? parseFloat((vals.reduce((a,b)=>a+b,0)/vals.length).toFixed(2)) : 0;
+  });
+  const compLabelsWrap = comps.map(c => {
+    const words = c.nombre.split(' ');
+    if (c.nombre.length <= 16) return c.nombre;
+    let best=0, bestDiff=Infinity, acc=0;
+    words.forEach((w,i)=>{ acc+=w.length+(i>0?1:0); const d=Math.abs(acc-c.nombre.length/2); if(d<bestDiff){bestDiff=d;best=i;} });
+    const l1=words.slice(0,best+1).join(' '), l2=words.slice(best+1).join(' ');
+    return l2?[l1,l2]:l1;
+  });
+
+  cont.innerHTML = tabs + `
+    <!-- Cabecera colaborador -->
+    <div style="display:flex;gap:12px;align-items:center;background:white;border-radius:14px;padding:18px 24px;box-shadow:0 2px 12px rgba(0,0,0,.08);margin-bottom:16px;flex-wrap:wrap">
+      <div style="flex-shrink:0;width:64px;height:64px;border-radius:50%;background:${catColor};display:flex;align-items:center;justify-content:center">
+        <span style="color:white;font-size:1.4rem;font-weight:800">${evalJefe.score_final?.toFixed(1)||'—'}</span>
+      </div>
+      <div style="flex:1">
+        <div style="font-size:1.1rem;font-weight:800;color:var(--gray)">${colab.nombre}</div>
+        <div style="font-size:.82rem;color:#888">${colab.cargo||''} · ${cat?.label||'Sin categoría'}</div>
+      </div>
+      ${[
+        { label:'Potencial 360°', val: potencial>0?potencial.toFixed(2)+' / 4':'—', color:'#1565c0' },
+        { label:'Desempeño OKR',  val: okrPct+'%', color:'#2e7d32' },
+      ].map(k=>`<div style="text-align:center;padding:0 12px">
+        <div style="font-size:1.2rem;font-weight:800;color:${k.color}">${k.val}</div>
+        <div style="font-size:.68rem;color:#aaa;text-transform:uppercase">${k.label}</div>
+      </div>`).join('')}
+    </div>
+
+    <!-- Gráficas -->
+    <div style="display:grid;grid-template-columns:1fr 300px;gap:16px;margin-bottom:16px">
+      <div class="card" style="margin:0">
+        <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:10px">
+          <div class="card-title" style="font-size:.88rem;margin:0">🕸️ Perfil de Competencias</div>
+          <div style="display:flex;gap:10px;font-size:.72rem">
+            <span style="display:flex;align-items:center;gap:4px"><span style="width:8px;height:3px;background:#ba0020;display:inline-block"></span>Jefe</span>
+            ${evalAuto?'<span style="display:flex;align-items:center;gap:4px"><span style="width:8px;height:3px;background:#555;display:inline-block"></span>Auto</span>':''}
+            ${evPar.length?'<span style="display:flex;align-items:center;gap:4px"><span style="width:8px;height:3px;background:#1565c0;display:inline-block"></span>Pares</span>':''}
+          </div>
+        </div>
+        <div style="position:relative;height:300px"><canvas id="chartRadarEquipo"></canvas></div>
+      </div>
+      <div class="card" style="margin:0">
+        <div class="card-title" style="font-size:.88rem;margin-bottom:10px">🎯 OKR</div>
+        <div style="position:relative;height:140px;display:flex;align-items:center;justify-content:center">
+          <canvas id="chartDonutEquipo"></canvas>
+          <div style="position:absolute;text-align:center">
+            <div style="font-size:1.6rem;font-weight:800;color:#2e7d32">${okrPct}%</div>
+            <div style="font-size:.7rem;color:#aaa">cumplimiento</div>
+          </div>
+        </div>
+        <hr style="border:none;border-top:1px solid var(--gray-light);margin:10px 0 8px">
+        <div style="font-size:.72rem;font-weight:700;color:#888;text-transform:uppercase;margin-bottom:6px">🔍 Desglose 360°</div>
+        <div style="display:grid;grid-template-columns:1fr 1fr;gap:5px">
+          ${[
+            {label:'Jefe',   val:evalJefe?.score_comp?.toFixed(2),  ok:!!evalJefe?.score_comp},
+            {label:'Auto',   val:evalAuto?.score_comp?.toFixed(2),  ok:!!evalAuto?.score_comp},
+            {label:'Pares',  val:evPar.length?(evPar.reduce((a,e)=>a+(e.score_comp||0),0)/evPar.length).toFixed(2):null, ok:evPar.length>0},
+            {label:'Equipo', val:evEq.length?(evEq.reduce((a,e)=>a+(e.score_comp||0),0)/evEq.length).toFixed(2):null,  ok:evEq.length>0},
+          ].map(f=>`<div style="background:${f.ok?'#e8f5e9':'#f5f5f5'};border-radius:7px;padding:6px;text-align:center">
+            <div style="font-size:.62rem;color:#888;font-weight:700;text-transform:uppercase">${f.label}</div>
+            <div style="font-size:1rem;font-weight:800;color:${f.ok?'#2e7d32':'#ccc'}">${f.val||'—'}</div>
+          </div>`).join('')}
+        </div>
+      </div>
+    </div>
+
+    <!-- Ranking + OKR detalle -->
+    <div style="display:grid;grid-template-columns:1fr 1fr;gap:16px;margin-bottom:16px">
+      <div class="card" style="margin:0">
+        <div class="card-title" style="font-size:.88rem;margin-bottom:10px">🏅 Ranking de dominio</div>
+        <div style="position:relative;height:${Math.max(160,comps.length*34)}px"><canvas id="chartBarEquipo"></canvas></div>
+      </div>
+      <div class="card" style="margin:0">
+        <div class="card-title" style="font-size:.88rem;margin-bottom:10px">📋 Detalle OKR</div>
+        <div id="okrDetalleEquipo"></div>
+      </div>
+    </div>
+
+    <!-- Retroalimentación -->
+    <div class="card" style="margin-bottom:16px">
+      <div class="card-title" style="font-size:.88rem;margin-bottom:12px">💬 Retroalimentación enviada</div>
+      <div class="form-row">
+        <div class="form-field">
+          <label>✅ Fortalezas</label>
+          <p style="background:var(--gray-light);padding:12px;border-radius:8px;font-size:.9rem">${evalJefe.fortalezas||'Sin comentarios'}</p>
+        </div>
+        <div class="form-field">
+          <label>🎯 Oportunidades de mejora</label>
+          <p style="background:var(--gray-light);padding:12px;border-radius:8px;font-size:.9rem">${evalJefe.mejoras||'Sin comentarios'}</p>
+        </div>
+      </div>
+    </div>
+  `;
+
+  // Charts
+  setTimeout(() => {
+    // Radar
+    if (STATE.charts['chartRadarEquipo']) STATE.charts['chartRadarEquipo'].destroy();
+    const ctxR = document.getElementById('chartRadarEquipo')?.getContext('2d');
+    if (ctxR) {
+      const ds = [{ label:'Jefe', data:jefeScores, borderColor:'#ba0020', backgroundColor:'rgba(186,0,32,.12)', borderWidth:2.5, pointBackgroundColor:'#ba0020', pointRadius:4 }];
+      if (evalAuto && autoScores.some(s=>s>0)) ds.push({ label:'Auto', data:autoScores, borderColor:'#555', backgroundColor:'rgba(85,85,85,.08)', borderWidth:1.5, borderDash:[5,4], pointRadius:3 });
+      if (evPar.length && paresScores.some(s=>s>0)) ds.push({ label:'Pares', data:paresScores, borderColor:'#1565c0', backgroundColor:'rgba(21,101,192,.1)', borderWidth:2, borderDash:[3,3], pointRadius:3 });
+      STATE.charts['chartRadarEquipo'] = new Chart(ctxR, { type:'radar', data:{ labels:compLabelsWrap, datasets:ds },
+        options:{ responsive:true, maintainAspectRatio:false,
+          scales:{ r:{ min:0, max:4, ticks:{ stepSize:1, font:{family:'Asap',size:10}, backdropColor:'transparent' },
+            pointLabels:{ font:{family:'Asap',size:10}, color:'#4e4e4e' },
+            grid:{ color:'rgba(0,0,0,.08)' }, angleLines:{ color:'rgba(0,0,0,.08)' } }},
+          plugins:{ legend:{ display:false } } } });
+    }
+    // Donut OKR
+    if (STATE.charts['chartDonutEquipo']) STATE.charts['chartDonutEquipo'].destroy();
+    const ctxD = document.getElementById('chartDonutEquipo')?.getContext('2d');
+    if (ctxD) STATE.charts['chartDonutEquipo'] = new Chart(ctxD, { type:'doughnut',
+      data:{ datasets:[{ data:[okrPct,100-okrPct], backgroundColor:['#2e7d32','#e8f5e9'], borderWidth:0, cutout:'72%' }] },
+      options:{ responsive:true, maintainAspectRatio:false, plugins:{ legend:{ display:false }, tooltip:{ enabled:false } } } });
+    // Bar ranking
+    if (STATE.charts['chartBarEquipo']) STATE.charts['chartBarEquipo'].destroy();
+    const ctxB = document.getElementById('chartBarEquipo')?.getContext('2d');
+    if (ctxB) {
+      const order = comps.map((c,i)=>({c,i,s:jefeScores[i]||0})).sort((a,b)=>b.s-a.s);
+      const ds2 = [{ label:'Jefe', data:order.map(x=>jefeScores[x.i]), backgroundColor:'rgba(186,0,32,.85)', borderRadius:3 }];
+      if (evalAuto && autoScores.some(s=>s>0)) ds2.push({ label:'Auto', data:order.map(x=>autoScores[x.i]), backgroundColor:'rgba(85,85,85,.5)', borderRadius:3 });
+      if (evPar.length && paresScores.some(s=>s>0)) ds2.push({ label:'Pares', data:order.map(x=>paresScores[x.i]), backgroundColor:'rgba(21,101,192,.6)', borderRadius:3 });
+      STATE.charts['chartBarEquipo'] = new Chart(ctxB, { type:'bar', data:{ labels:order.map(x=>x.c.nombre), datasets:ds2 },
+        options:{ responsive:true, maintainAspectRatio:false, indexAxis:'y',
+          scales:{ x:{ min:0,max:4,ticks:{stepSize:1,font:{family:'Asap',size:9}},grid:{color:'rgba(0,0,0,.06)'} },
+                   y:{ ticks:{font:{family:'Asap',size:9}},grid:{display:false} } },
+          plugins:{ legend:{display:false}, tooltip:{callbacks:{label:ctx=>` ${ctx.dataset.label}: ${ctx.raw} / 4`}} } } });
+    }
+    // OKR detalle
+    const okrEl = document.getElementById('okrDetalleEquipo');
+    if (okrEl) {
+      const okrsMios = STATE.okr.filter(o=>(o.tipo==='individual'&&o.colaborador_id===colab.id)||(o.tipo==='equipo'&&(!o.miembros?.length||o.miembros.includes(colab.id))));
+      if (!okrsMios.length) { okrEl.innerHTML='<p style="color:#aaa;font-size:.82rem">Sin OKRs definidos.</p>'; return; }
+      okrEl.innerHTML = okrsMios.map(obj=>{
+        const krs=obj.krs||[]; const op=krs.length?Math.round(krs.reduce((a,k)=>a+(k.progreso||0),0)/krs.length):0;
+        const oc=op>=70?'#43a047':op>=40?'#f57c00':'#e53935';
+        return `<div style="margin-bottom:12px">
+          <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:6px">
+            <span style="font-size:.82rem;font-weight:700;color:var(--gray);flex:1">${obj.titulo}</span>
+            <strong style="color:${oc}">${op}%</strong>
+          </div>
+          ${krs.map(kr=>{const p=kr.progreso||0;const c=p>=70?'#43a047':p>=40?'#f57c00':'#e53935';
+            return `<div style="margin-bottom:5px">
+              <div style="display:flex;justify-content:space-between;font-size:.75rem;margin-bottom:2px">
+                <span style="color:#666;flex:1;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;max-width:75%">${kr.descripcion}</span>
+                <strong style="color:${c}">${p}%</strong>
+              </div>
+              <div style="background:#e0e0e0;border-radius:3px;height:5px">
+                <div style="width:${p}%;background:${c};height:5px;border-radius:3px"></div>
+              </div>
+            </div>`;}).join('')}
+        </div>`;
+      }).join('');
+    }
+  }, 150);
+}
+
+function renderMisOKR() {
+  const cont = document.getElementById('misOkrContent');
+  if (!cont) return;
+  const u = STATE.user;
+
+  // OKRs individuales asignados a este colaborador + equipo donde es miembro
+  const misOkrs = STATE.okr.filter(o =>
+    (o.tipo === 'individual' && o.colaborador_id === u.id) ||
+    (o.tipo === 'equipo' && (!o.miembros?.length || o.miembros.includes(u.id)))
+  );
+
+  if (!misOkrs.length) {
+    cont.innerHTML = `<div class="card">
+      <div class="info-banner">
+        <svg width="16" height="16" viewBox="0 0 24 24" fill="currentColor"><path d="M12 2C6.48 2 2 6.48 2 12s4.48 10 10 10 10-4.48 10-10S17.52 2 12 2zm1 15h-2v-6h2v6zm0-8h-2V7h2v2z"/></svg>
+        <div>Tu líder aún no ha definido OKR para ti. Aparecerán aquí cuando sean asignados.</div>
+      </div>
+    </div>`;
+    return;
+  }
+
+  cont.innerHTML = misOkrs.map(obj => {
+    const krs    = obj.krs || [];
+    const objPct = krs.length ? Math.round(krs.reduce((a,k)=>a+(k.progreso||0),0)/krs.length) : 0;
+    const objColor = objPct>=70?'#43a047':objPct>=40?'#f57c00':'#e53935';
+    const jefe   = STATE.users.find(x => x.id === obj.jefe_id);
+    const mesStr = new Date().toISOString().slice(0,7);
+    const activeQNow = STATE.ciclos.find(c=>c.estado==='open'&&c.trimestre)?.trimestre;
+
+    const krsHtml = krs.map(kr => {
+      const pct   = kr.progreso || 0;
+      const color = pct>=70?'#43a047':pct>=40?'#f57c00':'#e53935';
+      const qLabel = !kr.q_asignado||kr.q_asignado==='todos' ? 'Anual' : kr.q_asignado;
+      const hayRegistroQ = activeQNow && (kr.checkins||[]).some(c => c.q === activeQNow);
+      const MESES_S = ['Ene','Feb','Mar','Abr','May','Jun','Jul','Ago','Sep','Oct','Nov','Dic'];
+
+      // Last checkin display
+      const lastCheckin = (kr.checkins||[]).sort((a,b)=>(b.fecha||'').localeCompare(a.fecha||''))[0];
+      const lastLabel = lastCheckin ? (() => {
+        const fd = lastCheckin.fecha ? new Date(lastCheckin.fecha.slice(0,10)+'T00:00:00') : null;
+        return fd && !isNaN(fd) ? MESES_S[fd.getMonth()]+' '+fd.getFullYear() : '';
+      })() : null;
+
+      return `<div style="background:white;border:1.5px solid var(--gray-mid);border-radius:10px;padding:12px 16px;margin-bottom:8px">
+        <div style="display:flex;align-items:flex-start;gap:12px;flex-wrap:wrap">
+          <div style="flex:1;min-width:180px">
+            <div style="font-weight:600;font-size:.9rem;color:var(--gray);margin-bottom:4px">${kr.descripcion}</div>
+            <div style="display:flex;gap:8px;flex-wrap:wrap;font-size:.75rem;color:#888">
+              <span>📅 ${qLabel}</span>
+              <span>Meta: <strong>${kr.valor_meta||kr.meta||'—'}</strong></span>
+              ${lastCheckin ? `<span style="color:#1565c0">Último: ${lastLabel} · ${lastCheckin.progreso||0}%</span>` : '<span style="color:#f57c00">Sin registros aún</span>'}
+              ${activeQNow ? (hayRegistroQ
+                ? `<span style="color:#43a047">✅ ${activeQNow} registrado</span>`
+                : `<span style="color:#f57c00">⏳ Pendiente en ${activeQNow}</span>`) : ''}
+            </div>
+          </div>
+          <div style="display:flex;align-items:center;gap:10px;flex-shrink:0">
+            <div style="text-align:center;min-width:52px">
+              <div style="font-size:1.3rem;font-weight:800;color:${color}">${pct}%</div>
+              <div style="background:#e0e0e0;border-radius:3px;height:5px;width:52px;margin-top:2px">
+                <div style="width:${pct}%;background:${color};height:5px;border-radius:3px"></div>
+              </div>
+            </div>
+            <button class="btn btn-primary btn-sm"
+              onclick="openCheckinModal('${obj.id}','${kr.id}')"
+              style="font-size:.8rem;padding:6px 14px">
+              ${hayRegistroQ ? '✏️ Nuevo avance' : '📊 Registrar avance'}
+            </button>
+          </div>
+        </div>
+        ${(kr.checkins||[]).length > 0 ? renderCheckins(kr.checkins) : ''}
+      </div>`;
+    }).join('');
+
+    return `<div class="card" style="margin-bottom:16px">
+      <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:12px;flex-wrap:wrap;gap:8px">
+        <div>
+          <div style="font-size:1rem;font-weight:700;color:var(--gray)">${obj.titulo}</div>
+          <div style="font-size:.78rem;color:#888;margin-top:2px">
+            ${obj.tipo==='equipo'?'🏆 OKR de equipo':'👤 Individual'}
+            ${jefe ? ` · Asignado por: ${jefe.nombre}` : ''}
+            ${obj.descripcion ? ` · ${obj.descripcion}` : ''}
+          </div>
+        </div>
+        <div style="display:flex;align-items:center;gap:8px">
+          <div style="text-align:center">
+            <div style="font-size:1.4rem;font-weight:800;color:${objColor}">${objPct}%</div>
+            <div style="font-size:.65rem;color:#aaa">avance global</div>
+          </div>
+        </div>
+      </div>
+      <div style="background:#e0e0e0;border-radius:4px;height:6px;margin-bottom:14px">
+        <div style="width:${objPct}%;background:${objColor};height:6px;border-radius:4px;transition:width .4s"></div>
+      </div>
+      ${krs.length ? krsHtml : '<p style="color:#aaa;font-size:.82rem">Sin resultados clave definidos aún.</p>'}
+    </div>`;
+  }).join('');
+}
+
 function renderMiPDI() {
   const u = STATE.user;
   const cont = document.getElementById('miPdiContent');
