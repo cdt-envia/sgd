@@ -543,7 +543,7 @@
     </div>
     <button class="btn-login" onclick="handleLogin()">Ingresar al sistema</button>
     <p class="login-error" id="loginError">Usuario o contraseña incorrectos</p>
-    <div style="text-align:center;margin-top:16px;font-size:.7rem;color:#bbb;font-family:monospace">v7.5</div>
+    <div style="text-align:center;margin-top:16px;font-size:.7rem;color:#bbb;font-family:monospace">v7.7</div>
   </div>
 
   <!-- Indicadores de impacto -->
@@ -673,7 +673,7 @@
         </svg>
         Actualizar
       </button>
-      <span style="font-size:.68rem;color:#ccc;font-family:monospace;opacity:.6">v7.5</span>
+      <span style="font-size:.68rem;color:#ccc;font-family:monospace;opacity:.6">v7.7</span>
     </div>
   </div>
 
@@ -2703,8 +2703,8 @@ function renderEvalOKRSection(colaboradorId, savedOKRScore, readOnly) {
   let currentOKRScore = savedOKRScore || 0;
   if (!savedOKRScore) {
     const allProgs = [
-      ...indivOKRs.flatMap(o => (o.krs||[]).map(k => k.progreso || 0)),
-      ...teamKRs.map(k => k.progreso || 0),
+      ...indivOKRs.flatMap(o => (o.krs||[]).map(k => getKRProgresoReal(k))),
+      ...teamKRs.map(k => getKRProgresoReal(k)),
     ];
     currentOKRScore = allProgs.length
       ? Math.round(allProgs.reduce((a,b)=>a+b,0)/allProgs.length)
@@ -4466,7 +4466,7 @@ async function saveEditedKR(objId, krId) {
   const kidx = obj.krs.findIndex(k => k.id === krId);
   if (kidx >= 0) obj.krs[kidx] = krData; else obj.krs.push(krData);
 
-  obj.score = Math.round(obj.krs.reduce((a,k) => a + (k.progreso||0), 0) / obj.krs.length);
+  obj.score = Math.round(obj.krs.reduce((a,k) => a + getKRProgresoReal(k), 0) / obj.krs.length);
 
   await apiCall('saveOKR', obj);
   closeModal();
@@ -5693,7 +5693,7 @@ function renderResultadosEquipo() {
       const okrsMios = STATE.okr.filter(o=>(o.tipo==='individual'&&o.colaborador_id===colab.id)||(o.tipo==='equipo'&&(!o.miembros?.length||o.miembros.includes(colab.id))));
       if (!okrsMios.length) { okrEl.innerHTML='<p style="color:#aaa;font-size:.82rem">Sin OKRs definidos.</p>'; return; }
       okrEl.innerHTML = okrsMios.map(obj=>{
-        const krs=obj.krs||[]; const op=krs.length?Math.round(krs.reduce((a,k)=>a+(k.progreso||0),0)/krs.length):0;
+        const krs=obj.krs||[]; const op=krs.length?Math.round(krs.reduce((a,k)=>a+getKRProgresoReal(k),0)/krs.length):0;
         const oc=op>=70?'#43a047':op>=40?'#f57c00':'#e53935';
         return `<div style="margin-bottom:12px">
           <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:6px">
@@ -6553,7 +6553,7 @@ function renderAdminOKRSummary() {
     const indivObjs  = jefeOKRs.filter(o => o.tipo === 'individual').length;
     const avgScore   = Math.round(jefeOKRs.reduce((a,o) => a+(o.score||0), 0) / totalObjs);
     const allKRs     = jefeOKRs.flatMap(o => o.krs || []);
-    const avgKR      = allKRs.length ? Math.round(allKRs.reduce((a,k)=>a+(k.progreso||0),0)/allKRs.length) : 0;
+    const avgKR      = allKRs.length ? Math.round(allKRs.reduce((a,k)=>a+getKRProgresoReal(k),0)/allKRs.length) : 0;
     const scoreColor = avgScore >= 70 ? '#2e7d32' : avgScore >= 40 ? '#f57c00' : '#e53935';
 
     html += `<div style="border:1.5px solid var(--gray-mid);border-radius:var(--radius);margin-bottom:14px;overflow:hidden">
@@ -7212,7 +7212,7 @@ function openRevisionModal(colaboradorId, cicloId) {
     (o.tipo === 'equipo' && o.krs && o.krs.some(kr => kr.responsable_id === colaboradorId))
   );
   const avgOKR = colabOKRs.length
-    ? Math.round(colabOKRs.flatMap(o => o.krs||[]).reduce((a,k) => a+(k.progreso||0), 0) /
+    ? Math.round(colabOKRs.flatMap(o => o.krs||[]).reduce((a,k) => a+getKRProgresoReal(k), 0) /
         Math.max(1, colabOKRs.flatMap(o => o.krs||[]).length))
     : 0;
 
