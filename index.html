@@ -543,7 +543,7 @@
     </div>
     <button class="btn-login" onclick="handleLogin()">Ingresar al sistema</button>
     <p class="login-error" id="loginError">Usuario o contraseña incorrectos</p>
-    <div style="text-align:center;margin-top:16px;font-size:.7rem;color:#bbb;font-family:monospace">v7.2</div>
+    <div style="text-align:center;margin-top:16px;font-size:.7rem;color:#bbb;font-family:monospace">v7.3</div>
   </div>
 
   <!-- Indicadores de impacto -->
@@ -673,7 +673,7 @@
         </svg>
         Actualizar
       </button>
-      <span style="font-size:.68rem;color:#ccc;font-family:monospace;opacity:.6">v7.2</span>
+      <span style="font-size:.68rem;color:#ccc;font-family:monospace;opacity:.6">v7.3</span>
     </div>
   </div>
 
@@ -2721,7 +2721,7 @@ function renderEvalOKRSection(colaboradorId, savedOKRScore, readOnly) {
     indivOKRs.forEach(obj => {
       const krs = obj.krs || [];
       const objAvg = krs.length
-        ? Math.round(krs.reduce((a,k)=>a+(k.progreso||0),0)/krs.length)
+        ? Math.round(krs.reduce((a,k)=>a+getKRProgresoReal(k),0)/krs.length)
         : 0;
       const st = OKR_STATUS[obj.estado] || OKR_STATUS.on_track;
       const sinKRs = krs.length === 0;
@@ -2814,39 +2814,51 @@ function calcScoreCompetencias(colaboradorId) {
   return calcScorePotencial(colaboradorId);
 }
 
-function calcScoreOKR(colaboradorId) {
-  // Desempeño = promedio del avance de todos los KRs del colaborador (escala 0-4)
-  // Directly calculated from KR progreso — this is the source of truth for Nine Box
+function getKRProgresoReal(kr) {
+  // Always derive from checkins: last entry per Q, then average Q closures
+  const checkins = kr.checkins || [];
+  if (!checkins.length) return kr.progreso || 0;
 
-  // Individual OKRs assigned to this collaborator
+  const byQ = {};
+  checkins.forEach(c => {
+    const q = c.q || 'anual';
+    const f = (c.fecha||'').slice(0,10);
+    if (!byQ[q] || f > (byQ[q].fecha||'').slice(0,10)) byQ[q] = c;
+  });
+  const cierres = Object.values(byQ).map(c => c.progreso || 0);
+  return cierres.length
+    ? Math.round(cierres.reduce((a,b) => a+b, 0) / cierres.length)
+    : kr.progreso || 0;
+}
+
+function calcScoreOKR(colaboradorId) {
+  // Desempeño = promedio del avance REAL de todos los KRs (recalculado desde checkins)
+
   const indivOKRs = STATE.okr.filter(o =>
     o.tipo === 'individual' && o.colaborador_id === colaboradorId
   );
 
-  // Equipo OKRs where this collaborator is a member (or all team if miembros is empty)
   const colaborador = getUserById(colaboradorId);
   const equipoOKRs = STATE.okr.filter(o => {
     if (o.tipo !== 'equipo') return false;
     if (o.jefe_id !== colaborador?.jefe_id) return false;
-    // If miembros list exists and is non-empty, check membership
     if (o.miembros && o.miembros.length > 0) return o.miembros.includes(colaboradorId);
-    return true; // empty miembros = applies to whole team
+    return true;
   });
 
   const allOKRs = [...indivOKRs, ...equipoOKRs];
   const allKRs  = allOKRs.flatMap(o => o.krs || []);
 
   if (!allKRs.length) {
-    // Fallback: use score_okr from jefe's evaluation if KRs not yet defined
     const evalJefe = STATE.evaluaciones.find(e =>
       e.evaluado_id === colaboradorId && e.tipo === 'jefe' && e.estado === 'enviado'
     );
-    const okrPct = evalJefe?.score_okr ?? 0;
-    return parseFloat((okrPct / 25).toFixed(2));
+    return parseFloat(((evalJefe?.score_okr ?? 0) / 25).toFixed(2));
   }
 
-  const avg = allKRs.reduce((a, k) => a + (k.progreso || 0), 0) / allKRs.length;
-  return parseFloat((avg / 25).toFixed(2)); // 0-100% → 0-4 scale
+  // Use getKRProgresoReal to get correct value from checkins
+  const avg = allKRs.reduce((a, k) => a + getKRProgresoReal(k), 0) / allKRs.length;
+  return parseFloat((avg / 25).toFixed(2));
 }
 
 // ═══════════════════════════════════════════
@@ -3273,15 +3285,27 @@ function renderResultados() {
   const u = STATE.user;
   const evalJefe = STATE.evaluaciones.find(e => e.evaluado_id === u.id && e.tipo === 'jefe' && e.estado === 'enviado');
   const evalAuto = STATE.evaluaciones.find(e => e.evaluado_id === u.id && e.tipo === 'auto' && e.estado === 'enviado');
+  const evPar    = STATE.evaluaciones.filter(e => e.evaluado_id === u.id && e.tipo === 'par' && e.estado === 'enviado');
   const cont = document.getElementById('resultadosContent');
 
-  if (!evalJefe) {
-    cont.innerHTML = `<div class="empty-state"><svg viewBox="0 0 24 24" fill="currentColor"><path d="M12 2C6.48 2 2 6.48 2 12s4.48 10 10 10 10-4.48 10-10S17.52 2 12 2zm1 15h-2v-6h2v6zm0-8h-2V7h2v2z"/></svg><p>Tus resultados estarán disponibles cuando tu evaluador complete y envíe tu evaluación.</p></div>`;
+  // Check if there's ANY evaluation data to show
+  const hasAnyEval = evalJefe || evalAuto || evPar.length > 0;
+
+  if (!hasAnyEval) {
+    cont.innerHTML = `
+      <div class="empty-state"><svg viewBox="0 0 24 24" fill="currentColor"><path d="M12 2C6.48 2 2 6.48 2 12s4.48 10 10 10 10-4.48 10-10S17.52 2 12 2zm1 15h-2v-6h2v6zm0-8h-2V7h2v2z"/></svg>
+        <p>Tus resultados estarán disponibles cuando tu evaluador complete y envíe tu evaluación.</p>
+      </div>
+      <div id="insigniasContainer"></div>`;
+    setTimeout(() => renderInsignias(u.id, 'insigniasContainer'), 100);
     return;
   }
 
-  const cat = getCategory(evalJefe.score_final);
-  const comps = getCompsByRole(u.cargo);
+  // Use evalJefe if available, otherwise show partial results
+  const cat      = evalJefe ? getCategory(evalJefe.score_final) : null;
+  const potencial = calcScorePotencial(u.id); // uses whatever sources are available
+  const okrScore  = calcScoreOKR(u.id);
+  const okrPct    = Math.round(okrScore * 25);
   // Full names for bar chart, wrapped for radar (max 2 lines of ~14 chars each)
   const compLabels     = comps.map(c => c.nombre);
   const compLabelsWrap = comps.map(c => {
@@ -3311,22 +3335,19 @@ function renderResultados() {
   const jefeScores = comps.map(c => getCompScore(evalJefe, c.id));
   const autoScores = evalAuto ? comps.map(c => getCompScore(evalAuto, c.id)) : [];
 
-  const potencial = calcScorePotencial(u.id);
-  const okrScore  = calcScoreOKR(u.id);          // from KR progreso directly (0-4 scale)
-  const okrPct    = Math.round(okrScore * 25);   // back to 0-100%
-  const evPar     = STATE.evaluaciones.filter(e => e.evaluado_id === u.id && e.tipo === 'par' && e.estado === 'enviado');
-  const evEq      = STATE.evaluaciones.filter(e => e.evaluado_id === u.id && e.tipo === 'colab_a_jefe' && e.estado === 'enviado');
-  const catColor  = cat?.color || 'var(--red)';
+  const comps    = getCompsByRole(u.cargo);
+  const evEq     = STATE.evaluaciones.filter(e => e.evaluado_id === u.id && e.tipo === 'colab_a_jefe' && e.estado === 'enviado');
+  const catColor = cat?.color || '#1565c0'; // blue when no jefe eval yet
 
   cont.innerHTML = `
     <!-- ── CALIFICACIÓN FINAL MINIMALISTA ───────────────────────────── -->
     <div style="display:flex;gap:12px;align-items:center;background:white;border-radius:14px;padding:18px 24px;box-shadow:0 2px 12px rgba(0,0,0,.08);margin-bottom:16px;flex-wrap:wrap">
       <div style="flex-shrink:0;width:72px;height:72px;border-radius:50%;background:${catColor};display:flex;align-items:center;justify-content:center;box-shadow:0 4px 16px ${catColor}55">
-        <span style="color:white;font-size:1.6rem;font-weight:800">${evalJefe.score_final?.toFixed(1)||'—'}</span>
+        <span style="color:white;font-size:1.6rem;font-weight:800">${evalJefe?.score_final?.toFixed(1)||(potencial>0?potencial.toFixed(1):'—')}</span>
       </div>
       <div style="flex:1;min-width:140px">
-        <div style="font-size:1.15rem;font-weight:800;color:var(--gray)">${cat?.label||'Sin categoría'}</div>
-        <div style="font-size:.82rem;color:#888;margin-top:2px">${cat?.desc||''}</div>
+        <div style="font-size:1.15rem;font-weight:800;color:var(--gray)">${cat?.label||(potencial>0?'Evaluación parcial':'Pendiente')}</div>
+        <div style="font-size:.82rem;color:#888;margin-top:2px">${cat?.desc||(evalJefe?'':'Potencial calculado con las evaluaciones disponibles')}</div>
       </div>
       <div style="display:flex;gap:20px;flex-wrap:wrap">
         ${[
@@ -3411,11 +3432,11 @@ function renderResultados() {
       <div class="form-row">
         <div class="form-field">
           <label>✅ Fortalezas</label>
-          <p style="background:var(--gray-light);padding:12px;border-radius:8px;font-size:.9rem">${evalJefe.fortalezas || 'Sin comentarios'}</p>
+          <p style="background:var(--gray-light);padding:12px;border-radius:8px;font-size:.9rem">${evalJefe?.fortalezas || 'Sin comentarios'}</p>
         </div>
         <div class="form-field">
           <label>🎯 Oportunidades de mejora</label>
-          <p style="background:var(--gray-light);padding:12px;border-radius:8px;font-size:.9rem">${evalJefe.mejoras || 'Sin comentarios'}</p>
+          <p style="background:var(--gray-light);padding:12px;border-radius:8px;font-size:.9rem">${evalJefe?.mejoras || 'Sin comentarios'}</p>
         </div>
       </div>
     </div>
@@ -3532,7 +3553,7 @@ function renderResultados() {
         okrDetalleEl.innerHTML = okrsMios.map(obj => {
           const krs     = obj.krs || [];
           const objPct  = krs.length
-            ? Math.round(krs.reduce((a,k)=>a+(k.progreso||0),0)/krs.length)
+            ? Math.round(krs.reduce((a,k)=>a+getKRProgresoReal(k),0)/krs.length)
             : 0;
           const objColor = objPct>=70?'#43a047':objPct>=40?'#f57c00':'#e53935';
 
@@ -3877,7 +3898,7 @@ function renderObjectiveCard(obj, isReadOnly) {
   const st = OKR_STATUS[obj.estado] || OKR_STATUS.on_track;
   const krs = obj.krs || [];
   const avgProg = krs.length
-    ? Math.round(krs.reduce((a, k) => a + (k.progreso || 0), 0) / krs.length)
+    ? Math.round(krs.reduce((a, k) => a + getKRProgresoReal(k), 0) / krs.length)
     : 0;
   const scoreColor = obj.score >= 70 ? '#43a047' : obj.score >= 40 ? '#f57c00' : '#e53935';
   const krRows = krs.map(kr => renderKRRow(kr, obj.id, isReadOnly)).join('');
@@ -3933,7 +3954,7 @@ function renderObjectiveCard(obj, isReadOnly) {
 
 function renderKRRow(kr, objId, isReadOnly) {
   const resp = getUserById(kr.responsable_id);
-  const pct = kr.progreso || 0;
+  const pct = getKRProgresoReal(kr); // recalculate from checkins, not stored value
   const barColor = pct >= 70 ? '#43a047' : pct >= 40 ? '#f57c00' : '#e53935';
   const conf = CONF_CONFIG[kr.confianza] || CONF_CONFIG.mid;
   const checkinCount = (kr.checkins || []).length;
@@ -4342,7 +4363,7 @@ async function saveOKRObjective(id) {
     estado: document.getElementById('okrEstado').value,
     fecha_inicio: document.getElementById('okrFechaInicio')?.value || '',
     fecha_fin: document.getElementById('okrFechaFin')?.value || '',
-    score: krs.length ? Math.round(krs.reduce((a,k)=>a+(k.progreso||0),0)/krs.length) : 0,
+    score: krs.length ? Math.round(krs.reduce((a,k)=>a+getKRProgresoReal(k),0)/krs.length) : 0,
     krs,
   };
 
@@ -4752,21 +4773,11 @@ async function saveCheckin(objId, krId) {
   kr.valor_actual = valorActual;
   kr.actual = valorActual; // compat
 
-  // Ponderado del KR = último avance por Q (el más reciente por fecha)
-  // Si el KR abarca varios Qs → promedio de los cierres de cada Q
-  const byQ = {};
-  kr.checkins.forEach(c => {
-    const q = c.q || 'anual';
-    const fechaC = (c.fecha||'').slice(0,10);
-    if (!byQ[q] || fechaC > (byQ[q].fecha||'').slice(0,10)) byQ[q] = c;
-  });
-  const cierres = Object.values(byQ).map(c => c.progreso || 0);
-  kr.progreso = cierres.length
-    ? Math.round(cierres.reduce((a,b) => a+b, 0) / cierres.length)
-    : newPct;
+  // Recalculate using getKRProgresoReal (last per Q)
+  kr.progreso = getKRProgresoReal(kr);
 
   // Recalculate OKR score from all KRs
-  obj.score = Math.round(obj.krs.reduce((a,k) => a + (k.progreso||0), 0) / obj.krs.length);
+  obj.score = Math.round(obj.krs.reduce((a,k) => a + getKRProgresoReal(k), 0) / obj.krs.length);
 
   await apiCall('saveOKR', obj);
   closeModal();
@@ -5373,7 +5384,7 @@ function renderResultadosEquipo() {
 
     const okrsHtml = okrsMios.length ? okrsMios.map(obj => {
       const krs = obj.krs || [];
-      const op  = krs.length ? Math.round(krs.reduce((a,k)=>a+(k.progreso||0),0)/krs.length) : 0;
+      const op  = krs.length ? Math.round(krs.reduce((a,k)=>a+getKRProgresoReal(k),0)/krs.length) : 0;
       const oc  = op>=70?'#43a047':op>=40?'#f57c00':'#e53935';
 
       const krsHtml = krs.map(kr => {
@@ -5707,7 +5718,7 @@ function renderMisOKR() {
 
   cont.innerHTML = misOkrs.map(obj => {
     const krs    = obj.krs || [];
-    const objPct = krs.length ? Math.round(krs.reduce((a,k)=>a+(k.progreso||0),0)/krs.length) : 0;
+    const objPct = krs.length ? Math.round(krs.reduce((a,k)=>a+getKRProgresoReal(k),0)/krs.length) : 0;
     const objColor = objPct>=70?'#43a047':objPct>=40?'#f57c00':'#e53935';
     const jefe   = STATE.users.find(x => x.id === obj.jefe_id);
     const mesStr = new Date().toISOString().slice(0,7);
@@ -6546,7 +6557,7 @@ function renderAdminOKRSummary() {
         ${jefeOKRs.map(obj => {
           const st = OKR_STATUS[obj.estado] || OKR_STATUS.on_track;
           const krs = obj.krs || [];
-          const objProg = krs.length ? Math.round(krs.reduce((a,k)=>a+(k.progreso||0),0)/krs.length) : 0;
+          const objProg = krs.length ? Math.round(krs.reduce((a,k)=>a+getKRProgresoReal(k),0)/krs.length) : 0;
           const progColor = objProg >= 70 ? '#43a047' : objProg >= 40 ? '#f57c00' : '#e53935';
           const tipoBadge = obj.tipo === 'individual'
             ? `<span style="background:#e3f2fd;color:#1565c0;border-radius:8px;padding:1px 7px;font-size:.7rem">Individual${obj.colaborador_id ? ' · ' + (getUserById(obj.colaborador_id)?.nombre?.split(' ')[0]||'') : ''}</span>`
@@ -7604,20 +7615,21 @@ function renderInsignias(colabId, container) {
   const todas   = [...INSIGNIAS_BASE, ...DEMO_INSIGNIAS_CUSTOM];
   if (!todas.length) return;
 
-  // P12: Guardar insignias obtenidas en Sheets
+  // Save earned insignias to Sheets (best-effort, don't block render)
   if (ganadas.length > 0) {
-    const fecha = new Date().toISOString().slice(0,10);
-    const colab = getUserById(colabId);
-    const toSave = ganadas.map(ins => ({
-      id: `INS-${colabId}-${ins.id}`,
-      colaborador_id: colabId,
-      insignia_id: ins.id,
-      nombre: ins.nombre,
-      descripcion: ins.descripcion,
-      beneficio: ins.beneficio || '',
-      fecha_otorgada: fecha,
-    }));
-    apiCall('saveInsignias', { insignias: toSave });
+    try {
+      const fecha = new Date().toISOString().slice(0,10);
+      const toSave = ganadas.map(ins => ({
+        id: `INS-${colabId}-${ins.id}`,
+        colaborador_id: colabId,
+        insignia_id: ins.id,
+        nombre: ins.nombre,
+        descripcion: ins.descripcion,
+        beneficio: ins.beneficio || '',
+        fecha_otorgada: fecha,
+      }));
+      apiCall('saveInsignias', { insignias: toSave });
+    } catch(e) { /* non-blocking */ }
   }
 
   cont.innerHTML = `
