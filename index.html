@@ -543,7 +543,7 @@
     </div>
     <button class="btn-login" onclick="handleLogin()">Ingresar al sistema</button>
     <p class="login-error" id="loginError">Usuario o contraseña incorrectos</p>
-    <div style="text-align:center;margin-top:16px;font-size:.7rem;color:#bbb;font-family:monospace">v6.9</div>
+    <div style="text-align:center;margin-top:16px;font-size:.7rem;color:#bbb;font-family:monospace">v7.0</div>
   </div>
 
   <!-- Indicadores de impacto -->
@@ -673,7 +673,7 @@
         </svg>
         Actualizar
       </button>
-      <span style="font-size:.68rem;color:#ccc;font-family:monospace;opacity:.6">v6.9</span>
+      <span style="font-size:.68rem;color:#ccc;font-family:monospace;opacity:.6">v7.0</span>
     </div>
   </div>
 
@@ -5360,52 +5360,131 @@ function renderResultadosEquipo() {
     );
     const okrPctRev = Math.round(calcScoreOKR(colab.id) * 25);
     const okrColor  = okrPctRev>=70?'#43a047':okrPctRev>=40?'#f57c00':'#e53935';
+    const MESES_S   = ['Ene','Feb','Mar','Abr','May','Jun','Jul','Ago','Sep','Oct','Nov','Dic'];
 
-    cont.innerHTML = periodoSelector + tabs + `
-      <div class="card" style="margin-bottom:16px">
-        <div style="display:flex;align-items:center;gap:16px;margin-bottom:16px;flex-wrap:wrap">
-          <div style="flex:1">
-            <div style="font-size:1rem;font-weight:700;color:var(--gray)">${colab.nombre}</div>
-            <div style="font-size:.82rem;color:#888">${colab.cargo||''}</div>
-          </div>
-          <div style="text-align:center">
-            <div style="font-size:1.8rem;font-weight:800;color:${okrColor}">${okrPctRev}%</div>
-            <div style="font-size:.7rem;color:#aaa;text-transform:uppercase">Avance OKR</div>
-          </div>
-        </div>
-        <div style="background:#e0e0e0;border-radius:4px;height:8px;margin-bottom:16px">
-          <div style="width:${okrPctRev}%;background:${okrColor};height:8px;border-radius:4px;transition:width .4s"></div>
-        </div>
-        <div style="font-size:.82rem;color:#888;background:var(--gray-light);padding:10px 14px;border-radius:8px;margin-bottom:14px">
-          📋 <strong>Periodo de revisión (${cicloDelPeriodo?.trimestre||'Q'})</strong> — En este periodo no se evalúan competencias.
-          El seguimiento se hace directamente en <strong>OKR del equipo → KRs → Registrar avance</strong>.
-        </div>
-        ${okrsMios.length ? okrsMios.map(obj => {
-          const krs = obj.krs || [];
-          const op  = krs.length ? Math.round(krs.reduce((a,k)=>a+(k.progreso||0),0)/krs.length) : 0;
-          const oc  = op>=70?'#43a047':op>=40?'#f57c00':'#e53935';
-          return `<div style="margin-bottom:14px;padding-bottom:12px;border-bottom:1px solid var(--gray-light)">
-            <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:8px">
-              <span style="font-weight:700;font-size:.88rem;color:var(--gray)">${obj.titulo}</span>
-              <strong style="color:${oc}">${op}%</strong>
+    const formatFecha = (f) => {
+      const s = (f||'').slice(0,10);
+      const d = s ? new Date(s+'T00:00:00') : null;
+      return d && !isNaN(d) ? MESES_S[d.getMonth()]+' '+d.getFullYear() : s;
+    };
+
+    const okrsHtml = okrsMios.length ? okrsMios.map(obj => {
+      const krs = obj.krs || [];
+      const op  = krs.length ? Math.round(krs.reduce((a,k)=>a+(k.progreso||0),0)/krs.length) : 0;
+      const oc  = op>=70?'#43a047':op>=40?'#f57c00':'#e53935';
+
+      const krsHtml = krs.map(kr => {
+        const p   = kr.progreso || 0;
+        const c   = p>=70?'#43a047':p>=40?'#f57c00':'#e53935';
+        const qL  = !kr.q_asignado||kr.q_asignado==='todos'?'Anual':kr.q_asignado;
+        const checkins = [...(kr.checkins||[])].sort((a,b)=>(b.fecha||'').localeCompare(a.fecha||''));
+
+        // Group checkins by Q
+        const byQ = {};
+        checkins.forEach(ci => {
+          const q = ci.q==='todos'||!ci.q?'Anual':ci.q;
+          if (!byQ[q]) byQ[q] = [];
+          byQ[q].push(ci);
+        });
+
+        const historialHtml = Object.entries(byQ).map(([q, entries]) => {
+          const cierre = entries[0];
+          const cc = (cierre.progreso||0)>=70?'#43a047':(cierre.progreso||0)>=40?'#f57c00':'#e53935';
+          return `<div style="margin-bottom:10px">
+            <div style="display:flex;align-items:center;gap:6px;margin-bottom:6px">
+              <span style="background:#e3f2fd;color:#1565c0;font-size:.7rem;font-weight:700;padding:2px 8px;border-radius:6px">${q}</span>
+              <span style="font-size:.72rem;color:#aaa">${entries.length} registro(s)</span>
+              <span style="margin-left:auto;font-size:.75rem;font-weight:700;color:${cc}">Cierre: ${cierre.progreso||0}%</span>
             </div>
-            ${krs.map(kr => {
-              const p=kr.progreso||0; const c=p>=70?'#43a047':p>=40?'#f57c00':'#e53935';
-              const qL=!kr.q_asignado||kr.q_asignado==='todos'?'Anual':kr.q_asignado;
-              return `<div style="margin-bottom:6px">
-                <div style="display:flex;justify-content:space-between;font-size:.78rem;margin-bottom:2px">
-                  <span style="color:#666;flex:1">${kr.descripcion}</span>
-                  <span style="color:#aaa;font-size:.72rem;margin:0 8px">${qL}</span>
-                  <strong style="color:${c}">${p}%</strong>
-                </div>
-                <div style="background:#e0e0e0;border-radius:3px;height:5px">
-                  <div style="width:${p}%;background:${c};height:5px;border-radius:3px"></div>
+            ${entries.map(ci => {
+              const autor = getUserById(ci.autor_id);
+              const bc = (ci.progreso||0)>=70?'#43a047':(ci.progreso||0)>=40?'#f57c00':'#e53935';
+              return `<div style="display:flex;gap:8px;background:white;border:1px solid var(--gray-light);border-radius:8px;padding:8px 12px;margin-bottom:4px">
+                <div style="flex-shrink:0;width:4px;border-radius:2px;background:${bc}"></div>
+                <div style="flex:1;min-width:0">
+                  <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:3px">
+                    <span style="font-size:.75rem;font-weight:700;color:#1565c0">${formatFecha(ci.fecha)}</span>
+                    <div style="display:flex;align-items:center;gap:8px">
+                      ${ci.valor_actual ? `<span style="font-size:.72rem;color:#888">Valor: <strong>${ci.valor_actual}</strong></span>` : ''}
+                      <strong style="color:${bc};font-size:.82rem">${ci.progreso||0}%</strong>
+                    </div>
+                  </div>
+                  <div style="font-size:.8rem;color:var(--gray)">${ci.nota||''}</div>
+                  <div style="font-size:.7rem;color:#aaa;margin-top:2px">${autor?.nombre?.split(' ')[0]||'—'}</div>
                 </div>
               </div>`;
             }).join('')}
           </div>`;
-        }).join('') : '<p style="color:#aaa;font-size:.82rem">Sin OKRs definidos para este colaborador.</p>'}
+        }).join('');
+
+        return `<div style="background:var(--gray-light);border-radius:12px;padding:14px 16px;margin-bottom:10px">
+          <!-- KR header -->
+          <div style="display:flex;align-items:flex-start;gap:12px;margin-bottom:10px">
+            <div style="flex:1">
+              <div style="font-weight:600;font-size:.88rem;color:var(--gray)">${kr.descripcion}</div>
+              <div style="font-size:.72rem;color:#888;margin-top:2px">
+                Meta: <strong>${kr.valor_meta||kr.meta||'—'}</strong> · ${qL}
+              </div>
+            </div>
+            <div style="text-align:right;flex-shrink:0">
+              <div style="font-size:1.3rem;font-weight:800;color:${c}">${p}%</div>
+              <div style="font-size:.65rem;color:#aaa">ponderado</div>
+            </div>
+          </div>
+          <!-- Progress bar -->
+          <div style="background:#e0e0e0;border-radius:4px;height:8px;margin-bottom:${checkins.length?'12px':'0'}">
+            <div style="width:${p}%;background:${c};height:8px;border-radius:4px;transition:width .4s"></div>
+          </div>
+          <!-- Historial -->
+          ${checkins.length ? `
+            <div style="border-top:1px solid rgba(0,0,0,.06);padding-top:10px;margin-top:2px">
+              <div style="font-size:.72rem;font-weight:700;color:#888;text-transform:uppercase;letter-spacing:.04em;margin-bottom:8px">
+                📅 Historial de avance (${checkins.length} registro${checkins.length>1?'s':''})
+              </div>
+              ${historialHtml}
+            </div>` : `
+            <div style="font-size:.78rem;color:#aaa;margin-top:8px;font-style:italic">Sin registros de avance aún</div>`}
+        </div>`;
+      }).join('');
+
+      return `<div style="background:white;border-radius:14px;box-shadow:0 2px 12px rgba(0,0,0,.07);padding:18px 20px;margin-bottom:16px">
+        <!-- Objetivo header -->
+        <div style="display:flex;align-items:center;gap:12px;margin-bottom:14px;flex-wrap:wrap">
+          <div style="flex:1">
+            <div style="font-size:1rem;font-weight:800;color:var(--gray)">${obj.titulo}</div>
+            ${obj.descripcion?`<div style="font-size:.78rem;color:#888;margin-top:2px">${obj.descripcion}</div>`:''}
+          </div>
+          <div style="display:flex;align-items:center;gap:10px;flex-shrink:0">
+            <div style="background:${oc}18;border-radius:20px;padding:6px 16px;text-align:center">
+              <span style="font-size:1.2rem;font-weight:800;color:${oc}">${op}%</span>
+              <span style="font-size:.7rem;color:#888;margin-left:4px">avance</span>
+            </div>
+            <span style="font-size:.72rem;color:#aaa">${obj.tipo==='equipo'?'🏆 Equipo':'👤 Individual'}</span>
+          </div>
+        </div>
+        <div style="background:#e0e0e0;border-radius:4px;height:6px;margin-bottom:16px">
+          <div style="width:${op}%;background:${oc};height:6px;border-radius:4px;transition:width .5s"></div>
+        </div>
+        ${krsHtml}
       </div>`;
+    }).join('') : `<div class="card"><p style="color:#aaa;font-size:.88rem">Sin OKRs definidos para este colaborador.</p></div>`;
+
+    cont.innerHTML = periodoSelector + tabs + `
+      <!-- Header colaborador -->
+      <div style="background:white;border-radius:14px;box-shadow:0 2px 12px rgba(0,0,0,.07);padding:18px 24px;margin-bottom:16px;display:flex;align-items:center;gap:16px;flex-wrap:wrap">
+        <div style="flex:1">
+          <div style="font-size:1.1rem;font-weight:800;color:var(--gray)">${colab.nombre}</div>
+          <div style="font-size:.82rem;color:#888">${colab.cargo||''}</div>
+          <div style="font-size:.75rem;color:#888;margin-top:4px">
+            📋 Periodo de revisión · ${cicloDelPeriodo?.trimestre||'Q'} — Solo seguimiento OKR
+          </div>
+        </div>
+        <div style="text-align:center;padding:10px 20px;background:${okrColor}18;border-radius:12px">
+          <div style="font-size:2rem;font-weight:900;color:${okrColor}">${okrPctRev}%</div>
+          <div style="font-size:.7rem;color:#888;text-transform:uppercase;letter-spacing:.05em">Avance OKR global</div>
+        </div>
+      </div>
+      ${okrsHtml}`;
     return;
   }
 
