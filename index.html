@@ -543,7 +543,7 @@
     </div>
     <button class="btn-login" onclick="handleLogin()">Ingresar al sistema</button>
     <p class="login-error" id="loginError">Usuario o contraseña incorrectos</p>
-    <div style="text-align:center;margin-top:16px;font-size:.7rem;color:#bbb;font-family:monospace">v6.2</div>
+    <div style="text-align:center;margin-top:16px;font-size:.7rem;color:#bbb;font-family:monospace">v6.4</div>
   </div>
 
   <!-- Indicadores de impacto -->
@@ -673,7 +673,7 @@
         </svg>
         Actualizar
       </button>
-      <span style="font-size:.68rem;color:#ccc;font-family:monospace;opacity:.6">v6.2</span>
+      <span style="font-size:.68rem;color:#ccc;font-family:monospace;opacity:.6">v6.4</span>
     </div>
   </div>
 
@@ -1204,7 +1204,7 @@
 // ═══════════════════════════════════════════
 //  CONFIG — Reemplaza con tu URL de Google Apps Script
 // ═══════════════════════════════════════════
-const SCRIPT_URL = 'https://script.google.com/macros/s/AKfycbwzv9VnN_-THfi76n-zhU3CMRDXFswuPWiWJ9gkq1sBQhwoq9qPqLbzxzhC55n5zpnh/exec';
+const SCRIPT_URL = 'https://script.google.com/macros/s/AKfycbzeZxWPRVC5eus5yUFY0W1BLSbhX1E03GfKg-lnA7du8vuNmqd75yVFZUpIAXggY_W2/exec';
 
 // ═══════════════════════════════════════════
 //  STATE
@@ -4438,6 +4438,20 @@ function openCheckinModal(objId, krId) {
   // Build Q list from ciclos (all Q, including closed ones)
   const qCiclos = STATE.ciclos.filter(c => c.trimestre)
     .sort((a,b) => (a.trimestre||'').localeCompare(b.trimestre||''));
+
+  // If no Q is open, derive Q sub-periods from the annual ciclo
+  if (!qCiclos.length) {
+    const anual = STATE.ciclos.find(c => !c.trimestre && c.estado === 'open') ||
+                  STATE.ciclos.find(c => !c.trimestre);
+    if (anual?.inicio) {
+      const qs = calcQDates(anual.inicio);
+      ['Q1','Q2','Q3','Q4'].forEach((t,i) => {
+        qCiclos.push({ trimestre:t, nombre:`${anual.nombre} — ${t}`, estado:'closed',
+          inicio: qs[i].inicio, fin: qs[i].fin });
+      });
+    }
+  }
+
   const activeQ      = qCiclos.find(c => c.estado === 'open')?.trimestre || qCiclos[0]?.trimestre || 'Q1';
   const activeQCiclo = qCiclos.find(c => c.trimestre === activeQ) || qCiclos[0] || null;
 
@@ -4620,9 +4634,16 @@ function buildMesesOpts(inicioStr, finStr) {
 
 function updateCiMesesFromSelect(selectEl) {
   const opt    = selectEl.options[selectEl.selectedIndex];
-  const inicio = opt.dataset.inicio || '';
-  const fin    = opt.dataset.fin    || '';
-  const sel    = document.getElementById('ciMes');
+  const qVal   = selectEl.value;
+  // Try data attrs first, then fallback to STATE.ciclos lookup
+  let inicio = opt.dataset.inicio || '';
+  let fin    = opt.dataset.fin    || '';
+  if (!inicio || !fin) {
+    const cicloQ = STATE.ciclos.find(c => c.trimestre === qVal);
+    inicio = cicloQ?.inicio ? String(cicloQ.inicio).slice(0,10) : '';
+    fin    = cicloQ?.fin    ? String(cicloQ.fin).slice(0,10)    : '';
+  }
+  const sel = document.getElementById('ciMes');
   if (sel) sel.innerHTML = buildMesesOpts(inicio, fin);
 }
 
