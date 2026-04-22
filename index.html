@@ -543,7 +543,7 @@
     </div>
     <button class="btn-login" onclick="handleLogin()">Ingresar al sistema</button>
     <p class="login-error" id="loginError">Usuario o contraseña incorrectos</p>
-    <div style="text-align:center;margin-top:16px;font-size:.7rem;color:#bbb;font-family:monospace">v7.7</div>
+    <div style="text-align:center;margin-top:16px;font-size:.7rem;color:#bbb;font-family:monospace">v8.0</div>
   </div>
 
   <!-- Indicadores de impacto -->
@@ -673,7 +673,7 @@
         </svg>
         Actualizar
       </button>
-      <span style="font-size:.68rem;color:#ccc;font-family:monospace;opacity:.6">v7.7</span>
+      <span style="font-size:.68rem;color:#ccc;font-family:monospace;opacity:.6">v8.0</span>
     </div>
   </div>
 
@@ -893,6 +893,15 @@
           <p>Resultados de evaluación de cada colaborador a tu cargo</p>
         </div>
         <div id="resultadosEquipoContent"></div>
+      </div>
+
+      <!-- ─── PÁGINA: INSIGNIAS ─── -->
+      <div class="page" id="page-insignias-page">
+        <div class="page-header">
+          <h2>Insignias</h2>
+          <p>Logros y reconocimientos obtenidos</p>
+        </div>
+        <div id="insigniasPageContent"></div>
       </div>
 
       <!-- ─── PÁGINA: MIS OKR (colaborador) ─── -->
@@ -2077,85 +2086,152 @@ function initApp() {
 //  SIDEBAR
 // ═══════════════════════════════════════════
 function buildSidebar() {
-  const rol = STATE.user.rol;
-  const hasJefeId = !!STATE.user?.jefe_id; // this user also reports to someone
-  const icons = {
-    chart:    '<path d="M19 3H5c-1.1 0-2 .9-2 2v14c0 1.1.9 2 2 2h14c1.1 0 2-.9 2-2V5c0-1.1-.9-2-2-2zM9 17H7v-7h2v7zm4 0h-2V7h2v10zm4 0h-2v-4h2v4z"/>',
-    eval:     '<path d="M9 11H7v2h2v-2zm4 0h-2v2h2v-2zm4 0h-2v2h2v-2zm2-7h-1V2h-2v2H8V2H6v2H5c-1.11 0-1.99.9-1.99 2L3 20c0 1.1.89 2 2 2h14c1.1 0 2-.9 2-2V6c0-1.1-.9-2-2-2zm0 16H5V9h14v11z"/>',
-    settings: '<path d="M19.14 12.94c.04-.3.06-.61.06-.94 0-.32-.02-.64-.07-.94l2.03-1.58c.18-.14.23-.41.12-.61l-1.92-3.32c-.12-.22-.37-.29-.59-.22l-2.39.96c-.5-.38-1.03-.7-1.62-.94l-.36-2.54c-.04-.24-.24-.41-.48-.41h-3.84c-.24 0-.43.17-.47.41l-.36 2.54c-.59.24-1.13.57-1.62.94l-2.39-.96c-.22-.08-.47 0-.59.22L2.74 8.87c-.12.21-.08.47.12.61l2.03 1.58c-.05.3-.09.63-.09.94s.02.64.07.94l-2.03 1.58c-.18.14-.23.41-.12.61l1.92 3.32c.12.22.37.29.59.22l2.39-.96c.5.38 1.03.7 1.62.94l.36 2.54c.05.24.24.41.48.41h3.84c.24 0 .44-.17.47-.41l.36-2.54c.59-.24 1.13-.56 1.62-.94l2.39.96c.22.08.47 0 .59-.22l1.92-3.32c.12-.22.07-.47-.12-.61l-2.01-1.58zM12 15.6c-1.98 0-3.6-1.62-3.6-3.6s1.62-3.6 3.6-3.6 3.6 1.62 3.6 3.6-1.62 3.6-3.6 3.6z"/>',
-    pdi:      '<path d="M12 3L1 9l11 6 9-4.91V17h2V9M5 13.18v4L12 21l7-3.82v-4L12 17l-7-3.82z"/>',
-    self:     '<path d="M12 12c2.21 0 4-1.79 4-4s-1.79-4-4-4-4 1.79-4 4 1.79 4 4 4zm0 2c-2.67 0-8 1.34-8 4v2h16v-2c0-2.66-5.33-4-8-4z"/>',
-    results:  '<path d="M19 3H5c-1.1 0-2 .9-2 2v14c0 1.1.9 2 2 2h14c1.1 0 2-.9 2-2V5c0-1.1-.9-2-2-2zM9 17H7v-7h2v7zm4 0h-2V7h2v10zm4 0h-2v-4h2v4z"/>',
-    okr:      '<path d="M19 3H5c-1.1 0-2 .9-2 2v14c0 1.1.9 2 2 2h14c1.1 0 2-.9 2-2V5c0-1.1-.9-2-2-2zm-7 14l-5-5 1.41-1.41L12 14.17l7.59-7.59L21 8l-9 9z"/>',
-    pares:    '<path d="M16 11c1.66 0 2.99-1.34 2.99-3S17.66 5 16 5c-1.66 0-3 1.34-3 3s1.34 3 3 3zm-8 0c1.66 0 2.99-1.34 2.99-3S9.66 5 8 5C6.34 5 5 6.34 5 8s1.34 3 3 3zm0 2c-2.33 0-7 1.17-7 3.5V19h14v-2.5c0-2.33-4.67-3.5-7-3.5zm8 0c-.29 0-.62.02-.97.05 1.16.84 1.97 1.97 1.97 3.45V19h6v-2.5c0-2.33-4.67-3.5-7-3.5z"/>',
-    bitacora: '<path d="M19 3h-4.18C14.4 1.84 13.3 1 12 1c-1.3 0-2.4.84-2.82 2H5c-1.1 0-2 .9-2 2v14c0 1.1.9 2 2 2h14c1.1 0 2-.9 2-2V5c0-1.1-.9-2-2-2zm-7 0c.55 0 1 .45 1 1s-.45 1-1 1-1-.45-1-1 .45-1 1-1zm2 14H7v-2h7v2zm3-4H7v-2h10v2zm0-4H7V7h10v2z"/>',
-    ninebox:  '<path d="M3 3h8v8H3zm0 10h8v8H3zm10-10h8v8h-8zm0 10h8v8h-8z"/>',
+  const rol       = STATE.user.rol;
+  const hasJefeId = !!STATE.user?.jefe_id;
+  const cicloActivo = STATE.ciclos.find(c => c.estado === 'open');
+  const grado     = parseInt(cicloActivo?.grado || '360');
+  const esRevision = cicloActivo?.tipo === 'revision';
+
+  // ── Icon paths ──────────────────────────────────────────────────────
+  const IC = {
+    dashboard: '<path d="M3 13h8V3H3v10zm0 8h8v-6H3v6zm10 0h8V11h-8v10zm0-18v6h8V3h-8z"/>',
+    comp:      '<path d="M12 1L3 5v6c0 5.55 3.84 10.74 9 12 5.16-1.26 9-6.45 9-12V5l-9-4zm0 4l5 2.18V11c0 3.5-2.33 6.79-5 7.93-2.67-1.14-5-4.43-5-7.93V7.18L12 5z"/>',
+    okr:       '<path d="M19 3H5c-1.1 0-2 .9-2 2v14c0 1.1.9 2 2 2h14c1.1 0 2-.9 2-2V5c0-1.1-.9-2-2-2zm-7 14l-5-5 1.41-1.41L12 14.17l7.59-7.59L21 8l-9 9z"/>',
+    seguim:    '<path d="M19 3H5c-1.1 0-2 .9-2 2v14c0 1.1.9 2 2 2h14c1.1 0 2-.9 2-2V5c0-1.1-.9-2-2-2zM9 17H7v-7h2v7zm4 0h-2V7h2v10zm4 0h-2v-4h2v4z"/>',
+    informes:  '<path d="M20 2H4c-1.1 0-2 .9-2 2v18l4-4h14c1.1 0 2-.9 2-2V4c0-1.1-.9-2-2-2z"/>',
+    self:      '<path d="M12 12c2.21 0 4-1.79 4-4s-1.79-4-4-4-4 1.79-4 4 1.79 4 4 4zm0 2c-2.67 0-8 1.34-8 4v2h16v-2c0-2.66-5.33-4-8-4z"/>',
+    eval:      '<path d="M9 11H7v2h2v-2zm4 0h-2v2h2v-2zm4 0h-2v2h2v-2zm2-7h-1V2h-2v2H8V2H6v2H5c-1.11 0-1.99.9-1.99 2L3 20c0 1.1.89 2 2 2h14c1.1 0 2-.9 2-2V6c0-1.1-.9-2-2-2zm0 16H5V9h14v11z"/>',
+    pares:     '<path d="M16 11c1.66 0 2.99-1.34 2.99-3S17.66 5 16 5c-1.66 0-3 1.34-3 3s1.34 3 3 3zm-8 0c1.66 0 2.99-1.34 2.99-3S9.66 5 8 5C6.34 5 5 6.34 5 8s1.34 3 3 3zm0 2c-2.33 0-7 1.17-7 3.5V19h14v-2.5c0-2.33-4.67-3.5-7-3.5zm8 0c-.29 0-.62.02-.97.05 1.16.84 1.97 1.97 1.97 3.45V19h6v-2.5c0-2.33-4.67-3.5-7-3.5z"/>',
+    results:   '<path d="M9 17H7v-7h2v7zm4 0h-2V7h2v10zm4 0h-2v-4h2v4zm2.5 2.1h-15V5h15v14.1zm0-16.1h-15c-1.1 0-2 .9-2 2v14c0 1.1.9 2 2 2h15c1.1 0 2-.9 2-2V5c0-1.1-.9-2-2-2z"/>',
+    ninebox:   '<path d="M3 3h8v8H3zm0 10h8v8H3zm10-10h8v8h-8zm0 10h8v8h-8z"/>',
+    insignia:  '<path d="M19 3H5c-1.1 0-2 .9-2 2v14c0 1.1.9 2 2 2h14c1.1 0 2-.9 2-2V5c0-1.1-.9-2-2-2zm-7 3c1.93 0 3.5 1.57 3.5 3.5S13.93 13 12 13s-3.5-1.57-3.5-3.5S10.07 6 12 6zm7 13H5v-.23c0-.62.28-1.2.76-1.58C7.47 15.82 9.64 15 12 15s4.53.82 6.24 2.19c.48.38.76.97.76 1.58V19z"/>',
+    settings:  '<path d="M19.14 12.94c.04-.3.06-.61.06-.94 0-.32-.02-.64-.07-.94l2.03-1.58c.18-.14.23-.41.12-.61l-1.92-3.32c-.12-.22-.37-.29-.59-.22l-2.39.96c-.5-.38-1.03-.7-1.62-.94l-.36-2.54c-.04-.24-.24-.41-.48-.41h-3.84c-.24 0-.43.17-.47.41l-.36 2.54c-.59.24-1.13.57-1.62.94l-2.39-.96c-.22-.08-.47 0-.59.22L2.74 8.87c-.12.21-.08.47.12.61l2.03 1.58c-.05.3-.09.63-.09.94s.02.64.07.94l-2.03 1.58c-.18.14-.23.41-.12.61l1.92 3.32c.12.22.37.29.59.22l2.39-.96c.5.38 1.03.7 1.62.94l.36 2.54c.05.24.24.41.48.41h3.84c.24 0 .44-.17.47-.41l.36-2.54c.59-.24 1.13-.56 1.62-.94l2.39.96c.22.08.47 0 .59-.22l1.92-3.32c.12-.22.07-.47-.12-.61l-2.01-1.58zM12 15.6c-1.98 0-3.6-1.62-3.6-3.6s1.62-3.6 3.6-3.6 3.6 1.62 3.6 3.6-1.62 3.6-3.6 3.6z"/>',
+    bitacora:  '<path d="M19 3h-4.18C14.4 1.84 13.3 1 12 1c-1.3 0-2.4.84-2.82 2H5c-1.1 0-2 .9-2 2v14c0 1.1.9 2 2 2h14c1.1 0 2-.9 2-2V5c0-1.1-.9-2-2-2zm-7 0c.55 0 1 .45 1 1s-.45 1-1 1-1-.45-1-1 .45-1 1-1zm2 14H7v-2h7v2zm3-4H7v-2h10v2zm0-4H7V7h10v2z"/>',
+    pdi:       '<path d="M12 3L1 9l11 6 9-4.91V17h2V9M5 13.18v4L12 21l7-3.82v-4L12 17l-7-3.82z"/>',
   };
 
-  // ── Section builder ───────────────────────────────────────────────────
-  const makeSection = (id, label, color, items, startOpen=false) => {
-    const navItems = items.map(item =>
-      `<button class="nav-item" id="nav-${item.id}" onclick="navigateTo('${item._page||item.id}')"><svg viewBox="0 0 24 24" fill="currentColor" width="18" height="18">${icons[item.icon]||icons.chart}</svg><span>${item.label}</span></button>`
-    ).join('');
-    return `<div class="sidebar-group" id="sg-${id}"><button onclick="toggleSidebarGroup('${id}')" style="width:100%;display:flex;align-items:center;justify-content:space-between;padding:8px 12px;background:none;border:none;border-left:3px solid ${color};cursor:pointer;margin-bottom:2px"><span style="font-size:.65rem;font-weight:800;letter-spacing:.08em;text-transform:uppercase;color:${color};font-family:Asap,sans-serif">${label}</span><svg id="sg-arrow-${id}" viewBox="0 0 24 24" fill="${color}" width="14" height="14" style="transition:transform .2s;transform:rotate(${startOpen?'0':'-90'}deg)"><path d="M7 10l5 5 5-5z"/></svg></button><div id="sg-items-${id}" style="display:${startOpen?'block':'none'};padding-left:4px">${navItems}</div></div>`;
+  const navBtn = (id, iconKey, label, page) =>
+    `<button class="nav-item" id="nav-${id}" onclick="navigateTo('${page||id}')">
+      <svg viewBox="0 0 24 24" fill="currentColor" width="16" height="16">${IC[iconKey]||IC.comp}</svg>
+      <span>${label}</span>
+    </button>`;
+
+  const section = (id, iconKey, label, items, startOpen=false) => {
+    const body = items.map(it => navBtn(it.id, it.icon, it.label, it.page||it.id)).join('');
+    return `
+    <div class="sidebar-group" id="sg-${id}">
+      <button onclick="toggleSidebarGroup('${id}')"
+        style="width:100%;display:flex;align-items:center;gap:10px;padding:10px 14px;
+          background:none;border:none;cursor:pointer;border-radius:8px;transition:background .15s"
+        onmouseover="this.style.background='rgba(0,0,0,.04)'" onmouseout="this.style.background='none'">
+        <svg viewBox="0 0 24 24" fill="var(--red)" width="18" height="18">${IC[iconKey]||IC.comp}</svg>
+        <span style="flex:1;text-align:left;font-size:.82rem;font-weight:700;color:var(--gray);font-family:Asap">${label}</span>
+        <svg id="sg-arrow-${id}" viewBox="0 0 24 24" fill="#aaa" width="14" height="14"
+          style="transition:transform .2s;transform:rotate(${startOpen?'0':'-90'}deg)">
+          <path d="M7 10l5 5 5-5z"/>
+        </svg>
+      </button>
+      <div id="sg-items-${id}" style="display:${startOpen?'block':'none'};padding:0 6px 4px 12px">
+        ${body}
+      </div>
+    </div>`;
   };
 
-  // ── Define sections per role ──────────────────────────────────────────
-  let sections = '';
+  let html = '';
 
-  // Dashboard always visible
-  sections += `<button class="nav-item" id="nav-dashboard" onclick="navigateTo('dashboard')" style="margin:4px 8px 8px"><svg viewBox="0 0 24 24" fill="currentColor" width="18" height="18">${icons.chart}</svg><span>Dashboard</span></button>`;
+  // ── Dashboard ──────────────────────────────────────────────────────
+  html += `<div style="padding:8px 8px 4px">
+    ${navBtn('dashboard','dashboard','Dashboard')}
+  </div>
+  <div style="height:1px;background:var(--gray-light);margin:0 12px 8px"></div>`;
 
+  // ══ ADMIN ══════════════════════════════════════════════════════════
   if (rol === 'admin') {
-    sections += makeSection('admin-ops', 'Administración', '#ba0020', [
-      { id:'admin',            icon:'settings', label:'Configuración' },
-      { id:'mis-evaluaciones', icon:'eval',     label:'Evaluaciones del equipo' },
-      { id:'ninebox',          icon:'ninebox',  label:'Nine Box' },
-      { id:'pdi',              icon:'pdi',      label:'PDI Equipos' },
+    html += section('informes', 'informes', 'Informes', [
+      { id:'admin',    icon:'settings', label:'Configuración' },
     ], true);
-
-  } else if (rol === 'jefe') {
-    // Personal section (only if they also report to someone)
-    if (hasJefeId) {
-      const cicloGradoJefe = parseInt(STATE.ciclos.find(c=>c.estado==='open')?.grado || '360');
-      sections += makeSection('jefe-personal', 'Mis evaluaciones', '#ba0020', [
-        { id:'autoevaluacion', icon:'self',     label:'Mi Autoevaluación' },
-        { id:'eval-jefe',      icon:'eval',     label:'Evaluar a mi jefe' },
-        ...(cicloGradoJefe >= 360 ? [{ id:'evaluar-pares', icon:'pares', label:'Mis evaluaciones de pares' }] : []),
-        { id:'resultados',     icon:'results',  label:'Mis Resultados' },
-        { id:'mis-okr',        icon:'okr',      label:'Mis OKR' },
-        { id:'mi-pdi',         icon:'pdi',      label:'Mi PDI' },
-        { id:'mi-bitacora',    icon:'bitacora', label:'Mi Bitácora' },
-      ], true);
-    }
-    const cicloGrado = parseInt(STATE.ciclos.find(c=>c.estado==='open')?.grado || '360');
-    sections += makeSection('jefe-equipo', 'Mi equipo', '#1565c0', [
-      { id:'mis-evaluaciones',    icon:'eval',     label:'Evaluar equipo' },
-      ...(cicloGrado >= 360 ? [{ id:'pares', icon:'pares', label:'Asignar pares' }] : []),
-      { id:'resultados-equipo',   icon:'results',  label:'Resultados del equipo' },
-      { id:'bitacora',            icon:'bitacora', label:'Bitácora del equipo' },
-      { id:'ninebox',             icon:'ninebox',  label:'Nine Box' },
-      { id:'okr',                 icon:'okr',      label:'OKR del equipo' },
-      { id:'pdi',                 icon:'pdi',      label:'PDI del equipo' },
-    ], !hasJefeId);
-
-  } else {
-    // Colaborador
-    const cicloGradoColab = parseInt(STATE.ciclos.find(c=>c.estado==='open')?.grado || '360');
-    sections += makeSection('colab-personal', 'Mis evaluaciones', '#ba0020', [
-      { id:'autoevaluacion', icon:'self',     label:'Mi Autoevaluación' },
-      { id:'eval-jefe',      icon:'eval',     label:'Evaluar a mi jefe' },
-      ...(cicloGradoColab >= 360 ? [{ id:'evaluar-pares', icon:'pares', label:'Evaluar a mis pares' }] : []),
-      { id:'resultados',     icon:'results',  label:'Mis Resultados' },
+    html += section('seguim', 'seguim', 'Seguimiento', [
+      { id:'mis-evaluaciones', icon:'eval',    label:'Evaluaciones del equipo' },
+      { id:'ninebox',          icon:'ninebox', label:'Nine Box' },
+      { id:'pdi',              icon:'pdi',     label:'PDI Equipos' },
     ], true);
-    sections += makeSection('colab-desarrollo', 'Mi desarrollo', '#2e7d32', [
-      { id:'mi-bitacora', icon:'bitacora', label:'Mi Bitácora' },
-      { id:'mis-okr',     icon:'okr',      label:'Mis OKR' },
-      { id:'mi-pdi',      icon:'pdi',      label:'Mi PDI' },
-    ], true);
+    return document.getElementById('sidebar').innerHTML =
+      `<div style="padding:4px 0">${html}</div>`;
   }
 
-  document.getElementById('sidebar').innerHTML = `<div style="padding-top:4px">${sections}</div>`;
+  // ══ JEFE / JEFE+COLABORADOR ════════════════════════════════════════
+  if (rol === 'jefe') {
+
+    // ── Competencias ──────────────────────────────────────────────────
+    const compItems = [];
+    if (!esRevision) {
+      if (hasJefeId) compItems.push({ id:'eval-jefe',      icon:'eval',  label:'Evaluar a mi jefe' });
+      compItems.push(              { id:'mis-evaluaciones', icon:'eval',  label:'Evaluar mi equipo' });
+      compItems.push(              { id:'autoevaluacion',   icon:'self',  label:'Mi Autoevaluación' });
+      if (grado >= 360) {
+        compItems.push(            { id:'pares',            icon:'pares', label:'Asignar pares' });
+        if (hasJefeId)
+          compItems.push(          { id:'evaluar-pares',    icon:'pares', label:'Mis evaluaciones de pares' });
+      }
+    }
+    if (compItems.length)
+      html += section('comp', 'comp', 'Competencias', compItems, true);
+
+    // ── OKR ──────────────────────────────────────────────────────────
+    const okrItems = [{ id:'okr', icon:'okr', label:'Definir OKR del equipo' }];
+    if (hasJefeId) okrItems.push({ id:'mis-okr', icon:'okr', label:'Mis OKR' });
+    html += section('okr-sec', 'okr', 'OKR', okrItems, true);
+
+    // ── Seguimiento ───────────────────────────────────────────────────
+    const segItems = [
+      { id:'resultados-equipo', icon:'results',  label:'Resultados del equipo' },
+      { id:'ninebox',           icon:'ninebox',  label:'Nine Box' },
+      { id:'bitacora',          icon:'bitacora', label:'Bitácora del equipo' },
+      { id:'insignias-page',    icon:'insignia', label:'Insignias' },
+    ];
+    if (hasJefeId) segItems.unshift({ id:'resultados', icon:'results', label:'Mis Resultados' });
+    html += section('seguim', 'seguim', 'Seguimiento', segItems, true);
+
+    // ── Informes ──────────────────────────────────────────────────────
+    const infItems = [{ id:'pdi', icon:'pdi', label:'PDI del equipo' }];
+    if (hasJefeId) infItems.push({ id:'mi-pdi', icon:'pdi', label:'Mi PDI' });
+    if (hasJefeId) infItems.push({ id:'mi-bitacora', icon:'bitacora', label:'Mi Bitácora' });
+    html += section('informes', 'informes', 'Informes', infItems, false);
+  }
+
+  // ══ COLABORADOR ════════════════════════════════════════════════════
+  if (rol === 'colaborador' || rol === 'colab') {
+
+    // ── Competencias ──────────────────────────────────────────────────
+    const compItems = [];
+    if (!esRevision) {
+      compItems.push({ id:'autoevaluacion', icon:'self', label:'Mi Autoevaluación' });
+      compItems.push({ id:'eval-jefe',      icon:'eval', label:'Evaluar a mi jefe' });
+      if (grado >= 360)
+        compItems.push({ id:'evaluar-pares', icon:'pares', label:'Evaluar a mis pares' });
+    }
+    if (compItems.length)
+      html += section('comp', 'comp', 'Competencias', compItems, true);
+
+    // ── OKR ──────────────────────────────────────────────────────────
+    html += section('okr-sec', 'okr', 'OKR', [
+      { id:'mis-okr', icon:'okr', label:'Mis OKR' },
+    ], true);
+
+    // ── Seguimiento ───────────────────────────────────────────────────
+    html += section('seguim', 'seguim', 'Seguimiento', [
+      { id:'resultados',     icon:'results',  label:'Mis Resultados' },
+      { id:'insignias-page', icon:'insignia', label:'Insignias' },
+    ], true);
+
+    // ── Informes ──────────────────────────────────────────────────────
+    html += section('informes', 'informes', 'Informes', [
+      { id:'mi-pdi',      icon:'pdi',      label:'Mi PDI' },
+      { id:'mi-bitacora', icon:'bitacora', label:'Mi Bitácora' },
+    ], false);
+  }
+
+  document.getElementById('sidebar').innerHTML = `<div style="padding:4px 0">${html}</div>`;
 }
 
 function toggleSidebarGroup(id) {
@@ -2203,6 +2279,7 @@ function navigateTo(pageId) {
     case 'mi-pdi': renderMiPDI(); break;
     case 'mis-okr': renderMisOKR(); break;
     case 'resultados-equipo': renderResultadosEquipo(); break;
+    case 'insignias-page': renderInsigniasPage(); break;
     case 'okr': renderOKR(); break;
     case 'pares': renderPares(); break;
     case 'evaluar-pares': renderEvaluarPares(); break;
@@ -2815,20 +2892,14 @@ function calcScoreCompetencias(colaboradorId) {
 }
 
 function getKRProgresoReal(kr) {
-  // Always derive from checkins: last entry per Q, then average Q closures
+  // Progreso = último registro por fecha (el más reciente gana)
   const checkins = kr.checkins || [];
   if (!checkins.length) return kr.progreso || 0;
 
-  const byQ = {};
-  checkins.forEach(c => {
-    const q = c.q || 'anual';
-    const f = (c.fecha||'').slice(0,10);
-    if (!byQ[q] || f > (byQ[q].fecha||'').slice(0,10)) byQ[q] = c;
-  });
-  const cierres = Object.values(byQ).map(c => c.progreso || 0);
-  return cierres.length
-    ? Math.round(cierres.reduce((a,b) => a+b, 0) / cierres.length)
-    : kr.progreso || 0;
+  const ultimo = checkins
+    .slice()
+    .sort((a,b) => (b.fecha||'').slice(0,10).localeCompare((a.fecha||'').slice(0,10)))[0];
+  return ultimo?.progreso ?? kr.progreso ?? 0;
 }
 
 function calcScoreOKR(colaboradorId) {
@@ -4550,11 +4621,8 @@ function openCheckinModal(objId, krId) {
     </div>`;
   }).join('');
 
-  // Overall ponderado = average of Q closures (last entry per Q)
-  const cierres = Object.values(byQ).map(entries => entries[0].progreso || 0);
-  const ponderado = cierres.length
-    ? Math.round(cierres.reduce((a,b)=>a+b,0)/cierres.length)
-    : kr.progreso || 0;
+  // Overall ponderado = getKRProgresoReal (last entry)
+  const ponderado = getKRProgresoReal(kr);
   const barColor = ponderado>=70?'#43a047':ponderado>=40?'#f57c00':'#e53935';
 
   // Q options — store inicio/fin as data attrs so updateCiMeses doesn't need to re-search
@@ -4794,7 +4862,7 @@ async function saveCheckin(objId, krId) {
   kr.valor_actual = valorActual;
   kr.actual = valorActual; // compat
 
-  // Recalculate using getKRProgresoReal (last per Q)
+  // Recalculate using getKRProgresoReal (last entry logic)
   kr.progreso = getKRProgresoReal(kr);
 
   // Recalculate OKR score from all KRs
@@ -5714,6 +5782,12 @@ function renderResultadosEquipo() {
       }).join('');
     }
   }, 150);
+}
+
+function renderInsigniasPage() {
+  const cont = document.getElementById('insigniasPageContent');
+  if (!cont) return;
+  renderInsignias(STATE.user.id, 'insigniasPageContent');
 }
 
 function renderMisOKR() {
