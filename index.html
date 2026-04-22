@@ -534,7 +534,7 @@
  </div>
  <button class="btn-login" onclick="handleLogin()">Ingresar al sistema</button>
  <p class="login-error" id="loginError">Usuario o contraseña incorrectos</p>
- <div style="text-align:center;margin-top:16px;font-size:.7rem;color:#bbb;font-family:monospace">v8.6</div>
+ <div style="text-align:center;margin-top:16px;font-size:.7rem;color:#bbb;font-family:monospace">v8.7</div>
  </div>
 
  <!-- Indicadores de impacto -->
@@ -664,7 +664,7 @@
  </svg>
  Actualizar
  </button>
- <span style="font-size:.68rem;color:#ccc;font-family:monospace;opacity:.6">v8.6</span>
+ <span style="font-size:.68rem;color:#ccc;font-family:monospace;opacity:.6">v8.7</span>
  </div>
  </div>
 
@@ -2138,15 +2138,13 @@ function buildSidebar() {
 
   // ── JEFE ──────────────────────────────────────────────────────────
   if (esJefe) {
-    // Competencias (solo Q completo)
+    // Competencias — siempre visible
     const compSubs = [];
-    if (!esRevision) {
-      compSubs.push(sub('mis-evaluaciones', 'Evaluar equipo'));
-      compSubs.push(sub('autoevaluacion',   'Autoevaluacion'));
-      if (hasJefeId) compSubs.push(sub('eval-jefe', 'Evaluar a mi jefe'));
-      if (grado >= 360) compSubs.push(sub('pares', 'Asignar pares'));
-      if (grado >= 360 && hasJefeId) compSubs.push(sub('evaluar-pares', 'Evaluar pares'));
-    }
+    compSubs.push(sub('mis-evaluaciones', 'Evaluar equipo'));
+    compSubs.push(sub('autoevaluacion',   'Autoevaluacion'));
+    if (hasJefeId) compSubs.push(sub('eval-jefe', 'Evaluar a mi jefe'));
+    if (grado >= 360) compSubs.push(sub('pares', 'Asignar pares'));
+    if (grado >= 360 && hasJefeId) compSubs.push(sub('evaluar-pares', 'Evaluar pares'));
     html += section('comp', 'Competencias', compSubs);
 
     // OKR
@@ -2175,13 +2173,11 @@ function buildSidebar() {
 
   // ── COLABORADOR ───────────────────────────────────────────────────
   if (esColab) {
-    // Competencias (solo Q completo)
+    // Competencias — siempre visible
     const compSubs = [];
-    if (!esRevision) {
-      compSubs.push(sub('autoevaluacion', 'Autoevaluacion'));
-      compSubs.push(sub('eval-jefe',      'Evaluar a mi jefe'));
-      if (grado >= 360) compSubs.push(sub('evaluar-pares', 'Evaluar pares'));
-    }
+    compSubs.push(sub('autoevaluacion', 'Autoevaluacion'));
+    compSubs.push(sub('eval-jefe',      'Evaluar a mi jefe'));
+    if (grado >= 360) compSubs.push(sub('evaluar-pares', 'Evaluar pares'));
     html += section('comp', 'Competencias', compSubs);
 
     // OKR
