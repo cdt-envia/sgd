@@ -531,7 +531,7 @@
  </div>
  <button class="btn-login" onclick="handleLogin()">Ingresar al sistema</button>
  <p class="login-error" id="loginError">Usuario o contraseña incorrectos</p>
- <div style="text-align:center;margin-top:16px;font-size:.7rem;color:#bbb;font-family:monospace">v9.0</div>
+ <div style="text-align:center;margin-top:16px;font-size:.7rem;color:#bbb;font-family:monospace">v9.1</div>
  </div>
 
  <!-- Indicadores de impacto -->
@@ -661,7 +661,7 @@
  </svg>
  Actualizar
  </button>
- <span style="font-size:.68rem;color:#ccc;font-family:monospace;opacity:.6">v9.0</span>
+ <span style="font-size:.68rem;color:#ccc;font-family:monospace;opacity:.6">v9.1</span>
  </div>
  </div>
 
@@ -4050,6 +4050,17 @@ function renderKRRow(kr, objId, isReadOnly) {
  ${checkinCount ? `<div id="ci-${kr.id}" style="display:none">${renderCheckins(kr.checkins)}</div>` : ''}`;
 }
 
+function toggleRevObj(id, btn) {
+  const el = document.getElementById(id);
+  if (!el) return;
+  const isOpen = el.style.display !== 'none';
+  el.style.display = isOpen ? 'none' : 'block';
+  if (btn) {
+    const svg = btn.querySelector('svg');
+    if (svg) svg.style.transform = isOpen ? '' : 'rotate(180deg)';
+  }
+}
+
 function toggleCheckins(id, btn) {
   const el = document.getElementById(id);
   if (!el) return;
@@ -5465,36 +5476,44 @@ function renderResultadosEquipo() {
  </div>`;
  }).join('') : `<div style="font-size:.78rem;color:#bbb;padding:8px 0;font-style:italic">Sin registros</div>`;
 
+ const krRevId = 'rev-kr-'+kr.id;
  return `<div style="border:1px solid var(--border);border-radius:7px;margin-bottom:8px;overflow:hidden">
- <div style="display:flex;align-items:center;gap:12px;padding:10px 14px;background:var(--gray-light)">
+ <div onclick="toggleCheckins('${krRevId}', this)" style="display:flex;align-items:center;gap:12px;padding:10px 14px;background:var(--gray-light);cursor:pointer;user-select:none">
  <div style="flex:1">
  <div style="font-weight:600;font-size:.85rem;color:var(--gray)">${kr.descripcion}</div>
  <div style="font-size:.74rem;color:#999;margin-top:1px">Meta: ${kr.valor_meta||kr.meta||'—'} · ${qL}</div>
  </div>
- <div style="text-align:right">
- <div style="font-size:1.1rem;font-weight:800;color:${pc}">${p}%</div>
- <div style="font-size:.65rem;color:#aaa">avance</div>
+ <div style="display:flex;align-items:center;gap:10px">
+ <span style="font-size:1rem;font-weight:800;color:${pc}">${p}%</span>
+ <span style="font-size:.75rem;color:#aaa;display:flex;align-items:center;gap:2px">
+ ${checkins.length ? 'Ver registros ('+checkins.length+')' : 'Sin registros'}
+ ${checkins.length ? '<svg viewBox="0 0 24 24" fill="currentColor" width="12" height="12"><path d="M7 10l5 5 5-5z"/></svg>' : ''}
+ </span>
  </div>
  </div>
  <div style="background:#f0f0f0;height:3px"><div style="width:${p}%;background:${pc};height:3px"></div></div>
- ${checkins.length ? `<div style="padding:0 14px">${registrosHtml}</div>` : `<div style="padding:8px 14px;font-size:.78rem;color:#bbb;font-style:italic">Sin registros de avance</div>`}
+ ${checkins.length ? `<div id="${krRevId}" style="display:none;padding:0 14px">${registrosHtml}</div>` : ''}
  </div>`;
  }).join('');
 
+ const objRevId = 'rev-obj-'+obj.id;
  return `<div style="border:1px solid var(--border);border-radius:8px;margin-bottom:10px;overflow:hidden">
- <div style="display:flex;align-items:center;gap:12px;padding:12px 16px;border-bottom:1px solid var(--border)">
+ <div onclick="toggleRevObj('${objRevId}', this)" style="display:flex;align-items:center;gap:12px;padding:12px 16px;cursor:pointer;user-select:none">
  <div style="flex:1">
  <div style="font-weight:700;font-size:.9rem;color:var(--gray)">${obj.titulo}</div>
  <div style="font-size:.74rem;color:#999;margin-top:2px">${obj.tipo==='equipo'?'Equipo':'Individual'} · ${krs.length} KR${krs.length!==1?'s':''}</div>
  </div>
- <div style="display:flex;align-items:center;gap:8px">
- <div style="background:#f0f0f0;border-radius:3px;height:6px;width:80px">
- <div style="width:${op}%;background:${oc};height:6px;border-radius:3px"></div>
+ <div style="display:flex;align-items:center;gap:10px">
+ <div style="background:#f0f0f0;border-radius:3px;height:5px;width:60px">
+ <div style="width:${op}%;background:${oc};height:5px;border-radius:3px"></div>
  </div>
  <span style="font-size:.9rem;font-weight:800;color:${oc};min-width:36px">${op}%</span>
+ <span style="font-size:.75rem;color:#aaa;display:flex;align-items:center;gap:2px">
+ Ver detalle <svg viewBox="0 0 24 24" fill="currentColor" width="12" height="12"><path d="M7 10l5 5 5-5z"/></svg>
+ </span>
  </div>
  </div>
- <div style="padding:12px 16px">${krsHtml}</div>
+ <div id="${objRevId}" style="display:none;border-top:1px solid var(--border);padding:12px 16px">${krsHtml}</div>
  </div>`;
  }).join('') : `<p style="color:#aaa;font-size:.82rem;padding:8px 0">Sin OKRs definidos.</p>`;
 
