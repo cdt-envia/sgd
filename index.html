@@ -531,7 +531,7 @@
  </div>
  <button class="btn-login" onclick="handleLogin()">Ingresar al sistema</button>
  <p class="login-error" id="loginError">Usuario o contraseña incorrectos</p>
- <div style="text-align:center;margin-top:16px;font-size:.7rem;color:#bbb;font-family:monospace">v9.3</div>
+ <div style="text-align:center;margin-top:16px;font-size:.7rem;color:#bbb;font-family:monospace">v9.4</div>
  </div>
 
  <!-- Indicadores de impacto -->
@@ -661,7 +661,7 @@
  </svg>
  Actualizar
  </button>
- <span style="font-size:.68rem;color:#ccc;font-family:monospace;opacity:.6">v9.3</span>
+ <span style="font-size:.68rem;color:#ccc;font-family:monospace;opacity:.6">v9.4</span>
  </div>
  </div>
 
@@ -4005,7 +4005,7 @@ function renderObjectiveCard(obj, isReadOnly) {
 
 function renderKRRow(kr, objId, isReadOnly) {
  const resp = getUserById(kr.responsable_id);
- const pct = getKRProgresoReal(kr); // recalculate from checkins, not stored value
+ const pct = getKRProgresoReal(kr);
  const barColor = pct >= 70 ? '#43a047' : pct >= 40 ? '#f57c00' : '#e53935';
  const conf = CONF_CONFIG[kr.confianza] || CONF_CONFIG.mid;
  const checkinCount = (kr.checkins || []).length;
@@ -4013,6 +4013,16 @@ function renderKRRow(kr, objId, isReadOnly) {
  const hayCheckinEsteMes = (kr.checkins||[]).some(c => (c.fecha||'').slice(0,7) === mesStr);
  const activeQNow = STATE.ciclos.find(c => c.estado === 'open' && c.trimestre)?.trimestre;
  const hayCheckinQActivo = activeQNow && (kr.checkins||[]).some(c => c.q === activeQNow);
+
+ // Opción A: solo el colaborador asignado puede registrar avance
+ // El jefe puede ver pero no registrar
+ const obj = STATE.okr.find(o => o.id === objId);
+ const userId = STATE.user.id;
+ const esColabAsignado =
+   kr.responsable_id === userId ||           // responsable directo del KR
+   obj?.colaborador_id === userId ||          // colaborador del OKR
+   (obj?.miembros||[]).includes(userId);      // miembro del OKR de equipo
+ const canCheckin = !isReadOnly && esColabAsignado;
 
  // Display meta and last actual value
  const metaDisplay = kr.valor_meta || kr.meta || '—';
@@ -4041,10 +4051,10 @@ function renderKRRow(kr, objId, isReadOnly) {
  <div class="progress-bar-wrap"><div class="progress-bar" style="width:${pct}%;background:${barColor}"></div></div>
  </div>
  <div class="okr-kr-actions">
- <button class="btn btn-primary btn-sm" onclick="openCheckinModal('${objId}','${kr.id}')" title="Registrar avance">
+ ${canCheckin ? `<button class="btn btn-primary btn-sm" onclick="openCheckinModal('${objId}','${kr.id}')" title="Registrar avance">
  ${hayCheckinQActivo ? 'Nuevo avance' : 'Registrar avance'}
- </button>
- ${!isReadOnly ? `<button class="btn btn-secondary btn-sm" onclick="openEditKRModal('${objId}','${kr.id}')" title="Editar KR">Editar</button>` : ''}
+ </button>` : ''}
+ ${!isReadOnly && STATE.user.rol !== 'colaborador' ? `<button class="btn btn-secondary btn-sm" onclick="openEditKRModal('${objId}','${kr.id}')" title="Editar KR">Editar</button>` : ''}
  </div>
  </div>
  ${checkinCount ? `<div id="ci-${kr.id}" style="display:none">${renderCheckins(kr.checkins)}</div>` : ''}`;
@@ -4540,6 +4550,17 @@ function openCheckinModal(objId, krId) {
  const obj = STATE.okr.find(o => o.id === objId);
  const kr = obj?.krs?.find(k => k.id === krId);
  if (!kr) return;
+
+ // Opción A: solo el colaborador asignado puede registrar
+ const userId = STATE.user.id;
+ const esColabAsignado =
+   kr.responsable_id === userId ||
+   obj?.colaborador_id === userId ||
+   (obj?.miembros||[]).includes(userId);
+ if (!esColabAsignado) {
+   showToast('Solo el colaborador asignado puede registrar avance en este KR.', 'error');
+   return;
+ }
 
  const tipo = kr.tipo_metrica || 'numero';
  const meta = kr.valor_meta || kr.meta || '—';
