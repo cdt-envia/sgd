@@ -531,7 +531,7 @@
  </div>
  <button class="btn-login" onclick="handleLogin()">Ingresar al sistema</button>
  <p class="login-error" id="loginError">Usuario o contraseña incorrectos</p>
- <div style="text-align:center;margin-top:16px;font-size:.7rem;color:#bbb;font-family:monospace">v9.2</div>
+ <div style="text-align:center;margin-top:16px;font-size:.7rem;color:#bbb;font-family:monospace">v9.3</div>
  </div>
 
  <!-- Indicadores de impacto -->
@@ -661,7 +661,7 @@
  </svg>
  Actualizar
  </button>
- <span style="font-size:.68rem;color:#ccc;font-family:monospace;opacity:.6">v9.2</span>
+ <span style="font-size:.68rem;color:#ccc;font-family:monospace;opacity:.6">v9.3</span>
  </div>
  </div>
 
@@ -2103,11 +2103,11 @@ function buildSidebar() {
         border-left:2px solid var(--red)">
         <span>${label}</span>
         <svg id="sg-arrow-${id}" viewBox="0 0 24 24" fill="#bbb" width="12" height="12"
-          style="transition:transform .2s">
+          style="transition:transform .2s;transform:rotate(-90deg)">
           <path d="M7 10l5 5 5-5z"/>
         </svg>
       </button>
-      <div id="sg-items-${id}" style="padding:2px 0 4px">
+      <div id="sg-items-${id}" style="display:none;padding:2px 0 4px">
         ${items.join('')}
       </div>
     </div>`;
