@@ -531,7 +531,7 @@
  </div>
  <button class="btn-login" onclick="handleLogin()">Ingresar al sistema</button>
  <p class="login-error" id="loginError">Usuario o contraseña incorrectos</p>
- <div style="text-align:center;margin-top:16px;font-size:.7rem;color:#bbb;font-family:monospace">v9.4</div>
+ <div style="text-align:center;margin-top:16px;font-size:.7rem;color:#bbb;font-family:monospace">v9.5</div>
  </div>
 
  <!-- Indicadores de impacto -->
@@ -661,7 +661,7 @@
  </svg>
  Actualizar
  </button>
- <span style="font-size:.68rem;color:#ccc;font-family:monospace;opacity:.6">v9.4</span>
+ <span style="font-size:.68rem;color:#ccc;font-family:monospace;opacity:.6">v9.5</span>
  </div>
  </div>
 
@@ -3964,8 +3964,8 @@ function renderObjectiveCard(obj, isReadOnly) {
  : `<span style="font-size:.72rem;color:#888;font-weight:500">Equipo</span>`;
 
  return `<div class="okr-objective" id="okr-${obj.id}">
- <div class="okr-obj-header" onclick="toggleOKRExpand('${obj.id}')" style="user-select:none">
- <div class="okr-obj-left">
+ <div class="okr-obj-header" style="user-select:none">
+ <div class="okr-obj-left" onclick="toggleOKRExpand('${obj.id}')" style="cursor:pointer;flex:1">
  <div class="okr-obj-title">${obj.titulo}</div>
  <div class="okr-obj-meta">
  ${tipoBadge}
@@ -3982,11 +3982,11 @@ function renderObjectiveCard(obj, isReadOnly) {
  <span style="font-size:.75rem;font-weight:700;color:${scoreColor};min-width:32px">${avgProg}%</span>
  </div>
  </div>
- <div style="display:flex;align-items:center;gap:8px;flex-shrink:0">
+ <div style="display:flex;align-items:center;gap:8px;flex-shrink:0;padding-left:12px">
  ${canEdit ? `
- <button class="btn btn-secondary btn-sm" onclick="event.stopPropagation();openOKRModal('${obj.id}')">Editar</button>
- <button class="btn btn-primary btn-sm" onclick="event.stopPropagation();openAddKRModal('${obj.id}')">+ KR</button>` : ''}
- <span style="font-size:.75rem;color:#aaa;display:flex;align-items:center;gap:3px;margin-left:4px">
+ <button class="btn btn-secondary btn-sm" onclick="openOKRModal('${obj.id}')">Editar</button>
+ <button class="btn btn-primary btn-sm" onclick="openAddKRModal('${obj.id}')">+ KR</button>` : ''}
+ <span onclick="toggleOKRExpand('${obj.id}')" style="font-size:.75rem;color:#aaa;display:flex;align-items:center;gap:3px;cursor:pointer;padding:4px 6px;border-radius:4px;border:1px solid var(--border)">
    Ver KRs
    <svg id="okr-arrow-${obj.id}" viewBox="0 0 24 24" fill="currentColor" width="14" height="14" style="transition:transform .2s">
      <path d="M7 10l5 5 5-5z"/>
