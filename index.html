@@ -69,17 +69,17 @@
   /* ─── APP SHELL ─── */
   #appShell { display: none; }
   .topbar {
-    background: white; border-bottom: 2px solid var(--red);
-    padding: 0 28px; height: 62px; display: flex; align-items: center;
+    background: white; border-bottom: 1px solid #f0f0f0;
+    padding: 0 24px; height: 56px; display: flex; align-items: center;
     justify-content: space-between; position: sticky; top: 0; z-index: 100;
-    box-shadow: 0 2px 8px rgba(0,0,0,.07);
+    box-shadow: 0 1px 4px rgba(0,0,0,.05);
   }
-  .topbar-left { display: flex; align-items: center; gap: 14px; }
-  .topbar-logo { width: 34px; height: 34px; background: var(--red); border-radius: 8px;
+  .topbar-left { display: flex; align-items: center; gap: 12px; }
+  .topbar-logo { width: 30px; height: 30px; background: var(--red); border-radius: 7px;
     display: flex; align-items: center; justify-content: center; }
-  .topbar-logo svg { width: 18px; height: 18px; fill: white; }
-  .topbar h1 { font-size: 1.05rem; font-weight: 700; color: var(--gray); }
-  .topbar-right { display: flex; align-items: center; gap: 14px; }
+  .topbar-logo svg { width: 16px; height: 16px; fill: white; }
+  .topbar h1 { font-size: .95rem; font-weight: 700; color: var(--gray); }
+  .topbar-right { display: flex; align-items: center; gap: 12px; }
   @keyframes spin { from { transform: rotate(0deg); } to { transform: rotate(360deg); } }
   .test-btn {
     width:100%;padding:8px 12px;border-radius:8px;cursor:pointer;font-family:Asap,sans-serif;
@@ -87,71 +87,73 @@
   }
   .test-btn:hover { opacity:.8; }
   .user-badge {
-    display: flex; align-items: center; gap: 8px;
-    background: var(--red-light); border-radius: 20px; padding: 6px 14px 6px 8px;
+    display: flex; align-items: center; gap: 7px;
+    background: var(--red-light); border-radius: 20px; padding: 5px 12px 5px 7px;
   }
   .user-avatar {
-    width: 28px; height: 28px; background: var(--red); border-radius: 50%;
+    width: 24px; height: 24px; background: var(--red); border-radius: 50%;
     display: flex; align-items: center; justify-content: center;
-    color: white; font-weight: 700; font-size: .8rem;
+    color: white; font-weight: 700; font-size: .75rem;
   }
-  .user-badge span { font-size: .85rem; font-weight: 600; color: var(--red-dark); }
+  .user-badge span { font-size: .8rem; font-weight: 600; color: var(--red-dark); }
   .user-role-tag {
-    font-size: .72rem; background: var(--red); color: white;
-    border-radius: 10px; padding: 2px 8px; font-weight: 600;
+    font-size: .68rem; background: var(--red); color: white;
+    border-radius: 10px; padding: 2px 7px; font-weight: 600;
   }
   .btn-logout {
-    background: none; border: 1.5px solid var(--gray-mid); border-radius: 8px;
-    padding: 6px 14px; font-family: 'Asap', sans-serif; font-size: .85rem;
-    cursor: pointer; color: var(--gray); transition: all var(--transition);
+    background: none; border: 1px solid #e0e0e0; border-radius: 7px;
+    padding: 5px 12px; font-family: 'Asap', sans-serif; font-size: .8rem;
+    cursor: pointer; color: #888; transition: all var(--transition);
   }
   .btn-logout:hover { border-color: var(--red); color: var(--red); }
 
   /* ─── SIDEBAR + CONTENT ─── */
-  .app-body { display: flex; min-height: calc(100vh - 62px); }
+  .app-body { display: flex; min-height: calc(100vh - 56px); }
   .sidebar {
-    width: 240px; background: white; border-right: 1px solid var(--gray-mid);
-    padding: 20px 12px; flex-shrink: 0;
-    position: sticky; top: 62px; height: calc(100vh - 62px); overflow-y: auto;
+    width: 220px; background: #fafafa; border-right: 1px solid #f0f0f0;
+    padding: 16px 10px; flex-shrink: 0;
+    position: sticky; top: 56px; height: calc(100vh - 56px); overflow-y: auto;
   }
-  .sidebar-section { margin-bottom: 8px; }
-  .sidebar-label { font-size: .72rem; font-weight: 700; color: #aaa;
-    text-transform: uppercase; letter-spacing: .08em; padding: 8px 10px 4px; }
+  .sidebar-section { margin-bottom: 4px; }
+  .sidebar-label { font-size: .65rem; font-weight: 700; color: #bbb;
+    text-transform: uppercase; letter-spacing: .1em; padding: 10px 10px 4px; }
   .nav-item {
-    display: flex; align-items: center; gap: 10px; padding: 9px 12px;
-    border-radius: 8px; cursor: pointer; font-size: .9rem; font-weight: 500;
-    color: var(--gray); transition: all var(--transition); position: relative;
+    display: flex; align-items: center; gap: 9px; padding: 7px 10px;
+    border-radius: 7px; cursor: pointer; font-size: .82rem; font-weight: 500;
+    color: #666; transition: all .12s; position: relative;
     border: none; background: none; width: 100%; text-align: left;
+    font-family: Asap, sans-serif;
   }
   .nav-item:hover { background: var(--red-light); color: var(--red); }
   .nav-item.active { background: var(--red); color: white; font-weight: 600; }
-  .nav-item svg { width: 18px; height: 18px; flex-shrink: 0; }
+  .nav-item svg { width: 15px; height: 15px; flex-shrink: 0; opacity: .7; }
+  .nav-item.active svg { opacity: 1; }
+  .nav-item:hover svg { opacity: 1; }
   .nav-badge {
     margin-left: auto; background: var(--red); color: white;
-    font-size: .7rem; border-radius: 10px; padding: 1px 7px; font-weight: 700;
+    font-size: .65rem; border-radius: 10px; padding: 1px 6px; font-weight: 700;
   }
   .nav-item.active .nav-badge { background: rgba(255,255,255,.3); }
 
   /* ─── MAIN ─── */
-  .main-content { flex: 1; padding: 28px; overflow-x: hidden; }
+  .main-content { flex: 1; padding: 24px 28px; overflow-x: hidden; background: #f8f8f8; }
   .page { display: none; }
   .page.active { display: block; }
-  @keyframes fadeUp { from { opacity:0; transform:translateY(12px); } to { opacity:1; transform:translateY(0); } }
 
   /* ─── CARDS ─── */
-  .page-header { margin-bottom: 24px; }
-  .page-header h2 { font-size: 1.5rem; font-weight: 700; color: var(--gray); }
-  .page-header p { color: #888; font-size: .9rem; margin-top: 4px; }
-  .breadcrumb { font-size: .8rem; color: #aaa; margin-bottom: 8px; }
+  .page-header { margin-bottom: 20px; }
+  .page-header h2 { font-size: 1.3rem; font-weight: 700; color: var(--gray); }
+  .page-header p { color: #aaa; font-size: .82rem; margin-top: 3px; }
+  .breadcrumb { font-size: .78rem; color: #bbb; margin-bottom: 6px; }
   .breadcrumb span { color: var(--red); }
 
   .card {
-    background: white; border-radius: var(--radius); padding: 24px;
-    box-shadow: var(--shadow); margin-bottom: 20px;
+    background: white; border-radius: 10px; padding: 18px 20px;
+    box-shadow: 0 1px 4px rgba(0,0,0,.06); margin-bottom: 16px;
   }
-  .card-header { display: flex; align-items: center; justify-content: space-between; margin-bottom: 18px; }
-  .card-title { font-size: 1.05rem; font-weight: 700; color: var(--gray); }
-  .card-subtitle { font-size: .82rem; color: #888; margin-top: 2px; }
+  .card-header { display: flex; align-items: center; justify-content: space-between; margin-bottom: 14px; }
+  .card-title { font-size: .95rem; font-weight: 700; color: var(--gray); }
+  .card-subtitle { font-size: .78rem; color: #aaa; margin-top: 2px; }
 
   /* ─── STAT CARDS ─── */
   .stats-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(180px, 1fr)); gap: 16px; margin-bottom: 24px; }
@@ -543,7 +545,7 @@
     </div>
     <button class="btn-login" onclick="handleLogin()">Ingresar al sistema</button>
     <p class="login-error" id="loginError">Usuario o contraseña incorrectos</p>
-    <div style="text-align:center;margin-top:16px;font-size:.7rem;color:#bbb;font-family:monospace">v8.0</div>
+    <div style="text-align:center;margin-top:16px;font-size:.7rem;color:#bbb;font-family:monospace">v8.3</div>
   </div>
 
   <!-- Indicadores de impacto -->
@@ -673,7 +675,7 @@
         </svg>
         Actualizar
       </button>
-      <span style="font-size:.68rem;color:#ccc;font-family:monospace;opacity:.6">v8.0</span>
+      <span style="font-size:.68rem;color:#ccc;font-family:monospace;opacity:.6">v8.3</span>
     </div>
   </div>
 
@@ -2119,44 +2121,46 @@ function buildSidebar() {
   const section = (id, iconKey, label, items, startOpen=false) => {
     const body = items.map(it => navBtn(it.id, it.icon, it.label, it.page||it.id)).join('');
     return `
-    <div class="sidebar-group" id="sg-${id}">
+    <div class="sidebar-group" id="sg-${id}" style="margin-bottom:2px">
       <button onclick="toggleSidebarGroup('${id}')"
-        style="width:100%;display:flex;align-items:center;gap:10px;padding:10px 14px;
-          background:none;border:none;cursor:pointer;border-radius:8px;transition:background .15s"
-        onmouseover="this.style.background='rgba(0,0,0,.04)'" onmouseout="this.style.background='none'">
-        <svg viewBox="0 0 24 24" fill="var(--red)" width="18" height="18">${IC[iconKey]||IC.comp}</svg>
-        <span style="flex:1;text-align:left;font-size:.82rem;font-weight:700;color:var(--gray);font-family:Asap">${label}</span>
-        <svg id="sg-arrow-${id}" viewBox="0 0 24 24" fill="#aaa" width="14" height="14"
+        class="sg-header"
+        style="width:100%;display:flex;align-items:center;gap:8px;padding:7px 10px;
+          background:none;border:none;cursor:pointer;border-radius:7px;
+          font-family:Asap,sans-serif">
+        <svg viewBox="0 0 24 24" fill="#aaa" width="14" height="14">${IC[iconKey]||IC.comp}</svg>
+        <span style="flex:1;text-align:left;font-size:.68rem;font-weight:700;color:#aaa;
+          text-transform:uppercase;letter-spacing:.08em">${label}</span>
+        <svg id="sg-arrow-${id}" viewBox="0 0 24 24" fill="#ccc" width="12" height="12"
           style="transition:transform .2s;transform:rotate(${startOpen?'0':'-90'}deg)">
           <path d="M7 10l5 5 5-5z"/>
         </svg>
       </button>
-      <div id="sg-items-${id}" style="display:${startOpen?'block':'none'};padding:0 6px 4px 12px">
+      <div id="sg-items-${id}" style="display:${startOpen?'block':'none'};padding:0 0 4px 4px">
         ${body}
       </div>
     </div>`;
   };
 
-  let html = '';
+  let sidebarHTML = '';
 
   // ── Dashboard ──────────────────────────────────────────────────────
-  html += `<div style="padding:8px 8px 4px">
+  sidebarHTML += `<div style="padding:8px 8px 4px">
     ${navBtn('dashboard','dashboard','Dashboard')}
   </div>
   <div style="height:1px;background:var(--gray-light);margin:0 12px 8px"></div>`;
 
   // ══ ADMIN ══════════════════════════════════════════════════════════
   if (rol === 'admin') {
-    html += section('informes', 'informes', 'Informes', [
+    sidebarHTML += section('informes', 'informes', 'Informes', [
       { id:'admin',    icon:'settings', label:'Configuración' },
     ], true);
-    html += section('seguim', 'seguim', 'Seguimiento', [
+    sidebarHTML += section('seguim', 'seguim', 'Seguimiento', [
       { id:'mis-evaluaciones', icon:'eval',    label:'Evaluaciones del equipo' },
       { id:'ninebox',          icon:'ninebox', label:'Nine Box' },
       { id:'pdi',              icon:'pdi',     label:'PDI Equipos' },
     ], true);
     return document.getElementById('sidebar').innerHTML =
-      `<div style="padding:4px 0">${html}</div>`;
+      `<div style="padding:4px 0">${sidebarHTML}</div>`;
   }
 
   // ══ JEFE / JEFE+COLABORADOR ════════════════════════════════════════
@@ -2175,12 +2179,12 @@ function buildSidebar() {
       }
     }
     if (compItems.length)
-      html += section('comp', 'comp', 'Competencias', compItems, true);
+      sidebarHTML += section('comp', 'comp', 'Competencias', compItems, true);
 
     // ── OKR ──────────────────────────────────────────────────────────
     const okrItems = [{ id:'okr', icon:'okr', label:'Definir OKR del equipo' }];
     if (hasJefeId) okrItems.push({ id:'mis-okr', icon:'okr', label:'Mis OKR' });
-    html += section('okr-sec', 'okr', 'OKR', okrItems, true);
+    sidebarHTML += section('okr-sec', 'okr', 'OKR', okrItems, true);
 
     // ── Seguimiento ───────────────────────────────────────────────────
     const segItems = [
@@ -2190,13 +2194,13 @@ function buildSidebar() {
       { id:'insignias-page',    icon:'insignia', label:'Insignias' },
     ];
     if (hasJefeId) segItems.unshift({ id:'resultados', icon:'results', label:'Mis Resultados' });
-    html += section('seguim', 'seguim', 'Seguimiento', segItems, true);
+    sidebarHTML += section('seguim', 'seguim', 'Seguimiento', segItems, true);
 
     // ── Informes ──────────────────────────────────────────────────────
     const infItems = [{ id:'pdi', icon:'pdi', label:'PDI del equipo' }];
     if (hasJefeId) infItems.push({ id:'mi-pdi', icon:'pdi', label:'Mi PDI' });
     if (hasJefeId) infItems.push({ id:'mi-bitacora', icon:'bitacora', label:'Mi Bitácora' });
-    html += section('informes', 'informes', 'Informes', infItems, false);
+    sidebarHTML += section('informes', 'informes', 'Informes', infItems, false);
   }
 
   // ══ COLABORADOR ════════════════════════════════════════════════════
@@ -2211,27 +2215,27 @@ function buildSidebar() {
         compItems.push({ id:'evaluar-pares', icon:'pares', label:'Evaluar a mis pares' });
     }
     if (compItems.length)
-      html += section('comp', 'comp', 'Competencias', compItems, true);
+      sidebarHTML += section('comp', 'comp', 'Competencias', compItems, true);
 
     // ── OKR ──────────────────────────────────────────────────────────
-    html += section('okr-sec', 'okr', 'OKR', [
+    sidebarHTML += section('okr-sec', 'okr', 'OKR', [
       { id:'mis-okr', icon:'okr', label:'Mis OKR' },
     ], true);
 
     // ── Seguimiento ───────────────────────────────────────────────────
-    html += section('seguim', 'seguim', 'Seguimiento', [
+    sidebarHTML += section('seguim', 'seguim', 'Seguimiento', [
       { id:'resultados',     icon:'results',  label:'Mis Resultados' },
       { id:'insignias-page', icon:'insignia', label:'Insignias' },
     ], true);
 
     // ── Informes ──────────────────────────────────────────────────────
-    html += section('informes', 'informes', 'Informes', [
+    sidebarHTML += section('informes', 'informes', 'Informes', [
       { id:'mi-pdi',      icon:'pdi',      label:'Mi PDI' },
       { id:'mi-bitacora', icon:'bitacora', label:'Mi Bitácora' },
     ], false);
   }
 
-  document.getElementById('sidebar').innerHTML = `<div style="padding:4px 0">${html}</div>`;
+  document.getElementById('sidebar').innerHTML = `<div style="padding:4px 0">${sidebarHTML}</div>`;
 }
 
 function toggleSidebarGroup(id) {
