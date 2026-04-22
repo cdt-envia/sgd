@@ -534,7 +534,7 @@
  </div>
  <button class="btn-login" onclick="handleLogin()">Ingresar al sistema</button>
  <p class="login-error" id="loginError">Usuario o contraseña incorrectos</p>
- <div style="text-align:center;margin-top:16px;font-size:.7rem;color:#bbb;font-family:monospace">v8.5</div>
+ <div style="text-align:center;margin-top:16px;font-size:.7rem;color:#bbb;font-family:monospace">v8.6</div>
  </div>
 
  <!-- Indicadores de impacto -->
@@ -664,7 +664,7 @@
  </svg>
  Actualizar
  </button>
- <span style="font-size:.68rem;color:#ccc;font-family:monospace;opacity:.6">v8.5</span>
+ <span style="font-size:.68rem;color:#ccc;font-family:monospace;opacity:.6">v8.6</span>
  </div>
  </div>
 
@@ -2077,158 +2077,130 @@ function initApp() {
 // SIDEBAR
 // ═══════════════════════════════════════════
 function buildSidebar() {
- const u = STATE.user;
- const rol = u.rol; // 'admin' | 'jefe' | 'colaborador'
- const esJefe = rol === 'jefe';
- const esColab = rol === 'colaborador';
- const esAdmin = rol === 'admin';
- const hasJefeId = !!u.jefe_id; // jefe que también reporta a alguien
- const ciclo = STATE.ciclos.find(c => c.estado === 'open');
- const grado = parseInt(ciclo?.grado || '360');
- const esRevision = ciclo?.tipo === 'revision'; // Q2-Q4: sin evaluación de competencias
+  const u          = STATE.user;
+  const rol        = u.rol;
+  const esJefe     = rol === 'jefe';
+  const esColab    = rol === 'colaborador';
+  const esAdmin    = rol === 'admin';
+  const hasJefeId  = !!u.jefe_id;
+  const ciclo      = STATE.ciclos.find(c => c.estado === 'open');
+  const grado      = parseInt(ciclo?.grado || '360');
+  const esRevision = ciclo?.tipo === 'revision';
 
- // ── Icono SVG helper ──────────────────────────────────────────────
- const ic = {
- home: '<path d="M10 20v-6h4v6h5v-8h3L12 3 2 12h3v8z"/>',
- shield: '<path d="M12 1L3 5v6c0 5.55 3.84 10.74 9 12 5.16-1.26 9-6.45 9-12V5l-9-4z"/>',
- check: '<path d="M19 3H5c-1.1 0-2 .9-2 2v14c0 1.1.9 2 2 2h14c1.1 0 2-.9 2-2V5c0-1.1-.9-2-2-2zm-7 14l-5-5 1.41-1.41L12 14.17l7.59-7.59L21 8l-9 9z"/>',
- chart: '<path d="M19 3H5c-1.1 0-2 .9-2 2v14c0 1.1.9 2 2 2h14c1.1 0 2-.9 2-2V5c0-1.1-.9-2-2-2zM9 17H7v-7h2v7zm4 0h-2V7h2v10zm4 0h-2v-4h2v4z"/>',
- person: '<path d="M12 12c2.21 0 4-1.79 4-4s-1.79-4-4-4-4 1.79-4 4 1.79 4 4 4zm0 2c-2.67 0-8 1.34-8 4v2h16v-2c0-2.66-5.33-4-8-4z"/>',
- people: '<path d="M16 11c1.66 0 2.99-1.34 2.99-3S17.66 5 16 5c-1.66 0-3 1.34-3 3s1.34 3 3 3zm-8 0c1.66 0 2.99-1.34 2.99-3S9.66 5 8 5C6.34 5 5 6.34 5 8s1.34 3 3 3zm0 2c-2.33 0-7 1.17-7 3.5V19h14v-2.5c0-2.33-4.67-3.5-7-3.5zm8 0c-.29 0-.62.02-.97.05 1.16.84 1.97 1.97 1.97 3.45V19h6v-2.5c0-2.33-4.67-3.5-7-3.5z"/>',
- nine: '<path d="M3 3h8v8H3zm0 10h8v8H3zm10-10h8v8h-8zm0 10h8v8h-8z"/>',
- star: '<path d="M12 17.27L18.18 21l-1.64-7.03L22 9.24l-7.19-.61L12 2 9.19 8.63 2 9.24l5.46 4.73L5.82 21z"/>',
- note: '<path d="M19 3h-4.18C14.4 1.84 13.3 1 12 1c-1.3 0-2.4.84-2.82 2H5c-1.1 0-2 .9-2 2v14c0 1.1.9 2 2 2h14c1.1 0 2-.9 2-2V5c0-1.1-.9-2-2-2zm-7 0c.55 0 1 .45 1 1s-.45 1-1 1-1-.45-1-1 .45-1 1-1zm2 14H7v-2h7v2zm3-4H7v-2h10v2zm0-4H7V7h10v2z"/>',
- gear: '<path d="M19.14 12.94c.04-.3.06-.61.06-.94 0-.32-.02-.64-.07-.94l2.03-1.58c.18-.14.23-.41.12-.61l-1.92-3.32c-.12-.22-.37-.29-.59-.22l-2.39.96c-.5-.38-1.03-.7-1.62-.94l-.36-2.54c-.04-.24-.24-.41-.48-.41h-3.84c-.24 0-.43.17-.47.41l-.36 2.54c-.59.24-1.13.57-1.62.94l-2.39-.96c-.22-.08-.47 0-.59.22L2.74 8.87c-.12.21-.08.47.12.61l2.03 1.58c-.05.3-.09.63-.09.94s.02.64.07.94l-2.03 1.58c-.18.14-.23.41-.12.61l1.92 3.32c.12.22.37.29.59.22l2.39-.96c.5.38 1.03.7 1.62.94l.36 2.54c.05.24.24.41.48.41h3.84c.24 0 .44-.17.47-.41l.36-2.54c.59-.24 1.13-.56 1.62-.94l2.39.96c.22.08.47 0 .59-.22l1.92-3.32c.12-.22.07-.47-.12-.61l-2.01-1.58zM12 15.6c-1.98 0-3.6-1.62-3.6-3.6s1.62-3.6 3.6-3.6 3.6 1.62 3.6 3.6-1.62 3.6-3.6 3.6z"/>',
- pdi: '<path d="M12 3L1 9l11 6 9-4.91V17h2V9M5 13.18v4L12 21l7-3.82v-4L12 17l-7-3.82z"/>',
- book: '<path d="M18 2H6c-1.1 0-2 .9-2 2v16c0 1.1.9 2 2 2h12c1.1 0 2-.9 2-2V4c0-1.1-.9-2-2-2zM6 4h5v8l-2.5-1.5L6 12V4z"/>',
- };
+  // Sub-item helper
+  const sub = (id, label, page) =>
+    `<button class="nav-item" id="nav-${id}" onclick="navigateTo('${page||id}')" style="padding:6px 10px 6px 22px;font-size:.8rem">
+       <span style="width:5px;height:5px;border-radius:50%;background:currentColor;flex-shrink:0;opacity:.4"></span>
+       ${label}
+     </button>`;
 
- // ── Nav item button ───────────────────────────────────────────────
- const btn = (id, iconKey, label, page) =>
- `<button class="nav-item" id="nav-${id}" onclick="navigateTo('${page||id}')">
- <svg viewBox="0 0 24 24" fill="currentColor" width="15" height="15" style="flex-shrink:0">${ic[iconKey]||ic.check}</svg>
- <span>${label}</span>
- </button>`;
+  // Section with always-visible header button + sub-items
+  const section = (id, label, items) => {
+    if (!items.length) return '';
+    return `
+    <div style="margin-bottom:2px">
+      <button onclick="toggleSidebarGroup('${id}')" style="
+        width:100%;display:flex;align-items:center;justify-content:space-between;
+        padding:8px 10px;background:none;border:none;cursor:pointer;border-radius:6px;
+        font-family:Asap,sans-serif;font-size:.82rem;font-weight:700;color:var(--gray);
+        border-left:2px solid var(--red)">
+        <span>${label}</span>
+        <svg id="sg-arrow-${id}" viewBox="0 0 24 24" fill="#bbb" width="12" height="12"
+          style="transition:transform .2s">
+          <path d="M7 10l5 5 5-5z"/>
+        </svg>
+      </button>
+      <div id="sg-items-${id}" style="padding:2px 0 4px">
+        ${items.join('')}
+      </div>
+    </div>`;
+  };
 
- // ── Collapsible section ───────────────────────────────────────────
- const section = (id, iconKey, label, items, open=true) => {
- if (!items.length) return '';
- const body = items.map(it => btn(it.id, it.icon, it.label, it.page||it.id)).join('');
- return `
- <div class="sidebar-group" id="sg-${id}" style="margin-bottom:4px">
- <button onclick="toggleSidebarGroup('${id}')" style="
- width:100%;display:flex;align-items:center;gap:8px;
- padding:7px 10px;background:none;border:none;cursor:pointer;
- border-radius:7px;font-family:Asap,sans-serif;margin-bottom:1px">
- <svg viewBox="0 0 24 24" fill="var(--red)" width="14" height="14">${ic[iconKey]||ic.check}</svg>
- <span style="flex:1;text-align:left;font-size:.7rem;font-weight:700;
- color:var(--gray);letter-spacing:.02em">${label}</span>
- <svg id="sg-arrow-${id}" viewBox="0 0 24 24" fill="#bbb" width="12" height="12"
- style="transition:transform .2s;transform:rotate(${open?'0':'-90'}deg)">
- <path d="M7 10l5 5 5-5z"/>
- </svg>
- </button>
- <div id="sg-items-${id}" style="display:${open?'block':'none'};padding-left:8px">
- ${body}
- </div>
- </div>`;
- };
+  let html = '';
 
- // ════════════════════════════════════════════════════════════════
- let html = '';
+  // Dashboard
+  html += `<button class="nav-item" id="nav-dashboard" onclick="navigateTo('dashboard')" style="font-weight:700;margin-bottom:8px">
+    Dashboard
+  </button>
+  <div style="height:1px;background:var(--border);margin:4px 0 8px"></div>`;
 
- // Dashboard — siempre visible
- html += `<div style="padding:4px 4px 8px">
- ${btn('dashboard','home','Dashboard')}
- </div>
- <div style="height:1px;background:#f0f0f0;margin:0 8px 8px"></div>`;
+  // ── ADMIN ─────────────────────────────────────────────────────────
+  if (esAdmin) {
+    html += section('seg', 'Seguimiento', [
+      sub('mis-evaluaciones', 'Evaluaciones del equipo'),
+      sub('ninebox',          'Nine Box'),
+      sub('pdi',              'PDI Equipos'),
+    ]);
+    html += section('cfg', 'Configuracion', [
+      sub('admin', 'Configuracion'),
+    ]);
+  }
 
- // ══════════ ADMIN ══════════════════════════════════════════════
- if (esAdmin) {
- html += section('seguim','chart','Seguimiento', [
- { id:'mis-evaluaciones', icon:'people', label:'Evaluaciones del equipo' },
- { id:'ninebox', icon:'nine', label:'Nine Box' },
- { id:'pdi', icon:'pdi', label:'PDI Equipos' },
- ]);
- html += section('informes','gear','Configuración', [
- { id:'admin', icon:'gear', label:'Configuración' },
- ], false);
- }
+  // ── JEFE ──────────────────────────────────────────────────────────
+  if (esJefe) {
+    // Competencias (solo Q completo)
+    const compSubs = [];
+    if (!esRevision) {
+      compSubs.push(sub('mis-evaluaciones', 'Evaluar equipo'));
+      compSubs.push(sub('autoevaluacion',   'Autoevaluacion'));
+      if (hasJefeId) compSubs.push(sub('eval-jefe', 'Evaluar a mi jefe'));
+      if (grado >= 360) compSubs.push(sub('pares', 'Asignar pares'));
+      if (grado >= 360 && hasJefeId) compSubs.push(sub('evaluar-pares', 'Evaluar pares'));
+    }
+    html += section('comp', 'Competencias', compSubs);
 
- // ══════════ JEFE ═══════════════════════════════════════════════
- if (esJefe) {
+    // OKR
+    const okrSubs = [sub('okr', 'Definir OKR')];
+    if (hasJefeId) okrSubs.push(sub('mis-okr', 'Mis OKR'));
+    html += section('okr', 'OKR', okrSubs);
 
- // COMPETENCIAS — solo en Q completo
- const compItems = [];
- if (!esRevision) {
- compItems.push({ id:'mis-evaluaciones', icon:'people', label:'Evaluar equipo' });
- compItems.push({ id:'autoevaluacion', icon:'person', label:'Autoevaluación' });
- if (hasJefeId)
- compItems.push({ id:'eval-jefe', icon:'person', label:'Evaluar a mi jefe' });
- if (grado >= 360 && hasJefeId)
- compItems.push({ id:'evaluar-pares', icon:'people', label:'Evaluar pares' });
- if (grado >= 360)
- compItems.push({ id:'pares', icon:'people', label:'Asignar pares' });
- }
- html += section('comp','shield','Competencias', compItems);
+    // Seguimiento
+    const segSubs = [
+      sub('resultados-equipo', 'Resultados del equipo'),
+      sub('ninebox',           'Nine Box'),
+      sub('insignias-page',    'Insignias'),
+    ];
+    if (hasJefeId) segSubs.unshift(sub('resultados', 'Mis resultados'));
+    html += section('seg', 'Seguimiento', segSubs);
 
- // OKR
- const okrItems = [{ id:'okr', icon:'check', label:'Definir OKR' }];
- if (hasJefeId) okrItems.push({ id:'mis-okr', icon:'check', label:'Mis OKR' });
- html += section('okr-sec','check','OKR', okrItems);
+    // Informes
+    const infSubs = [
+      sub('bitacora',  'Bitacora equipo'),
+      sub('pdi',       'PDI equipo'),
+    ];
+    if (hasJefeId) infSubs.push(sub('mi-bitacora', 'Mi bitacora'));
+    if (hasJefeId) infSubs.push(sub('mi-pdi',      'Mi PDI'));
+    html += section('inf', 'Informes', infSubs);
+  }
 
- // SEGUIMIENTO
- const segItems = [
- { id:'resultados-equipo', icon:'chart', label:'Resultados equipo' },
- { id:'ninebox', icon:'nine', label:'Nine Box' },
- { id:'insignias-page', icon:'star', label:'Insignias' },
- ];
- if (hasJefeId)
- segItems.unshift({ id:'resultados', icon:'chart', label:'Mis resultados' });
- html += section('seguim','chart','Seguimiento', segItems);
+  // ── COLABORADOR ───────────────────────────────────────────────────
+  if (esColab) {
+    // Competencias (solo Q completo)
+    const compSubs = [];
+    if (!esRevision) {
+      compSubs.push(sub('autoevaluacion', 'Autoevaluacion'));
+      compSubs.push(sub('eval-jefe',      'Evaluar a mi jefe'));
+      if (grado >= 360) compSubs.push(sub('evaluar-pares', 'Evaluar pares'));
+    }
+    html += section('comp', 'Competencias', compSubs);
 
- // INFORMES
- const infItems = [
- { id:'bitacora', icon:'note', label:'Bitácora equipo' },
- { id:'pdi', icon:'pdi', label:'PDI equipo' },
- ];
- if (hasJefeId) infItems.push({ id:'mi-bitacora', icon:'note', label:'Mi bitácora' });
- if (hasJefeId) infItems.push({ id:'mi-pdi', icon:'pdi', label:'Mi PDI' });
- html += section('informes','book','Informes', infItems, false);
- }
+    // OKR
+    html += section('okr', 'OKR', [sub('mis-okr', 'Mis OKR')]);
 
- // ══════════ COLABORADOR ════════════════════════════════════════
- if (esColab) {
+    // Seguimiento
+    html += section('seg', 'Seguimiento', [
+      sub('resultados',     'Mis resultados'),
+      sub('insignias-page', 'Insignias'),
+    ]);
 
- // COMPETENCIAS — solo en Q completo
- const compItems = [];
- if (!esRevision) {
- compItems.push({ id:'autoevaluacion', icon:'person', label:'Autoevaluación' });
- compItems.push({ id:'eval-jefe', icon:'person', label:'Evaluar a mi jefe' });
- if (grado >= 360)
- compItems.push({ id:'evaluar-pares', icon:'people', label:'Evaluar pares' });
- }
- html += section('comp','shield','Competencias', compItems);
+    // Informes
+    html += section('inf', 'Informes', [
+      sub('mi-pdi',      'Mi PDI'),
+      sub('mi-bitacora', 'Mi bitacora'),
+    ]);
+  }
 
- // OKR
- html += section('okr-sec','check','OKR', [
- { id:'mis-okr', icon:'check', label:'Mis OKR' },
- ]);
-
- // SEGUIMIENTO
- html += section('seguim','chart','Seguimiento', [
- { id:'resultados', icon:'chart', label:'Mis resultados' },
- { id:'insignias-page', icon:'star', label:'Insignias' },
- ]);
-
- // INFORMES
- html += section('informes','book','Informes', [
- { id:'mi-pdi', icon:'pdi', label:'Mi PDI' },
- { id:'mi-bitacora', icon:'note', label:'Mi bitácora' },
- ], false);
- }
-
- document.getElementById('sidebar').innerHTML = `<div style="padding:4px 0">${html}</div>`;
+  document.getElementById('sidebar').innerHTML = `<div style="padding:8px 4px">${html}</div>`;
 }
 
 function toggleSidebarGroup(id) {
