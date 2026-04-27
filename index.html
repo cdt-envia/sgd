@@ -531,7 +531,7 @@
  </div>
  <button class="btn-login" onclick="handleLogin()">Ingresar al sistema</button>
  <p class="login-error" id="loginError">Usuario o contraseña incorrectos</p>
- <div style="text-align:center;margin-top:16px;font-size:.7rem;color:#bbb;font-family:monospace">v9.5</div>
+ <div style="text-align:center;margin-top:16px;font-size:.7rem;color:#bbb;font-family:monospace">v9.7</div>
  </div>
 
  <!-- Indicadores de impacto -->
@@ -661,7 +661,7 @@
  </svg>
  Actualizar
  </button>
- <span style="font-size:.68rem;color:#ccc;font-family:monospace;opacity:.6">v9.5</span>
+ <span style="font-size:.68rem;color:#ccc;font-family:monospace;opacity:.6">v9.7</span>
  </div>
  </div>
 
@@ -7604,45 +7604,77 @@ const FRASES_LOGIN = [
 
 // ── INSIGNIAS en Mis Resultados ────────────────────────────────────────
 function renderInsignias(colabId, container) {
- const cont = document.getElementById(container);
- if (!cont) return;
- const ganadas = evaluarInsignias(colabId);
- const todas = [...INSIGNIAS_BASE, ...DEMO_INSIGNIAS_CUSTOM];
- if (!todas.length) return;
+  const cont = document.getElementById(container);
+  if (!cont) return;
+  const ganadas = evaluarInsignias(colabId);
+  const todas   = [...INSIGNIAS_BASE, ...DEMO_INSIGNIAS_CUSTOM];
+  if (!todas.length) return;
 
- // Save earned insignias to Sheets (best-effort, don't block render)
- if (ganadas.length > 0) {
- try {
- const fecha = new Date().toISOString().slice(0,10);
- const toSave = ganadas.map(ins => ({
- id: `INS-${colabId}-${ins.id}`,
- colaborador_id: colabId,
- insignia_id: ins.id,
- nombre: ins.nombre,
- descripcion: ins.descripcion,
- beneficio: ins.beneficio || '',
- fecha_otorgada: fecha,
- }));
- apiCall('saveInsignias', { insignias: toSave });
- } catch(e) { /* non-blocking */ }
- }
+  // Save earned insignias to Sheets (best-effort)
+  if (ganadas.length > 0) {
+    try {
+      const fecha = new Date().toISOString().slice(0,10);
+      apiCall('saveInsignias', { insignias: ganadas.map(ins => ({
+        id: `INS-${colabId}-${ins.id}`, colaborador_id: colabId,
+        insignia_id: ins.id, nombre: ins.nombre,
+        descripcion: ins.descripcion, beneficio: ins.beneficio||'', fecha_otorgada: fecha,
+      }))});
+    } catch(e) {}
+  }
 
- cont.innerHTML = `
- <div class="card" style="margin-top:0">
- <div class="card-title" style="margin-bottom:14px"> Insignias y Beneficios</div>
- <div style="display:grid;grid-template-columns:repeat(auto-fill,minmax(160px,1fr));gap:10px">
- ${todas.map(ins => {
- const obtenida = ganadas.some(g => g.id === ins.id);
- return `<div style="border-radius:10px;padding:14px 12px;text-align:center;background:${obtenida?'linear-gradient(135deg,#fff8e1,#fff3cd)':'var(--gray-light)'};border:2px solid ${obtenida?'#fbc02d':'var(--gray-mid)'};opacity:${obtenida?1:0.45};transition:.2s">
- <div style="font-size:2rem;margin-bottom:6px">${ins.emoji}</div>
- <div style="font-size:.82rem;font-weight:700;color:var(--gray);margin-bottom:4px">${ins.nombre}</div>
- <div style="font-size:.72rem;color:#888;line-height:1.4;margin-bottom:${obtenida?'8px':'0'}">${ins.descripcion}</div>
- ${obtenida ? `<div style="font-size:.72rem;background:#e8f5e9;color:#2e7d32;border-radius:6px;padding:3px 6px;margin-top:4px"> ${ins.beneficio}</div>` : ''}
- </div>`;
- }).join('')}
- </div>
- <div style="font-size:.78rem;color:#aaa;margin-top:10px">${ganadas.length}/${todas.length} insignias obtenidas</div>
- </div>`;
+  // SVG icons per insignia
+  const ICONS = {
+    INS001: '<path d="M12 2C6.48 2 2 6.48 2 12s4.48 10 10 10 10-4.48 10-10S17.52 2 12 2zm-2 14.5v-9l6 4.5-6 4.5z"/>',
+    INS002: '<path d="M19 3H5c-1.1 0-2 .9-2 2v14c0 1.1.9 2 2 2h14c1.1 0 2-.9 2-2V5c0-1.1-.9-2-2-2zm-7 3c1.93 0 3.5 1.57 3.5 3.5S13.93 13 12 13s-3.5-1.57-3.5-3.5S10.07 6 12 6zm7 13H5v-.23c0-.62.28-1.2.76-1.58C7.47 15.82 9.64 15 12 15s4.53.82 6.24 2.19c.48.38.76.97.76 1.58V19z"/>',
+    INS003: '<path d="M12 17.27L18.18 21l-1.64-7.03L22 9.24l-7.19-.61L12 2 9.19 8.63 2 9.24l5.46 4.73L5.82 21z"/>',
+    INS004: '<path d="M11.99 2C6.47 2 2 6.48 2 12s4.47 10 9.99 10C17.52 22 22 17.52 22 12S17.52 2 11.99 2zm4.24 16L12 15.45 7.77 18l1.12-4.81-3.73-3.23 4.92-.42L12 5l1.92 4.53 4.92.42-3.73 3.23L16.23 18z"/>',
+    INS005: '<path d="M12 3L1 9l11 6 9-4.91V17h2V9M5 13.18v4L12 21l7-3.82v-4L12 17l-7-3.82z"/>',
+    INS006: '<path d="M19 3H5c-1.1 0-2 .9-2 2v14c0 1.1.9 2 2 2h14c1.1 0 2-.9 2-2V5c0-1.1-.9-2-2-2zm-7 14l-5-5 1.41-1.41L12 14.17l7.59-7.59L21 8l-9 9z"/>',
+    INS007: '<path d="M16 6l2.29 2.29-4.88 4.88-4-4L2 16.59 3.41 18l6-6 4 4 6.3-6.29L22 12V6z"/>',
+  };
+
+  const COLOR_ON  = { bg:'#fffde7', border:'#f9a825', icon:'#f9a825', text:'#5d4037' };
+  const COLOR_OFF = { bg:'#f5f5f5', border:'#e0e0e0', icon:'#bbb',    text:'#bbb'    };
+
+  cont.innerHTML = `
+    <div class="card" style="margin-top:0">
+      <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:16px">
+        <div>
+          <div class="card-title">Insignias y Beneficios</div>
+          <div style="font-size:.76rem;color:#999;margin-top:2px">${ganadas.length} de ${todas.length} obtenidas</div>
+        </div>
+        ${ganadas.length > 0 ? `
+        <div style="background:#fffde7;border:1px solid #f9a825;border-radius:20px;padding:4px 12px;font-size:.78rem;font-weight:700;color:#f9a825">
+          ${ganadas.length} logro${ganadas.length!==1?'s':''}
+        </div>` : ''}
+      </div>
+      <div style="display:grid;grid-template-columns:repeat(auto-fill,minmax(180px,1fr));gap:10px">
+        ${todas.map(ins => {
+          const got = ganadas.some(g => g.id === ins.id);
+          const C   = got ? COLOR_ON : COLOR_OFF;
+          return `
+          <div style="
+            border-radius:10px;padding:16px 14px;text-align:center;
+            background:${C.bg};border:1.5px solid ${C.border};
+            transition:.2s;position:relative;
+            ${got ? 'box-shadow:0 2px 8px rgba(249,168,37,.15)' : 'opacity:.55'}">
+            <div style="width:44px;height:44px;border-radius:50%;background:${got?'#f9a825':'#e0e0e0'};
+              display:flex;align-items:center;justify-content:center;margin:0 auto 10px">
+              <svg viewBox="0 0 24 24" fill="white" width="22" height="22">
+                ${ICONS[ins.id]||ICONS.INS001}
+              </svg>
+            </div>
+            <div style="font-size:.84rem;font-weight:700;color:${C.text};margin-bottom:4px">${ins.nombre}</div>
+            <div style="font-size:.72rem;color:${got?'#795548':'#bbb'};line-height:1.4;margin-bottom:${got?'10px':'0'}">${ins.descripcion}</div>
+            ${got ? `
+            <div style="font-size:.7rem;background:white;border:1px solid #f9a825;color:#f9a825;
+              border-radius:6px;padding:4px 8px;margin-top:2px;line-height:1.3">
+              ${ins.beneficio}
+            </div>` : ''}
+          </div>`;
+        }).join('')}
+      </div>
+    </div>`;
 }
 </script>
 </body>
