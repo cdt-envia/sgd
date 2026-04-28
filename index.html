@@ -531,7 +531,7 @@
  </div>
  <button class="btn-login" onclick="handleLogin()">Ingresar al sistema</button>
  <p class="login-error" id="loginError">Usuario o contraseña incorrectos</p>
- <div style="text-align:center;margin-top:16px;font-size:.7rem;color:#bbb;font-family:monospace">v9.8</div>
+ <div style="text-align:center;margin-top:16px;font-size:.7rem;color:#bbb;font-family:monospace">v10.2</div>
  </div>
 
  <!-- Indicadores de impacto -->
@@ -661,7 +661,7 @@
  </svg>
  Actualizar
  </button>
- <span style="font-size:.68rem;color:#ccc;font-family:monospace;opacity:.6">v9.8</span>
+ <span style="font-size:.68rem;color:#ccc;font-family:monospace;opacity:.6">v10.2</span>
  </div>
  </div>
 
@@ -1045,7 +1045,7 @@
  </div>
  <div class="table-wrap">
  <table>
- <thead><tr><th>Nombre</th><th>Usuario</th><th>Cargo</th><th>Rol</th><th>Jefe</th><th>Estado</th><th>Acciones</th></tr></thead>
+ <thead><tr><th>Nombre</th><th>Usuario</th><th>Cargo</th><th>Rol</th><th>Nivel</th><th>Jefe</th><th>Estado</th><th>Acciones</th></tr></thead>
  <tbody id="usersTableBody"></tbody>
  </table>
  </div>
@@ -1059,7 +1059,7 @@
  </div>
  <div class="table-wrap">
  <table>
- <thead><tr><th>Competencia</th><th>Descripción</th><th>Cargo(s)</th><th>Peso %</th><th>Comportamientos</th><th>Acciones</th></tr></thead>
+ <thead><tr><th>Competencia</th><th>Descripción</th><th>Cargo(s)</th><th>Comportamientos</th><th>Acciones</th></tr></thead>
  <tbody id="compTableBody"></tbody>
  </table>
  </div>
@@ -1219,7 +1219,7 @@
 // ═══════════════════════════════════════════
 // CONFIG — Reemplaza con tu URL de Google Apps Script
 // ═══════════════════════════════════════════
-const SCRIPT_URL = 'https://script.google.com/macros/s/AKfycbyZL4bdEv78sRL-iYwvKTDWNATt_tDHRG7TmkA2jO67kvz9phLbUKOMKkk4Z16Gws_3/exec';
+const SCRIPT_URL = 'https://script.google.com/macros/s/AKfycbyiZcz3GqN_3VlzhvitVKqT5YpzKPFo2YovGzzD543KwGhsX_9eNHz3YTLZs1NNBNDI/exec';
 
 // ═══════════════════════════════════════════
 // STATE
@@ -1640,8 +1640,19 @@ function getAllEvaluables() {
 function getEvaluablesByJefe(jefeId) {
  return STATE.users.filter(u => isEvaluable(u) && u.jefe_id === jefeId);
 }
-function getCompsByRole(cargo) {
-  return STATE.competencias.filter(c => c.cargos === 'Todos' || c.cargos.includes(cargo));
+function getCompsByRole(cargo, nivelOcupacional) {
+  // Filtra competencias por cargo del evaluado.
+  // cargos = 'Todos' → aplica a todos
+  // cargos = 'Ejecutiva Comercial, Gerente Comercial' → solo esos cargos
+  // El nivel_ocupacional se usa SOLO para mostrar los comportamientos correctos,
+  // no para filtrar qué competencias aplican.
+  return STATE.competencias.filter(comp => {
+    const campo = (comp.cargos || 'Todos').trim();
+    if (campo.toLowerCase() === 'todos') return true;
+    const lista = campo.split(',').map(s => s.trim().toLowerCase());
+    const cargoEval = (cargo || '').toLowerCase();
+    return lista.some(c => cargoEval.includes(c) || c.includes(cargoEval));
+  });
 }
 
 // Get nivel_ocupacional of a user — default to 'tactico' if not set
@@ -2579,7 +2590,7 @@ function openEvalForm(evaluadoId) {
 
 function renderCompetenciasForm(cargo, savedScores, readOnly, nivelOcupacional) {
  const nivel = (nivelOcupacional || 'tactico').toLowerCase();
- const comps = getCompsByRole(cargo);
+ const comps = getCompsByRole(cargo, nivel);
  const container = document.getElementById('competenciasContainer');
  if (!comps.length) { container.innerHTML = '<p style="color:#888;padding:16px">No hay competencias configuradas para este cargo.</p>'; return; }
 
@@ -3034,7 +3045,7 @@ async function submitEval() {
  ['Q2','Q3','Q4'].includes(evalCiclo?.trimestre);
 
  if (!esRevision) {
- const comps = getCompsByRole(e._evaluado.cargo);
+ const comps = getCompsByRole(e._evaluado.cargo, getNivelOcupacional(e._evaluado.id));
  const scores = e.comp_scores || {};
  const rated = comps.filter(c => scores[c.id] > 0).length;
  if (rated < comps.length) {
@@ -3087,7 +3098,7 @@ async function submitEval() {
 
 function buildEvalPayload(estado) {
  const e = STATE.currentEval;
- const comps = getCompsByRole(e._evaluado.cargo);
+ const comps = getCompsByRole(e._evaluado.cargo, getNivelOcupacional(e._evaluado.id));
 
  // Recalculate comp_scores from current dropdown values (don't trust stale state)
  const compScores = { ...e.comp_scores };
@@ -3384,7 +3395,7 @@ function renderResultados() {
  const jefeScores = comps.map(c => getCompScore(evalJefe, c.id));
  const autoScores = evalAuto ? comps.map(c => getCompScore(evalAuto, c.id)) : [];
 
- const comps = getCompsByRole(u.cargo);
+ const comps = getCompsByRole(u.cargo, getNivelOcupacional(u.id));
  const evEq = STATE.evaluaciones.filter(e => e.evaluado_id === u.id && e.tipo === 'colab_a_jefe' && e.estado === 'enviado');
  const catColor = cat?.color || '#1565c0'; // blue when no jefe eval yet
 
@@ -6241,8 +6252,7 @@ function renderCompsTable() {
  return `<tr>
  <td><strong>${c.nombre}</strong></td>
  <td style="font-size:.82rem;color:#888">${c.descripcion}</td>
- <td><span class="status-pill pill-progress">${c.cargos}</span></td>
- <td>${c.peso}%</td>
+ <td style="font-size:.82rem">${c.cargos||'Todos'}</td>
  <td>${indicator}</td>
  <td><button class="btn btn-secondary btn-sm" onclick="openCompModal('${c.id}')">Ver</button></td>
  </tr>`;
@@ -6330,33 +6340,37 @@ function openCompModal(compId) {
  const c = compId ? STATE.competencias.find(x => x.id === compId) : null;
  const newId = generateNextId('C', STATE.competencias);
 
- const behFields = [1,2,3,4].map(n => {
- const b = BEHAVIORS[n];
- const val = c?.['comportamiento_' + n] || '';
- return `<div class="form-field" style="margin-bottom:8px">
+ const NIVELES = [
+ { key:'tactico',     label:'Tactico',     color:'#1a5fa8' },
+ { key:'estrategico', label:'Estrategico', color:'#e65100' },
+ { key:'directivo',   label:'Directivo',   color:'#2e7d32' },
+ ];
+
+ const nivelFields = NIVELES.map(n => {
+ const val = c?.[n.key] || '';
+ return `<div class="form-field" style="margin-bottom:10px">
  <label style="display:flex;align-items:center;gap:8px;margin-bottom:5px">
- <span style="background:${b.color};color:white;border-radius:6px;padding:2px 10px;font-size:.72rem;font-weight:700;white-space:nowrap">${n} — ${b.label}</span>
+ <span style="background:${n.color};color:white;border-radius:6px;padding:2px 10px;font-size:.72rem;font-weight:700">${n.label}</span>
  </label>
- <textarea id="cBeh${n}" rows="3"
- placeholder="Escribe uno o varios comportamientos. Para agregar más de uno, usa una línea por cada comportamiento."
- style="width:100%;padding:8px 10px;border:1.5px solid var(--gray-mid);border-radius:8px;font-family:Asap,sans-serif;font-size:.84rem;resize:vertical;outline:none"
- onfocus="this.style.borderColor='var(--red)'" onblur="this.style.borderColor='var(--gray-mid)'"
+ <textarea id="cBeh_${n.key}" rows="4"
+ placeholder="Comportamientos para el nivel ${n.label}. Una linea por comportamiento."
+ style="width:100%;padding:8px 10px;border:1px solid var(--border);border-radius:6px;font-family:Asap,sans-serif;font-size:.83rem;resize:vertical;outline:none"
+ onfocus="this.style.borderColor='var(--red)'" onblur="this.style.borderColor='var(--border)'"
  >${val}</textarea>
  </div>`;
  }).join('');
 
  openModal(c ? 'Editar competencia' : 'Nueva competencia', `
  <div class="form-field"><label>Nombre de la competencia *</label><input type="text" id="cNombre" value="${c?.nombre||''}"></div>
- <div class="form-field"><label>Descripción general</label><textarea id="cDesc" rows="2">${c?.descripcion||''}</textarea></div>
- <div class="form-row">
- <div class="form-field"><label>Cargo(s) aplicables</label><input type="text" id="cCargos" value="${c?.cargos||'Todos'}" placeholder="Todos, o nombre exacto del cargo"></div>
- <!-- peso eliminado -->
+ <div class="form-field"><label>Descripcion general</label><textarea id="cDesc" rows="2">${c?.descripcion||''}</textarea></div>
+ <div class="form-field"><label>Cargo(s) aplicables</label>
+ <input type="text" id="cCargos" value="${c?.cargos||'Todos'}" placeholder="Todos, o cargo(s) separados por coma">
+ <small style="color:#999;font-size:.74rem">Ej: Todos &nbsp;|&nbsp; Ejecutiva Comercial, Gerente Comercial</small>
  </div>
- <hr style="border:none;border-top:1px solid var(--gray-light);margin:14px 0">
- <div style="font-size:.82rem;font-weight:700;color:var(--gray);text-transform:uppercase;letter-spacing:.06em;margin-bottom:10px">
- Comportamientos por nivel de calificación
- </div>
- ${behFields}
+ <hr style="border:none;border-top:1px solid var(--border);margin:14px 0">
+ <div style="font-size:.78rem;font-weight:700;color:var(--gray);text-transform:uppercase;letter-spacing:.06em;margin-bottom:4px">Comportamientos por nivel ocupacional</div>
+ <div style="font-size:.76rem;color:#999;margin-bottom:10px">El sistema mostrara automaticamente los comportamientos segun el nivel del evaluado.</div>
+ ${nivelFields}
  `, [
  { label:'Cancelar', cls:'btn-secondary', action:'closeModal()' },
  { label: c ? 'Guardar cambios' : 'Crear competencia', cls:'btn-primary', action:`saveCompModal('${c?.id||newId}')` }
@@ -6371,12 +6385,10 @@ async function saveCompModal(id) {
  id,
  nombre,
  descripcion: document.getElementById('cDesc').value,
- cargos: document.getElementById('cCargos').value || 'Todos',
- peso: 0, // peso eliminado
- comportamiento_1: document.getElementById('cBeh1')?.value?.trim() || '',
- comportamiento_2: document.getElementById('cBeh2')?.value?.trim() || '',
- comportamiento_3: document.getElementById('cBeh3')?.value?.trim() || '',
- comportamiento_4: document.getElementById('cBeh4')?.value?.trim() || '',
+ cargos:      document.getElementById('cCargos').value || 'Todos',
+ tactico:     document.getElementById('cBeh_tactico')?.value?.trim()     || '',
+ estrategico: document.getElementById('cBeh_estrategico')?.value?.trim() || '',
+ directivo:   document.getElementById('cBeh_directivo')?.value?.trim()   || '',
  };
 
  const idx = STATE.competencias.findIndex(c => c.id === id);
@@ -6386,7 +6398,7 @@ async function saveCompModal(id) {
  await apiCall('saveComp', data);
  closeModal();
  renderCompsTable();
- showToast(' Competencia guardada', 'success');
+ showToast('Competencia guardada', 'success');
 }
 
 function renderAdminCharts() {
