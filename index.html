@@ -531,7 +531,7 @@
  </div>
  <button class="btn-login" onclick="handleLogin()">Ingresar al sistema</button>
  <p class="login-error" id="loginError">Usuario o contraseña incorrectos</p>
- <div style="text-align:center;margin-top:16px;font-size:.7rem;color:#bbb;font-family:monospace">v10.5</div>
+ <div style="text-align:center;margin-top:16px;font-size:.7rem;color:#bbb;font-family:monospace">v10.6</div>
  </div>
 
  <!-- Indicadores de impacto -->
@@ -661,7 +661,7 @@
  </svg>
  Actualizar
  </button>
- <span style="font-size:.68rem;color:#ccc;font-family:monospace;opacity:.6">v10.5</span>
+ <span style="font-size:.68rem;color:#ccc;font-family:monospace;opacity:.6">v10.6</span>
  </div>
  </div>
 
@@ -1648,18 +1648,46 @@ function getAllEvaluables() {
 function getEvaluablesByJefe(jefeId) {
  return STATE.users.filter(u => isEvaluable(u) && u.jefe_id === jefeId);
 }
+// Grupos de cargos — el campo 'cargos' puede usar estos alias
+// El sistema los expande automáticamente al filtrar
+const CARGO_GRUPOS = {
+  'todos':          ()  => true,
+  'jefaturas':      (c) => /jefe|jefatura/i.test(c),
+  'jefatura':       (c) => /jefe|jefatura/i.test(c),
+  'coordinadores':  (c) => /coordinador|coord\b/i.test(c),
+  'coordinador':    (c) => /coordinador|coord\b/i.test(c),
+  'gerencias':      (c) => /gerente|gerencia/i.test(c),
+  'gerencia':       (c) => /gerente|gerencia/i.test(c),
+  'directores':     (c) => /director|directora/i.test(c),
+  'director':       (c) => /director|directora/i.test(c),
+  'analistas':      (c) => /analista/i.test(c),
+  'ejecutivos':     (c) => /ejecutiv/i.test(c),
+  'auxiliares':     (c) => /auxiliar/i.test(c),
+  'asistentes':     (c) => /asistente/i.test(c),
+};
+
+function cargoMatchesCriteria(cargo, criterio) {
+  const cr = criterio.trim().toLowerCase();
+  // Check if it's a known group alias
+  if (CARGO_GRUPOS[cr]) return CARGO_GRUPOS[cr](cargo);
+  // Otherwise do partial text match
+  const cargoL = (cargo || '').toLowerCase();
+  return cargoL.includes(cr) || cr.includes(cargoL);
+}
+
 function getCompsByRole(cargo, nivelOcupacional) {
   // Filtra competencias por cargo del evaluado.
-  // cargos = 'Todos' → aplica a todos
-  // cargos = 'Ejecutiva Comercial, Gerente Comercial' → solo esos cargos
-  // El nivel_ocupacional se usa SOLO para mostrar los comportamientos correctos,
-  // no para filtrar qué competencias aplican.
+  // Soporta:
+  //   'Todos'                         → aplica a todos
+  //   'jefaturas, coordinadores'      → grupos predefinidos
+  //   'Gerente Comercial, Analista'   → cargos exactos o parciales
+  //   Separador: coma o +
   return STATE.competencias.filter(comp => {
     const campo = (comp.cargos || 'Todos').trim();
     if (campo.toLowerCase() === 'todos') return true;
-    const lista = campo.split(',').map(s => s.trim().toLowerCase());
-    const cargoEval = (cargo || '').toLowerCase();
-    return lista.some(c => cargoEval.includes(c) || c.includes(cargoEval));
+    // Support both comma and + as separators
+    const lista = campo.split(/[,+]/).map(s => s.trim()).filter(Boolean);
+    return lista.some(criterio => cargoMatchesCriteria(cargo, criterio));
   });
 }
 
