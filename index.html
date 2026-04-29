@@ -531,7 +531,7 @@
  </div>
  <button class="btn-login" onclick="handleLogin()">Ingresar al sistema</button>
  <p class="login-error" id="loginError">Usuario o contraseña incorrectos</p>
- <div style="text-align:center;margin-top:16px;font-size:.7rem;color:#bbb;font-family:monospace">v11.0</div>
+ <div style="text-align:center;margin-top:16px;font-size:.7rem;color:#bbb;font-family:monospace">v11.1</div>
  </div>
 
  <!-- Indicadores de impacto -->
@@ -661,7 +661,7 @@
  </svg>
  Actualizar
  </button>
- <span style="font-size:.68rem;color:#ccc;font-family:monospace;opacity:.6">v11.0</span>
+ <span style="font-size:.68rem;color:#ccc;font-family:monospace;opacity:.6">v11.1</span>
  </div>
  </div>
 
@@ -2083,7 +2083,11 @@ async function loadAllData() {
  STATE.okr = rokr.data || [];
  STATE.pares = rpares.data || [];
  STATE.potencial = rpot.data || [];
- STATE.ciclos = rciclos.data || [];
+ STATE.ciclos = (rciclos.data || []).map(c => ({
+ ...c,
+ // backward compat: old data used peso_okr, new uses peso_equipo
+ peso_equipo: c.peso_equipo ?? c.peso_okr ?? 15,
+ }));
  STATE.revisiones = rrev.data || [];
  STATE.bitacora = rbit.data || [];
  // Sync active ciclo into STATE.periodo for compatibility
@@ -6922,10 +6926,10 @@ function renderCiclos() {
  <td style="font-size:.82rem">${parent.fin ? String(parent.fin).slice(0,10) : '—'}</td>
  <td><span class="status-pill ${st.cls}">${st.label}</span></td>
  <td style="font-size:.75rem;color:#888">${
-   ciclo.grado == '90'  ? 'Jefe 100%' :
-   ciclo.grado == '180' ? `Jefe ${ciclo.peso_jefe||60}% / Auto ${ciclo.peso_auto||40}%` :
-   ciclo.grado == '270' ? `J:${ciclo.peso_jefe||50}% A:${ciclo.peso_auto||30}% E:${ciclo.peso_equipo||20}%` :
-   `J:${ciclo.peso_jefe||40}% A:${ciclo.peso_auto||20}% P:${ciclo.peso_pares||25}% E:${ciclo.peso_equipo||15}%`
+   parent.grado == '90'  ? 'Jefe 100%' :
+   parent.grado == '180' ? `Jefe ${parent.peso_jefe||60}% / Auto ${parent.peso_auto||40}%` :
+   parent.grado == '270' ? `J:${parent.peso_jefe||50}% A:${parent.peso_auto||30}% E:${parent.peso_equipo||20}%` :
+   `J:${parent.peso_jefe||40}% A:${parent.peso_auto||20}% P:${parent.peso_pares||25}% E:${parent.peso_equipo||15}%`
  }</td>
  <td>
  <button class="btn btn-secondary btn-sm" onclick="openCicloModal('${parent.id}')">Editar</button>
@@ -7270,7 +7274,7 @@ async function saveCicloModal(id) {
  inicio: qs[i].inicio,
  fin: qs[i].fin,
  estado: 'closed',
- peso_jefe:25, peso_auto:25, peso_pares:25, peso_okr:25
+ peso_jefe: data.peso_jefe, peso_auto: data.peso_auto, peso_pares: data.peso_pares, peso_equipo: data.peso_equipo
  };
  STATE.ciclos.push(qData);
  await apiCall('saveCiclo', qData);
