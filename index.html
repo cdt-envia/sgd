@@ -531,7 +531,7 @@
  </div>
  <button class="btn-login" onclick="handleLogin()">Ingresar al sistema</button>
  <p class="login-error" id="loginError">Usuario o contraseña incorrectos</p>
- <div style="text-align:center;margin-top:16px;font-size:.7rem;color:#bbb;font-family:monospace">v10.9</div>
+ <div style="text-align:center;margin-top:16px;font-size:.7rem;color:#bbb;font-family:monospace">v11.0</div>
  </div>
 
  <!-- Indicadores de impacto -->
@@ -661,7 +661,7 @@
  </svg>
  Actualizar
  </button>
- <span style="font-size:.68rem;color:#ccc;font-family:monospace;opacity:.6">v10.9</span>
+ <span style="font-size:.68rem;color:#ccc;font-family:monospace;opacity:.6">v11.0</span>
  </div>
  </div>
 
@@ -1087,7 +1087,7 @@
  <div class="card-title" style="margin-bottom:10px">️ Ciclo activo</div>
  <div id="cicloActivoNombre" style="font-size:.88rem;color:#888;margin-bottom:16px"></div>
  <div style="background:linear-gradient(135deg,#e8f5e9,#f1f8e9);border-radius:10px;padding:14px 16px">
- <div style="font-size:.8rem;font-weight:700;color:#2e7d32;margin-bottom:10px">Distribución del Potencial 360° — Fijo (25% cada fuente)</div>
+ <div style="font-size:.8rem;font-weight:700;color:#2e7d32;margin-bottom:10px">Distribución del Potencial — ${cicloActivo?.grado||360}°</div>
  <div style="display:grid;grid-template-columns:repeat(4,1fr);gap:10px;text-align:center">
  <div style="background:white;border-radius:8px;padding:8px 4px">
  <div style="font-size:1.3rem;font-weight:800;color:#2e7d32">25%</div>
@@ -6921,7 +6921,12 @@ function renderCiclos() {
  <td style="font-size:.82rem">${parent.inicio ? String(parent.inicio).slice(0,10) : '—'}</td>
  <td style="font-size:.82rem">${parent.fin ? String(parent.fin).slice(0,10) : '—'}</td>
  <td><span class="status-pill ${st.cls}">${st.label}</span></td>
- <td style="font-size:.75rem;color:#888">4 × 25%</td>
+ <td style="font-size:.75rem;color:#888">${
+   ciclo.grado == '90'  ? 'Jefe 100%' :
+   ciclo.grado == '180' ? `Jefe ${ciclo.peso_jefe||60}% / Auto ${ciclo.peso_auto||40}%` :
+   ciclo.grado == '270' ? `J:${ciclo.peso_jefe||50}% A:${ciclo.peso_auto||30}% E:${ciclo.peso_equipo||20}%` :
+   `J:${ciclo.peso_jefe||40}% A:${ciclo.peso_auto||20}% P:${ciclo.peso_pares||25}% E:${ciclo.peso_equipo||15}%`
+ }</td>
  <td>
  <button class="btn btn-secondary btn-sm" onclick="openCicloModal('${parent.id}')">Editar</button>
  <span style="font-size:.72rem;color:#aaa;margin-left:6px">Activa los Q individualmente</span>
@@ -6978,11 +6983,33 @@ function renderCiclos() {
  if (activo) {
  document.getElementById('cicloActivoNombre').textContent = `Ciclo activo: ${activo.nombre} (${tipoLabel[activo.tipo]||activo.tipo})`;
  if (activo.tipo === 'completo') {
- document.getElementById('pesoJefe').value = activo.peso_jefe || 40;
- document.getElementById('pesoAuto').value = activo.peso_auto || 20;
+ document.getElementById('pesoJefe').value  = activo.peso_jefe  || 40;
+ document.getElementById('pesoAuto').value  = activo.peso_auto  || 20;
  document.getElementById('pesoPares').value = activo.peso_pares || 25;
- document.getElementById('pesoOKR').value = activo.peso_okr || 15;
+ document.getElementById('pesoOKR').value   = activo.peso_okr   || 15;
  }
+
+ // Update peso cards dynamically based on grado
+ const grado = parseInt(activo.grado || '360');
+ const fuentes = [
+ { pct: activo.peso_jefe  ?? 40, label: 'Jefe',           show: true },
+ { pct: activo.peso_auto  ?? 20, label: 'Autoevaluacion', show: grado >= 180 },
+ { pct: activo.peso_pares ?? 25, label: 'Pares',           show: grado >= 360 },
+ { pct: activo.peso_equipo?? 15, label: 'Equipo → Jefe',  show: grado >= 270 },
+ ].filter(f => f.show);
+
+ const pesoCards = document.querySelector('#cicloActivoConfig [style*="grid-template-columns"]');
+ if (pesoCards) {
+ pesoCards.style.gridTemplateColumns = `repeat(${fuentes.length},1fr)`;
+ pesoCards.innerHTML = fuentes.map(f => `
+ <div style="background:white;border-radius:8px;padding:8px 4px;text-align:center">
+ <div style="font-size:1.3rem;font-weight:800;color:#2e7d32">${f.pct}%</div>
+ <div style="font-size:.7rem;color:#888;margin-top:2px">${f.label}</div>
+ </div>`).join('');
+ }
+
+ const titleEl = document.querySelector('#cicloActivoConfig [style*="font-weight:700;color:#2e7d32"]');
+ if (titleEl) titleEl.textContent = `Distribucion del Potencial — ${grado}°`;
  }
  }
 }
