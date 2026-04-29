@@ -531,7 +531,7 @@
  </div>
  <button class="btn-login" onclick="handleLogin()">Ingresar al sistema</button>
  <p class="login-error" id="loginError">Usuario o contraseña incorrectos</p>
- <div style="text-align:center;margin-top:16px;font-size:.7rem;color:#bbb;font-family:monospace">v10.4</div>
+ <div style="text-align:center;margin-top:16px;font-size:.7rem;color:#bbb;font-family:monospace">v10.5</div>
  </div>
 
  <!-- Indicadores de impacto -->
@@ -661,7 +661,7 @@
  </svg>
  Actualizar
  </button>
- <span style="font-size:.68rem;color:#ccc;font-family:monospace;opacity:.6">v10.4</span>
+ <span style="font-size:.68rem;color:#ccc;font-family:monospace;opacity:.6">v10.5</span>
  </div>
  </div>
 
@@ -6237,13 +6237,13 @@ function renderUsersTable() {
 function renderCompsTable() {
  const tbody = document.getElementById('compTableBody');
  tbody.innerHTML = STATE.competencias.map(c => {
- const niveles = ['tactico','estrategico','directivo'];
- const defined = niveles.filter(n => c[n]?.trim()).length;
- const indicator = defined === 3
- ? `<span style="color:#2e7d32;font-size:.78rem;font-weight:600">3/3 niveles</span>`
- : defined > 0
- ? `<span style="color:#f57c00;font-size:.78rem;font-weight:600">${defined}/3 niveles</span>`
- : `<span style="color:#e53935;font-size:.78rem">Sin comportamientos</span>`;
+  const defined = [1,2,3,4].filter(n => c['comportamiento_' + n]?.trim()).length;
+   const indicator = defined === 4 ? `<span style="color:#2e7d32;font-size:.78rem;font-weight:600">4/4 definidos</span>` : defined > 0 ? `<span style="color:#f57c00;font-size:.78rem;font-weight:600">${defined}/4 definidos</span>` : `<span style="color:#e53935;font-size:.78rem">Sin comportamientos</span>`;
+
+
+
+
+
  return `<tr>
  <td><strong>${c.nombre}</strong></td>
  <td style="font-size:.82rem;color:#888">${c.descripcion}</td>
