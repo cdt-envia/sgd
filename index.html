@@ -531,7 +531,7 @@
  </div>
  <button class="btn-login" onclick="handleLogin()">Ingresar al sistema</button>
  <p class="login-error" id="loginError">Usuario o contraseña incorrectos</p>
- <div style="text-align:center;margin-top:16px;font-size:.7rem;color:#bbb;font-family:monospace">v10.2</div>
+ <div style="text-align:center;margin-top:16px;font-size:.7rem;color:#bbb;font-family:monospace">v10.4</div>
  </div>
 
  <!-- Indicadores de impacto -->
@@ -661,7 +661,7 @@
  </svg>
  Actualizar
  </button>
- <span style="font-size:.68rem;color:#ccc;font-family:monospace;opacity:.6">v10.2</span>
+ <span style="font-size:.68rem;color:#ccc;font-family:monospace;opacity:.6">v10.4</span>
  </div>
  </div>
 
@@ -1219,7 +1219,7 @@
 // ═══════════════════════════════════════════
 // CONFIG — Reemplaza con tu URL de Google Apps Script
 // ═══════════════════════════════════════════
-const SCRIPT_URL = 'https://script.google.com/macros/s/AKfycbyiZcz3GqN_3VlzhvitVKqT5YpzKPFo2YovGzzD543KwGhsX_9eNHz3YTLZs1NNBNDI/exec';
+const SCRIPT_URL = 'https://script.google.com/macros/s/AKfycbyjKUFEuiVCJqjh-o5hoqp3sgn3Dv-rMxfzcY7b5Co7-jipSKQomfYvLfrCltZlbV0d/exec';
 
 // ═══════════════════════════════════════════
 // STATE
@@ -1303,45 +1303,53 @@ const DEMO_USERS = [
 ];
 
 const DEMO_COMPETENCIAS = [
- { id:'C001', nombre:'Orientación al Logro', descripcion:'Capacidad para establecer y superar metas retadoras', cargos:'Todos', peso:15,
- tactico:'1) Cumple con las tareas asignadas dentro de los plazos establecidos.\n2) Hace seguimiento a sus compromisos y comunica cuando enfrenta obstáculos.\n3) Organiza su trabajo para lograr los resultados esperados.',
- estrategico:'1) Define metas retadoras para su equipo y hace seguimiento sistemático.\n2) Anticipa obstáculos y toma decisiones oportunas para mantener el rumbo.\n3) Moviliza recursos y ajusta estrategias para superar los resultados esperados.',
- directivo:'1) Establece una visión ambiciosa de resultados y la traduce en metas concretas para toda la organización.\n2) Crea sistemas de seguimiento que garantizan el cumplimiento sostenido.\n3) Inspira a líderes y equipos a superar continuamente sus propios estándares.'
+ { id:'C001', nombre:'Orientación al Logro', descripcion:'Capacidad para establecer y superar metas retadoras', cargos:'Todos',
+ comportamiento_1:'No cumple con las tareas asignadas dentro de los plazos establecidos. No hace seguimiento a sus compromisos.',
+ comportamiento_2:'Cumple con algunas tareas pero enfrenta dificultades para organizarse y lograr todos los resultados esperados.',
+ comportamiento_3:'Cumple con las tareas asignadas dentro de los plazos. Hace seguimiento a sus compromisos y comunica obstáculos.',
+ comportamiento_4:'Supera consistentemente los resultados esperados. Propone mejoras y moviliza recursos para lograr metas retadoras.'
  },
- { id:'C002', nombre:'Trabajo en Equipo', descripcion:'Habilidad para colaborar y construir relaciones positivas', cargos:'Todos', peso:15,
- tactico:'1) Colabora activamente con sus compañeros y comparte información relevante.\n2) Mantiene relaciones respetuosas y constructivas con todos en el equipo.\n3) Apoya a sus compañeros cuando lo necesitan sin esperar a ser solicitado.',
- estrategico:'1) Construye puentes entre áreas y facilita la colaboración interfuncional.\n2) Gestiona conflictos con madurez y orienta al equipo hacia soluciones conjuntas.\n3) Crea condiciones para que el equipo trabaje con confianza y compromiso.',
- directivo:'1) Fomenta una cultura de colaboración transversal en toda la organización.\n2) Diseña estructuras y procesos que favorecen la integración entre equipos.\n3) Es referente de trabajo colaborativo; su estilo genera cohesión y resultados colectivos.'
+ { id:'C002', nombre:'Trabajo en Equipo', descripcion:'Habilidad para colaborar y construir relaciones positivas', cargos:'Todos',
+ comportamiento_1:'Trabaja de forma aislada, no comparte información relevante y genera conflictos en el equipo.',
+ comportamiento_2:'Colabora ocasionalmente pero le cuesta mantener relaciones constructivas con todos en el equipo.',
+ comportamiento_3:'Colabora activamente, comparte información y apoya a sus compañeros sin esperar a ser solicitado.',
+ comportamiento_4:'Es referente de colaboración. Construye puentes entre áreas y facilita la resolución de conflictos.'
  },
- { id:'C003', nombre:'Comunicación Efectiva', descripcion:'Capacidad para transmitir ideas con claridad y escuchar activamente', cargos:'Todos', peso:15,
- tactico:'1) Prepara y estructura sus argumentos de forma clara, haciendo referencia a situaciones concretas.\n2) Utiliza un lenguaje verbal apropiado incluso cuando algo le molesta.\n3) Es flexible para entender otros puntos de vista y escucha así no esté de acuerdo.\n4) Verifica que su interlocutor haya entendido el mensaje.',
- estrategico:'1) Comunica de manera clara y a tiempo sus estrategias y necesidades a quien se requiera.\n2) Valora y tiene en cuenta el aporte de los demás.\n3) Expresa su desacuerdo con apertura, diciendo lo que siente, cuidando no afectar a otros.\n4) Promueve espacios de comunicación para el intercambio de ideas entre áreas.',
- directivo:'1) Comunica estrategias con claridad y apertura, promoviendo el diálogo constructivo.\n2) Fomenta una cultura de comunicación interárea y escucha opiniones diversas.\n3) Asegura la coherencia del mensaje corporativo y el alineamiento de su equipo.\n4) Adapta el estilo de comunicación a diferentes audiencias internas y externas.'
+ { id:'C003', nombre:'Comunicación Efectiva', descripcion:'Capacidad para transmitir ideas con claridad y escuchar activamente', cargos:'Todos',
+ comportamiento_1:'Comunica de forma confusa o inapropiada. No verifica que el mensaje fue entendido.',
+ comportamiento_2:'Comunica con claridad en situaciones simples pero pierde efectividad en contextos de presión o desacuerdo.',
+ comportamiento_3:'Estructura sus argumentos con claridad, escucha activamente y verifica que su mensaje fue entendido.',
+ comportamiento_4:'Comunica con impacto en cualquier audiencia. Promueve espacios de diálogo y maneja el desacuerdo con madurez.'
  },
- { id:'C004', nombre:'Orientación al Cliente', descripcion:'Enfoque en satisfacer y superar las expectativas del cliente', cargos:'Ejecutiva Comercial', peso:20,
- tactico:'1) Atiende las solicitudes del cliente con diligencia y dentro de los tiempos acordados.\n2) Escucha activamente las necesidades del cliente y ofrece soluciones adecuadas.\n3) Hace seguimiento posventa para asegurar la satisfacción.',
- estrategico:'1) Anticipa necesidades del cliente y propone soluciones proactivas.\n2) Construye relaciones de confianza que generan fidelidad a largo plazo.\n3) Traduce los insights del cliente en mejoras concretas al servicio.',
- directivo:'1) Define la estrategia de experiencia del cliente para toda la organización.\n2) Crea estándares de servicio y garantiza su cumplimiento en todos los niveles.\n3) Convierte la orientación al cliente en una ventaja competitiva sostenible.'
+ { id:'C004', nombre:'Orientación al Cliente', descripcion:'Enfoque en satisfacer y superar las expectativas del cliente', cargos:'Ejecutiva Comercial',
+ comportamiento_1:'No atiende oportunamente las solicitudes del cliente ni hace seguimiento a sus compromisos.',
+ comportamiento_2:'Atiende al cliente pero no siempre dentro de los tiempos acordados ni con la solución más adecuada.',
+ comportamiento_3:'Atiende con diligencia, escucha las necesidades del cliente y hace seguimiento posventa.',
+ comportamiento_4:'Anticipa necesidades, construye relaciones de confianza y convierte la satisfacción en fidelización.'
  },
- { id:'C005', nombre:'Liderazgo e Influencia', descripcion:'Capacidad para guiar, motivar y desarrollar a otros', cargos:'Todos', peso:20,
- tactico:'1) Apoya e influye positivamente en sus compañeros con su actitud y ejemplo.\n2) Comparte su conocimiento y ayuda a otros a mejorar su desempeño.\n3) Asume responsabilidad por sus acciones y genera confianza en el equipo.',
- estrategico:'1) Orienta, retroalimenta y desarrolla a su equipo con criterio y consistencia.\n2) Genera un ambiente de confianza y compromiso que potencia el rendimiento.\n3) Identifica el potencial de cada miembro y lo desarrolla activamente.',
- directivo:'1) Inspira al equipo con visión y propósito; crea líderes dentro de la organización.\n2) Su estilo de liderazgo es referente y genera cultura.\n3) Diseña estructuras de desarrollo de talento que trascienden su área.'
+ { id:'C005', nombre:'Liderazgo e Influencia', descripcion:'Capacidad para guiar, motivar y desarrollar a otros', cargos:'Todos',
+ comportamiento_1:'No logra influir positivamente en su entorno. Sus actitudes generan desconfianza o desmotivación.',
+ comportamiento_2:'Influye ocasionalmente en sus compañeros pero sin consistencia ni intencionalidad.',
+ comportamiento_3:'Apoya e influye positivamente con su actitud y ejemplo. Comparte su conocimiento y genera confianza.',
+ comportamiento_4:'Inspira al equipo con visión y propósito. Identifica el potencial de cada persona y lo desarrolla activamente.'
  },
- { id:'C006', nombre:'Pensamiento Analítico', descripcion:'Habilidad para analizar información y tomar decisiones basadas en datos', cargos:'Todos', peso:15,
- tactico:'1) Recopila y organiza información relevante antes de tomar decisiones.\n2) Identifica causas de los problemas con base en hechos y datos concretos.\n3) Propone soluciones prácticas fundamentadas en su análisis.',
- estrategico:'1) Analiza información compleja de múltiples fuentes e identifica patrones.\n2) Fundamenta sus recomendaciones con datos sólidos y proyecciones.\n3) Anticipa consecuencias de las decisiones y gestiona riesgos proactivamente.',
- directivo:'1) Domina el análisis estratégico y lo usa para definir el rumbo organizacional.\n2) Crea sistemas de información que facilitan la toma de decisiones en todos los niveles.\n3) Genera insights que impactan decisiones de negocio de alto impacto.'
+ { id:'C006', nombre:'Pensamiento Analítico', descripcion:'Habilidad para analizar información y tomar decisiones basadas en datos', cargos:'Todos',
+ comportamiento_1:'Toma decisiones sin base en datos o hechos. No identifica causas de los problemas con claridad.',
+ comportamiento_2:'Recopila información básica pero le cuesta identificar patrones o proponer soluciones fundamentadas.',
+ comportamiento_3:'Recopila y organiza información relevante, identifica causas y propone soluciones prácticas basadas en datos.',
+ comportamiento_4:'Analiza información compleja de múltiples fuentes, anticipa consecuencias y genera insights de alto impacto.'
  },
- { id:'C007', nombre:'Adaptabilidad al Cambio', descripcion:'Capacidad de ajustarse eficazmente ante cambios e incertidumbre', cargos:'Todos', peso:10,
- tactico:'1) Se adapta con agilidad a nuevas instrucciones, herramientas o procesos.\n2) Mantiene su rendimiento y actitud positiva en entornos cambiantes.\n3) Aprende rápidamente de los errores y ajusta su comportamiento.',
- estrategico:'1) Lidera la adaptación de su equipo ante cambios organizacionales.\n2) Convierte la incertidumbre en oportunidades de mejora y aprendizaje.\n3) Anticipa cambios del entorno y prepara a su equipo con antelación.',
- directivo:'1) Diseña organizaciones ágiles capaces de responder rápido al entorno.\n2) Gestiona la transformación cultural con visión y resiliencia.\n3) Es el principal impulsor del cambio en la organización; genera apertura y aprendizaje colectivo.'
+ { id:'C007', nombre:'Adaptabilidad al Cambio', descripcion:'Capacidad de ajustarse eficazmente ante cambios e incertidumbre', cargos:'Todos',
+ comportamiento_1:'Resiste los cambios y mantiene actitudes rígidas ante nuevas instrucciones o procesos.',
+ comportamiento_2:'Se adapta con dificultad a los cambios y su rendimiento baja en entornos de incertidumbre.',
+ comportamiento_3:'Se adapta con agilidad, mantiene su rendimiento y aprende rápidamente de los errores.',
+ comportamiento_4:'Lidera la adaptación de su entorno. Convierte la incertidumbre en oportunidades y anticipa cambios.'
  },
- { id:'C008', nombre:'Gestion y Desarrollo del Talento', descripcion:'Capacidad para identificar, desarrollar y retener el talento del equipo', cargos:'Todos', peso:10,
- tactico:'1) Participa activamente en su propio desarrollo y aplica lo aprendido.\n2) Comparte conocimiento con sus pares y apoya el aprendizaje del equipo.\n3) Muestra disposición para asumir nuevos retos y responsabilidades.',
- estrategico:'1) Identifica el potencial de cada miembro del equipo y diseña planes de desarrollo.\n2) Gestiona el desempeño con retroalimentación oportuna y constructiva.\n3) Crea condiciones para que el talento crezca y se comprometa con la organización.',
- directivo:'1) Define la estrategia de talento de la organización con visión de largo plazo.\n2) Crea programas de desarrollo que alinean el crecimiento individual con los objetivos del negocio.\n3) Es referente en atracción, desarrollo y retención del mejor talento.'
+ { id:'C008', nombre:'Gestion del Talento', descripcion:'Capacidad para identificar, desarrollar y retener el talento', cargos:'Todos',
+ comportamiento_1:'No muestra interés en su propio desarrollo ni en el de sus compañeros.',
+ comportamiento_2:'Participa en actividades de desarrollo cuando se le exige pero no lo hace por iniciativa propia.',
+ comportamiento_3:'Participa activamente en su desarrollo, aplica lo aprendido y comparte conocimiento con el equipo.',
+ comportamiento_4:'Es referente de desarrollo. Identifica el potencial de otros y crea condiciones para que el talento crezca.'
  },
 ];
 
@@ -2594,28 +2602,22 @@ function renderCompetenciasForm(cargo, savedScores, readOnly, nivelOcupacional) 
  const container = document.getElementById('competenciasContainer');
  if (!comps.length) { container.innerHTML = '<p style="color:#888;padding:16px">No hay competencias configuradas para este cargo.</p>'; return; }
 
- const NIVEL_LABEL = { tactico:'Táctico', estrategico:'Estratégico', directivo:'Directivo' };
  const RATING_COLORS = {1:'#e53935',2:'#fb8c00',3:'#43a047',4:'#1e88e5'};
  const RATING_BG = {1:'#ffebee',2:'#fff3e0',3:'#e8f5e9',4:'#e3f2fd'};
 
- container.innerHTML = `
- <div style="background:#f0f4ff;border:1px solid #c5cae9;border-radius:6px;padding:8px 12px;margin-bottom:14px;font-size:.8rem;color:#3949ab">
-   Nivel ocupacional: <strong>${NIVEL_LABEL[nivel]||nivel}</strong> — Los comportamientos mostrados corresponden a este nivel.
- </div>` +
- comps.map((c, i) => {
+ container.innerHTML = comps.map((c, i) => {
  const savedVal = savedScores[c.id] || 0;
  const opts = [0,1,2,3,4].map(n => {
  const label = n === 0 ? '— Sin calificar —' : `${n} — ${BEHAVIORS[n].label}`;
  return `<option value="${n}" ${savedVal===n?'selected':''}>${label}</option>`;
  }).join('');
  const borderCol = savedVal > 0 ? RATING_COLORS[savedVal] : 'var(--gray-mid)';
- const bgCol = savedVal > 0 ? RATING_BG[savedVal] : 'white';
- const textCol = savedVal > 0 ? RATING_COLORS[savedVal] : 'var(--gray)';
- const behavBox = savedVal
- ? `<div class="behaviors-box show" id="beh-${c.id}">${renderBehaviors(savedVal, c.id, nivel)}</div>`
+ const bgCol     = savedVal > 0 ? RATING_BG[savedVal]     : 'white';
+ const textCol   = savedVal > 0 ? RATING_COLORS[savedVal] : 'var(--gray)';
+ const behavBox  = savedVal
+ ? `<div class="behaviors-box show" id="beh-${c.id}">${renderBehaviors(savedVal, c.id)}</div>`
  : `<div class="behaviors-box" id="beh-${c.id}"></div>`;
- return `<div class="competencia-row">
- <div class="competencia-header">
+ return `<div class="competencia-header">
  <div class="comp-num">${i+1}</div>
  <div>
  <div class="comp-name">${c.nombre}</div>
@@ -2644,21 +2646,14 @@ function renderCompetenciasForm(cargo, savedScores, readOnly, nivelOcupacional) 
 function renderBehaviors(val, compId, nivel) {
  const b = BEHAVIORS[val];
  const comp = compId ? STATE.competencias.find(c => c.id === compId) : null;
-
- // Use nivel-specific behaviors if available, else fall back to comportamiento_N
- const nivelKey = nivel || 'tactico';
- const nivelText = comp?.[nivelKey] || comp?.['comportamiento_' + val];
+ const customText = comp?.['comportamiento_' + val];
 
  let contenido = '';
- if (nivelText && nivelText.trim()) {
- const lineas = nivelText.split('\n').map(l => l.trim()).filter(l => l.length > 0);
- if (lineas.length === 1) {
- contenido = `<p style="margin-top:5px;font-size:.83rem;line-height:1.5">${lineas[0]}</p>`;
- } else {
- contenido = `<ul style="margin-top:5px;padding-left:16px">
- ${lineas.map(l => `<li style="font-size:.83rem;line-height:1.6;margin-bottom:2px">${l}</li>`).join('')}
- </ul>`;
- }
+ if (customText && customText.trim()) {
+ const lineas = customText.split('\n').map(l => l.trim()).filter(l => l.length > 0);
+ contenido = lineas.length === 1
+ ? `<p style="margin-top:5px;font-size:.83rem;line-height:1.5">${lineas[0]}</p>`
+ : `<ul style="margin-top:5px;padding-left:16px">${lineas.map(l=>`<li style="font-size:.83rem;line-height:1.6;margin-bottom:2px">${l}</li>`).join('')}</ul>`;
  } else {
  contenido = `<p style="margin-top:5px;font-size:.83rem;line-height:1.5;color:#888">${b.desc}</p>`;
  }
@@ -6340,20 +6335,21 @@ function openCompModal(compId) {
  const c = compId ? STATE.competencias.find(x => x.id === compId) : null;
  const newId = generateNextId('C', STATE.competencias);
 
- const NIVELES = [
- { key:'tactico',     label:'Tactico',     color:'#1a5fa8' },
- { key:'estrategico', label:'Estrategico', color:'#e65100' },
- { key:'directivo',   label:'Directivo',   color:'#2e7d32' },
+ const CAL = [
+ { n:1, label:'No cumple',         color:'#e53935' },
+ { n:2, label:'En desarrollo',     color:'#fb8c00' },
+ { n:3, label:'Cumple',            color:'#43a047' },
+ { n:4, label:'Supera / Excepcional', color:'#1e88e5' },
  ];
 
- const nivelFields = NIVELES.map(n => {
- const val = c?.[n.key] || '';
+ const nivelFields = CAL.map(cal => {
+ const val = c?.['comportamiento_' + cal.n] || '';
  return `<div class="form-field" style="margin-bottom:10px">
  <label style="display:flex;align-items:center;gap:8px;margin-bottom:5px">
- <span style="background:${n.color};color:white;border-radius:6px;padding:2px 10px;font-size:.72rem;font-weight:700">${n.label}</span>
+ <span style="background:${cal.color};color:white;border-radius:6px;padding:2px 10px;font-size:.72rem;font-weight:700">${cal.n} — ${cal.label}</span>
  </label>
- <textarea id="cBeh_${n.key}" rows="4"
- placeholder="Comportamientos para el nivel ${n.label}. Una linea por comportamiento."
+ <textarea id="cBeh${cal.n}" rows="3"
+ placeholder="Describe el comportamiento observable para este nivel..."
  style="width:100%;padding:8px 10px;border:1px solid var(--border);border-radius:6px;font-family:Asap,sans-serif;font-size:.83rem;resize:vertical;outline:none"
  onfocus="this.style.borderColor='var(--red)'" onblur="this.style.borderColor='var(--border)'"
  >${val}</textarea>
@@ -6368,8 +6364,7 @@ function openCompModal(compId) {
  <small style="color:#999;font-size:.74rem">Ej: Todos &nbsp;|&nbsp; Ejecutiva Comercial, Gerente Comercial</small>
  </div>
  <hr style="border:none;border-top:1px solid var(--border);margin:14px 0">
- <div style="font-size:.78rem;font-weight:700;color:var(--gray);text-transform:uppercase;letter-spacing:.06em;margin-bottom:4px">Comportamientos por nivel ocupacional</div>
- <div style="font-size:.76rem;color:#999;margin-bottom:10px">El sistema mostrara automaticamente los comportamientos segun el nivel del evaluado.</div>
+ <div style="font-size:.78rem;font-weight:700;color:var(--gray);text-transform:uppercase;letter-spacing:.06em;margin-bottom:10px">Comportamientos por nivel de calificacion</div>
  ${nivelFields}
  `, [
  { label:'Cancelar', cls:'btn-secondary', action:'closeModal()' },
@@ -6384,11 +6379,12 @@ async function saveCompModal(id) {
  const data = {
  id,
  nombre,
- descripcion: document.getElementById('cDesc').value,
- cargos:      document.getElementById('cCargos').value || 'Todos',
- tactico:     document.getElementById('cBeh_tactico')?.value?.trim()     || '',
- estrategico: document.getElementById('cBeh_estrategico')?.value?.trim() || '',
- directivo:   document.getElementById('cBeh_directivo')?.value?.trim()   || '',
+ descripcion:      document.getElementById('cDesc').value,
+ cargos:           document.getElementById('cCargos').value || 'Todos',
+ comportamiento_1: document.getElementById('cBeh1')?.value?.trim() || '',
+ comportamiento_2: document.getElementById('cBeh2')?.value?.trim() || '',
+ comportamiento_3: document.getElementById('cBeh3')?.value?.trim() || '',
+ comportamiento_4: document.getElementById('cBeh4')?.value?.trim() || '',
  };
 
  const idx = STATE.competencias.findIndex(c => c.id === id);
