@@ -531,7 +531,7 @@
  </div>
  <button class="btn-login" onclick="handleLogin()">Ingresar al sistema</button>
  <p class="login-error" id="loginError">Usuario o contraseña incorrectos</p>
- <div style="text-align:center;margin-top:16px;font-size:.7rem;color:#bbb;font-family:monospace">v10.6</div>
+ <div style="text-align:center;margin-top:16px;font-size:.7rem;color:#bbb;font-family:monospace">v10.9</div>
  </div>
 
  <!-- Indicadores de impacto -->
@@ -661,7 +661,7 @@
  </svg>
  Actualizar
  </button>
- <span style="font-size:.68rem;color:#ccc;font-family:monospace;opacity:.6">v10.6</span>
+ <span style="font-size:.68rem;color:#ccc;font-family:monospace;opacity:.6">v10.9</span>
  </div>
  </div>
 
@@ -2177,8 +2177,8 @@ function buildSidebar() {
     // Competencias — siempre visible
     const compSubs = [];
     compSubs.push(sub('mis-evaluaciones', 'Evaluar equipo'));
-    compSubs.push(sub('autoevaluacion',   'Autoevaluacion'));
-    if (hasJefeId) compSubs.push(sub('eval-jefe', 'Evaluar a mi jefe'));
+    if (grado >= 180) compSubs.push(sub('autoevaluacion', 'Autoevaluacion'));
+    if (grado >= 270 && hasJefeId) compSubs.push(sub('eval-jefe', 'Evaluar a mi jefe'));
     if (grado >= 360) compSubs.push(sub('pares', 'Asignar pares'));
     if (grado >= 360 && hasJefeId) compSubs.push(sub('evaluar-pares', 'Evaluar pares'));
     html += section('comp', 'Competencias', compSubs);
@@ -2211,9 +2211,9 @@ function buildSidebar() {
   if (esColab) {
     // Competencias — siempre visible
     const compSubs = [];
-    compSubs.push(sub('autoevaluacion', 'Autoevaluacion'));
-    compSubs.push(sub('eval-jefe',      'Evaluar a mi jefe'));
-    if (grado >= 360) compSubs.push(sub('evaluar-pares', 'Evaluar pares'));
+    if (grado >= 180) compSubs.push(sub('autoevaluacion', 'Autoevaluacion'));
+    if (grado >= 270) compSubs.push(sub('eval-jefe',      'Evaluar a mi jefe'));
+    if (grado >= 360) compSubs.push(sub('evaluar-pares',  'Evaluar pares'));
     html += section('comp', 'Competencias', compSubs);
 
     // OKR
@@ -2932,19 +2932,38 @@ function calcScoreOKR(colaboradorId) {
 // P9: 4 fuentes × 25% fijos = score_potencial | OKR = score_desempeno
 // ═══════════════════════════════════════════
 function calcScorePotencial(colaboradorId) {
- // Potencial = promedio de las fuentes disponibles (usa la eval más reciente por tipo)
- // No filtra por periodo activo — así funciona aunque el Q haya cambiado
+ // Potencial ponderado segun grado del ciclo activo:
+ // 90°:  jefe 100%
+ // 180°: jefe 60% + auto 40%
+ // 270°: jefe 50% + auto 30% + colab->jefe 20%
+ // 360°: jefe 40% + auto 20% + pares 25% + colab->jefe 15%
+ const ciclo = STATE.ciclos.find(c => c.estado === 'open');
+ const grado = parseInt(ciclo?.grado || '360');
+
+ const PESOS_GRADO = {
+ 90:  { jefe:100, auto:0,  pares:0,  equipo:0  },
+ 180: { jefe:60,  auto:40, pares:0,  equipo:0  },
+ 270: { jefe:50,  auto:30, pares:0,  equipo:20 },
+ 360: { jefe:40,  auto:20, pares:25, equipo:15 },
+ };
+
+ const dp = PESOS_GRADO[grado] || PESOS_GRADO[360];
+ const pesos = {
+ jefe:   ciclo?.peso_jefe   != null ? ciclo.peso_jefe   : dp.jefe,
+ auto:   ciclo?.peso_auto   != null ? ciclo.peso_auto   : dp.auto,
+ pares:  ciclo?.peso_pares  != null ? ciclo.peso_pares  : dp.pares,
+ equipo: ciclo?.peso_equipo != null ? ciclo.peso_equipo : dp.equipo,
+ };
+
  const allEvals = STATE.evaluaciones.filter(e =>
  e.evaluado_id === colaboradorId && e.estado === 'enviado'
  );
 
- // Take the most recent eval per type (by fecha_envio or periodo)
  const latest = (tipo) => allEvals
  .filter(e => e.tipo === tipo)
  .sort((a,b) => (b.fecha_envio||b.periodo||'').localeCompare(a.fecha_envio||a.periodo||''))[0];
 
  const latestMany = (tipo) => {
- // For pares/equipo, take all from the most recent period
  const byPeriodo = {};
  allEvals.filter(e => e.tipo === tipo).forEach(e => {
  if (!byPeriodo[e.periodo]) byPeriodo[e.periodo] = [];
@@ -2954,19 +2973,26 @@ function calcScorePotencial(colaboradorId) {
  return periods.length ? byPeriodo[periods[0]] : [];
  };
 
- const evalJefe = latest('jefe');
- const evalAuto = latest('auto');
- const evalPares = latestMany('par');
+ const evalJefe   = latest('jefe');
+ const evalAuto   = latest('auto');
+ const evalPares  = latestMany('par');
  const evalEquipo = latestMany('colab_a_jefe');
 
- const scores = [];
- if (evalJefe?.score_comp) scores.push(evalJefe.score_comp);
- if (evalAuto?.score_comp) scores.push(evalAuto.score_comp);
- if (evalPares.length) scores.push(evalPares.reduce((a,e)=>a+(e.score_comp||0),0)/evalPares.length);
- if (evalEquipo.length) scores.push(evalEquipo.reduce((a,e)=>a+(e.score_comp||0),0)/evalEquipo.length);
+ let total = 0, pesoAcum = 0;
 
- if (!scores.length) return 0;
- return parseFloat((scores.reduce((a,b)=>a+b,0)/scores.length).toFixed(2));
+ if (evalJefe?.score_comp  && pesos.jefe  > 0) { total += evalJefe.score_comp * pesos.jefe;   pesoAcum += pesos.jefe; }
+ if (evalAuto?.score_comp  && pesos.auto  > 0) { total += evalAuto.score_comp * pesos.auto;   pesoAcum += pesos.auto; }
+ if (evalPares.length      && pesos.pares > 0) {
+ const avg = evalPares.reduce((a,e)=>a+(e.score_comp||0),0)/evalPares.length;
+ total += avg * pesos.pares; pesoAcum += pesos.pares;
+ }
+ if (evalEquipo.length     && pesos.equipo> 0) {
+ const avg = evalEquipo.reduce((a,e)=>a+(e.score_comp||0),0)/evalEquipo.length;
+ total += avg * pesos.equipo; pesoAcum += pesos.equipo;
+ }
+
+ if (!pesoAcum) return 0;
+ return parseFloat((total / pesoAcum).toFixed(2));
 }
 
 function calcScoreDesempeno(colaboradorId) {
@@ -6992,7 +7018,7 @@ function openCicloModal(cicloId) {
  <div class="form-row">
  <div class="form-field">
  <label>Grado de evaluación</label>
- <select id="cicloGrado">
+ <select id="cicloGrado" onchange="actualizarPesosPorGrado()">
  <option value="360" ${(!c||c?.grado=='360')?'selected':''}>360° — Jefe + Auto + Pares + Colab→Jefe</option>
  <option value="270" ${c?.grado=='270'?'selected':''}>270° — Jefe + Autoevaluación + Colab→Jefe</option>
  <option value="180" ${c?.grado=='180'?'selected':''}>180° — Jefe + Autoevaluación</option>
@@ -7030,12 +7056,97 @@ function openCicloModal(cicloId) {
  </div>
  <div class="info-banner" style="margin-top:10px;font-size:.8rem">
  <svg width="13" height="13" viewBox="0 0 24 24" fill="currentColor"><path d="M12 2C6.48 2 2 6.48 2 12s4.48 10 10 10 10-4.48 10-10S17.52 2 12 2zm1 15h-2v-6h2v6zm0-8h-2V7h2v2z"/></svg>
- Las fechas son libres — tu año puede comenzar en cualquier mes (ej. mayo 2026 → abril 2027). Solo puede haber un ciclo Activo a la vez.
+ Las fechas son libres — tu año puede comenzar en cualquier mes. Solo puede haber un ciclo Activo a la vez.
  </div>
+ <hr style="border:none;border-top:1px solid var(--border);margin:14px 0">
+ <div style="font-size:.78rem;font-weight:700;color:var(--gray);text-transform:uppercase;letter-spacing:.06em;margin-bottom:8px">
+ Pesos por fuente <span style="font-weight:400;color:#999;text-transform:none">(deben sumar 100%)</span>
+ </div>
+ <div style="display:grid;grid-template-columns:repeat(2,1fr);gap:10px">
+ <div class="form-field" id="pesoJefeRow">
+ <label>Jefe (%)</label>
+ <input type="number" id="cicPesoJefe" min="0" max="100" value="${c?.peso_jefe??40}" oninput="validarPesosCiclo()">
+ </div>
+ <div class="form-field" id="pesoAutoRow">
+ <label>Autoevaluacion (%)</label>
+ <input type="number" id="cicPesoAuto" min="0" max="100" value="${c?.peso_auto??20}" oninput="validarPesosCiclo()">
+ </div>
+ <div class="form-field" id="pesoParesRow">
+ <label>Pares (%)</label>
+ <input type="number" id="cicPesoPares" min="0" max="100" value="${c?.peso_pares??25}" oninput="validarPesosCiclo()">
+ </div>
+ <div class="form-field" id="pesoEquipoRow">
+ <label>Colaborador a Jefe (%)</label>
+ <input type="number" id="cicPesoEquipo" min="0" max="100" value="${c?.peso_equipo??15}" oninput="validarPesosCiclo()">
+ </div>
+ </div>
+ <div id="pesoSumaMsg" style="font-size:.78rem;margin-top:6px;font-weight:600"></div>
  `, [
  { label:'Cancelar', cls:'btn-secondary', action:'closeModal()' },
  { label: c ? 'Guardar' : 'Crear ciclo', cls:'btn-primary', action:`saveCicloModal('${c?.id||newId}')` }
  ]);
+ // Apply grado visibility after modal renders
+ setTimeout(actualizarPesosPorGrado, 50);
+
+
+
+
+}
+
+function actualizarPesosPorGrado() {
+  const grado = parseInt(document.getElementById('cicloGrado')?.value || '360');
+
+  // Which rows to show per grado
+  const show = {
+    pesoAutoRow:   grado >= 180,
+    pesoParesRow:  grado >= 360,
+    pesoEquipoRow: grado >= 270,
+  };
+
+  Object.entries(show).forEach(([id, visible]) => {
+    const row = document.getElementById(id);
+    if (row) row.style.display = visible ? '' : 'none';
+  });
+
+  // Set default values based on grado and zero out hidden sources
+  const DEFAULTS = {
+    90:  { jefe:100, auto:0,  pares:0,  equipo:0  },
+    180: { jefe:60,  auto:40, pares:0,  equipo:0  },
+    270: { jefe:50,  auto:30, pares:0,  equipo:20 },
+    360: { jefe:40,  auto:20, pares:25, equipo:15 },
+  };
+  const d = DEFAULTS[grado] || DEFAULTS[360];
+
+  // Only set defaults if fields are empty or zero
+  const set = (id, val) => {
+    const el = document.getElementById(id);
+    if (el) el.value = val;
+  };
+
+  set('cicPesoJefe',   d.jefe);
+  set('cicPesoAuto',   d.auto);
+  set('cicPesoPares',  d.pares);
+  set('cicPesoEquipo', d.equipo);
+
+  validarPesosCiclo();
+}
+
+function validarPesosCiclo() {
+  const grado = parseInt(document.getElementById('cicloGrado')?.value || '360');
+  const j = parseInt(document.getElementById('cicPesoJefe')?.value||0);
+  const a = grado >= 180 ? parseInt(document.getElementById('cicPesoAuto')?.value||0)  : 0;
+  const p = grado >= 360 ? parseInt(document.getElementById('cicPesoPares')?.value||0) : 0;
+  const e = grado >= 270 ? parseInt(document.getElementById('cicPesoEquipo')?.value||0): 0;
+  const suma = j + a + p + e;
+  const msg = document.getElementById('pesoSumaMsg');
+  if (!msg) return;
+  if (suma === 100) {
+    msg.style.color = '#2e7d32';
+    msg.textContent = 'Total: 100% ✓';
+  } else {
+    msg.style.color = '#e53935';
+    msg.textContent = `Total: ${suma}% — debe sumar 100%`;
+  }
 }
 
 function autoCicloFin() {
@@ -7090,13 +7201,22 @@ async function saveCicloModal(id) {
 
  if (estado === 'open') STATE.ciclos.forEach(c => { if (c.id !== id) c.estado = 'closed'; });
 
+ const grado_val = document.getElementById('cicloGrado').value || '360';
+ const grado_num = parseInt(grado_val);
+ const peso_jefe   = parseInt(document.getElementById('cicPesoJefe')?.value  || 40);
+ const peso_auto   = grado_num >= 180 ? parseInt(document.getElementById('cicPesoAuto')?.value  || 0) : 0;
+ const peso_pares  = grado_num >= 360 ? parseInt(document.getElementById('cicPesoPares')?.value || 0) : 0;
+ const peso_equipo = grado_num >= 270 ? parseInt(document.getElementById('cicPesoEquipo')?.value|| 0) : 0;
+ const suma = peso_jefe + peso_auto + peso_pares + peso_equipo;
+ if (suma !== 100) { showToast(`Los pesos deben sumar 100% (actual: ${suma}%)`, 'error'); return; }
+
  const data = {
  id, nombre,
  tipo: document.getElementById('cicloTipo').value,
  trimestre,
- grado: document.getElementById('cicloGrado').value || '360',
+ grado: grado_val,
  inicio, fin, estado,
- peso_jefe:25, peso_auto:25, peso_pares:25, peso_okr:25
+ peso_jefe, peso_auto, peso_pares, peso_equipo
  };
  const idx = STATE.ciclos.findIndex(c => c.id === id);
  if (idx >= 0) Object.assign(STATE.ciclos[idx], data); else STATE.ciclos.push(data);
