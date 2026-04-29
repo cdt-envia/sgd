@@ -531,7 +531,7 @@
  </div>
  <button class="btn-login" onclick="handleLogin()">Ingresar al sistema</button>
  <p class="login-error" id="loginError">Usuario o contraseña incorrectos</p>
- <div style="text-align:center;margin-top:16px;font-size:.7rem;color:#bbb;font-family:monospace">v11.1</div>
+ <div style="text-align:center;margin-top:16px;font-size:.7rem;color:#bbb;font-family:monospace">v11.2</div>
  </div>
 
  <!-- Indicadores de impacto -->
@@ -661,7 +661,7 @@
  </svg>
  Actualizar
  </button>
- <span style="font-size:.68rem;color:#ccc;font-family:monospace;opacity:.6">v11.1</span>
+ <span style="font-size:.68rem;color:#ccc;font-family:monospace;opacity:.6">v11.2</span>
  </div>
  </div>
 
@@ -6270,6 +6270,13 @@ function renderAdmin() {
  if (pesoParsEl) pesoParsEl.value = pesos?.peso_pares || 25;
  if (pesoOKREl) pesoOKREl.value = pesos?.peso_okr || 15;
  renderCiclos();
+ // Set grado global selector to match ciclo activo
+ const cicloActivo2 = STATE.ciclos.find(c => c.estado === 'open');
+ const gradoEl = document.getElementById('asigGradoGlobal');
+ if (gradoEl && cicloActivo2?.grado) {
+ gradoEl.value = cicloActivo2.grado;
+ }
+
  setTimeout(renderAdminCharts, 150);
 }
 
@@ -6687,7 +6694,7 @@ async function savePeriod() {
 function previewAsignaciones() {
  const cicloActivo = STATE.ciclos.find(c => c.estado === 'open');
  const periodo = cicloActivo?.nombre || document.getElementById('asigPeriodo')?.value?.trim() || '';
- // Keep hidden field in sync
+ const grado = parseInt(cicloActivo?.grado || document.getElementById('asigGradoGlobal')?.value || '360');
  const hp = document.getElementById('asigPeriodo');
  if (hp && periodo) hp.value = periodo;
  const colaboradores = getAllEvaluables();
@@ -6710,23 +6717,21 @@ function previewAsignaciones() {
 
  const estadoLabel = { pendiente:'Pendiente', borrador:'En borrador', enviado:'Enviado' };
  const estadoCls = { pendiente:'pill-progress', borrador:'pill-progress', enviado:'pill-done' };
-
  const pill = (e) => e
  ? `<span class="status-pill ${estadoCls[e.estado]||'pill-progress'}">${estadoLabel[e.estado]||e.estado}</span>`
  : `<span class="status-pill pill-pending">Sin asignar</span>`;
-
  const jefeNombre = jefe
  ? jefe.nombre
- : `<span style="color:#e53935;font-size:.8rem">️ Sin jefe asignado</span>`;
+ : `<span style="color:#e53935;font-size:.8rem">Sin jefe asignado</span>`;
 
  return `<tr>
  <td><strong>${colab.nombre}</strong></td>
  <td>${colab.cargo}</td>
  <td>${jefeNombre}</td>
  <td>${pill(evalJefe)}</td>
- <td>${pill(evalAuto)}</td>
- <td>${pill(evalColabJefe)}</td>
- <td><span style="font-size:.82rem">${parEnviados}/${paresCount} completadas</span></td>
+ ${grado >= 180 ? `<td>${pill(evalAuto)}</td>` : ''}
+ ${grado >= 270 ? `<td>${pill(evalColabJefe)}</td>` : ''}
+ ${grado >= 360 ? `<td><span style="font-size:.82rem">${parEnviados}/${paresCount} completadas</span></td>` : ''}
  </tr>`;
  });
 
@@ -6757,7 +6762,13 @@ function previewAsignaciones() {
  ${orphanWarning}
  <div class="table-wrap">
  <table>
- <thead><tr><th>Colaborador</th><th>Cargo</th><th>Jefe asignado</th><th>Evaluación Jefe→Colab</th><th>Autoevaluación</th><th>Colab→Jefe</th><th>Pares (360°)</th></tr></thead>
+ <thead><tr>
+ <th>Colaborador</th><th>Cargo</th><th>Jefe asignado</th>
+ <th>Jefe → Colab</th>
+ ${grado >= 180 ? '<th>Autoevaluacion</th>' : ''}
+ ${grado >= 270 ? '<th>Colab → Jefe</th>' : ''}
+ ${grado >= 360 ? '<th>Pares</th>' : ''}
+ </tr></thead>
  <tbody>${rows.join('')}</tbody>
  </table>
  </div>`;
@@ -6905,7 +6916,7 @@ function renderCiclos() {
  return;
  }
 
- const tipoLabel = { completo:'360° Completo', revision:'Revisión ligera' };
+ const tipoLabel = (c) => c.tipo === 'revision' ? 'Revisión ligera' : `${c.grado||360}° Completo`;
  const estadoInfo = {
  open: { label:'Activo', cls:'pill-done' },
  closed: { label:'Cerrado', cls:'pill-pending' },
@@ -6921,7 +6932,7 @@ function renderCiclos() {
  const qs = qCiclos.filter(q => q.nombre.startsWith(parent.nombre + ' — Q'));
  const parentRow = `<tr style="background:${parent.estado==='open'?'#f0fff4':''}">
  <td><strong>${parent.nombre}</strong></td>
- <td><span class="status-pill" style="background:#e3f2fd;color:#1565c0;font-size:.75rem">${tipoLabel[parent.tipo]||parent.tipo}</span></td>
+ <td><span class="status-pill" style="background:#e3f2fd;color:#1565c0;font-size:.75rem">${tipoLabel(parent)}</span></td>
  <td style="font-size:.82rem">${parent.inicio ? String(parent.inicio).slice(0,10) : '—'}</td>
  <td style="font-size:.82rem">${parent.fin ? String(parent.fin).slice(0,10) : '—'}</td>
  <td><span class="status-pill ${st.cls}">${st.label}</span></td>
@@ -6945,7 +6956,7 @@ function renderCiclos() {
  <span style="background:#e3f2fd;color:${qTipoColor};border-radius:6px;padding:1px 7px;font-size:.7rem;font-weight:700;margin-right:6px">${q.trimestre}</span>
  ${q.nombre.replace(parent.nombre + ' — ', '')}
  </td>
- <td><span class="status-pill" style="background:#f3e5f5;color:#6a1b9a;font-size:.72rem">${tipoLabel[q.tipo]||q.tipo}</span></td>
+ <td><span class="status-pill" style="background:#f3e5f5;color:#6a1b9a;font-size:.72rem">${tipoLabel(q)}</span></td>
  <td style="font-size:.8rem;color:#888">${q.inicio ? String(q.inicio).slice(0,10) : '—'}</td>
  <td style="font-size:.8rem;color:#888">${q.fin ? String(q.fin).slice(0,10) : '—'}</td>
  <td><span class="status-pill ${qst.cls}" style="font-size:.72rem">${qst.label}</span></td>
@@ -6966,7 +6977,7 @@ function renderCiclos() {
  const st = estadoInfo[q.estado] || estadoInfo.closed;
  return `<tr>
  <td><strong>${q.nombre}</strong><span style="background:#e3f2fd;color:#1565c0;border-radius:6px;padding:1px 7px;font-size:.7rem;font-weight:700;margin-left:4px">${q.trimestre}</span></td>
- <td><span class="status-pill" style="background:#e3f2fd;color:#1565c0;font-size:.75rem">${tipoLabel[q.tipo]||q.tipo}</span></td>
+ <td><span class="status-pill" style="background:#e3f2fd;color:#1565c0;font-size:.75rem">${tipoLabel(q)}</span></td>
  <td style="font-size:.82rem">${q.inicio ? String(q.inicio).slice(0,10) : '—'}</td>
  <td style="font-size:.82rem">${q.fin ? String(q.fin).slice(0,10) : '—'}</td>
  <td><span class="status-pill ${st.cls}">${st.label}</span></td>
@@ -6985,7 +6996,7 @@ function renderCiclos() {
  if (cicloActivo) {
  cicloActivo.style.display = activo ? 'block' : 'none';
  if (activo) {
- document.getElementById('cicloActivoNombre').textContent = `Ciclo activo: ${activo.nombre} (${tipoLabel[activo.tipo]||activo.tipo})`;
+ document.getElementById('cicloActivoNombre').textContent = `Ciclo activo: ${activo.nombre} (${tipoLabel(activo)})`;
  if (activo.tipo === 'completo') {
  document.getElementById('pesoJefe').value  = activo.peso_jefe  || 40;
  document.getElementById('pesoAuto').value  = activo.peso_auto  || 20;
