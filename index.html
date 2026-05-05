@@ -531,7 +531,7 @@
  </div>
  <button class="btn-login" onclick="handleLogin()">Ingresar al sistema</button>
  <p class="login-error" id="loginError">Usuario o contraseña incorrectos</p>
- <div style="text-align:center;margin-top:16px;font-size:.7rem;color:#bbb;font-family:monospace">v11.8</div>
+ <div style="text-align:center;margin-top:16px;font-size:.7rem;color:#bbb;font-family:monospace">v11.9</div>
  </div>
 
  <!-- Indicadores de impacto -->
@@ -661,7 +661,7 @@
  </svg>
  Actualizar
  </button>
- <span style="font-size:.68rem;color:#ccc;font-family:monospace;opacity:.6">v11.8</span>
+ <span style="font-size:.68rem;color:#ccc;font-family:monospace;opacity:.6">v11.9</span>
  </div>
  </div>
 
@@ -1219,7 +1219,7 @@
 // ═══════════════════════════════════════════
 // CONFIG — Reemplaza con tu URL de Google Apps Script
 // ═══════════════════════════════════════════
-const SCRIPT_URL = 'https://script.google.com/macros/s/AKfycbz0KotQhuDZm1bDJCOTL22ok1zNHihdAYDfhaputaD-ybSwwmAC7fdrIq6O-ON0ed2w/exec';
+const SCRIPT_URL = 'https://script.google.com/macros/s/AKfycbyRyLATZp9ENamsO67-ed5ktl_xI7AQbXzY3W-DvQld4NkITCUySPHWEd3kIkdlP5oP/exec';
 
 // ═══════════════════════════════════════════
 // STATE
@@ -2916,19 +2916,16 @@ function getKRProgresoReal(kr) {
 function calcScoreOKR(colaboradorId) {
  // Desempeño = promedio del avance REAL de todos los KRs (recalculado desde checkins)
 
- const indivOKRs = STATE.okr.filter(o =>
- o.tipo === 'individual' && o.colaborador_id === colaboradorId
- );
-
  const colaborador = getUserById(colaboradorId);
- const equipoOKRs = STATE.okr.filter(o => {
- if (o.tipo !== 'equipo') return false;
- if (o.jefe_id !== colaborador?.jefe_id) return false;
+ const allOKRs = STATE.okr.filter(o => {
+ if (o.tipo === 'individual') return o.colaborador_id === colaboradorId;
+ if (o.tipo === 'equipo') {
+ if (o.jefe_id === colaboradorId) return false; // they created it, not their OKR
  if (o.miembros && o.miembros.length > 0) return o.miembros.includes(colaboradorId);
- return true;
+ return colaborador?.jefe_id === o.jefe_id; // empty miembros = whole team
+ }
+ return false;
  });
-
- const allOKRs = [...indivOKRs, ...equipoOKRs];
  const allKRs = allOKRs.flatMap(o => o.krs || []);
 
  if (!allKRs.length) {
@@ -3521,9 +3518,9 @@ function renderResultados() {
  </div>
  <div id="okrQBreakdown" style="margin-top:10px"></div>
 
- <!-- Desglose ' + (STATE.ciclos.find(c=>c.estado==="open")?.grado||360) + '° dentro del card OKR para llenar el espacio -->
+ <!-- Desglose por grado dentro del card OKR -->
  <hr style="border:none;border-top:1px solid var(--gray-light);margin:14px 0 12px">
- <div style="font-size:.75rem;font-weight:700;color:#888;text-transform:uppercase;letter-spacing:.05em;margin-bottom:8px"> Desglose ' + (STATE.ciclos.find(c=>c.estado==="open")?.grado||360) + '°</div>
+ <div style="font-size:.75rem;font-weight:700;color:#888;text-transform:uppercase;letter-spacing:.05em;margin-bottom:8px">Desglose ${(STATE.ciclos.find(c=>c.estado==="open")?.grado||360)}°</div>
  <div style="display:grid;grid-template-columns:repeat(2,1fr);gap:6px">
  ${(() => {
  const cicloR = STATE.ciclos.find(c => c.estado === 'open');
@@ -3677,11 +3674,15 @@ function renderResultados() {
  // ── Detalle OKRs ─────────────────────────────────────────────────
  const okrDetalleEl = document.getElementById('okrDetalleChart');
  if (okrDetalleEl) {
- const okrsMios = STATE.okr.filter(o =>
- (o.tipo === 'individual' && o.colaborador_id === u.id) ||
- (o.tipo === 'equipo' && (!o.miembros?.length || o.miembros.includes(u.id)))
- );
-
+ const okrsMios = STATE.okr.filter(o => {
+ if (o.tipo === 'individual') return o.colaborador_id === u.id;
+ if (o.tipo === 'equipo') {
+ if (o.jefe_id === u.id) return false;
+ if (o.miembros && o.miembros.length > 0) return o.miembros.includes(u.id);
+ return u.jefe_id === o.jefe_id;
+ }
+ return false;
+ });
  if (!okrsMios.length) {
  okrDetalleEl.innerHTML = '<p style="color:#aaa;font-size:.82rem;padding:8px 0">No hay OKRs definidos para este ciclo.</p>';
  } else {
@@ -5599,12 +5600,15 @@ function renderResultadosEquipo() {
 
  // For revision periods (Q2-Q4), show OKR tracking directly
  if (esRevision && !evalJefe) {
- const okrsMios = STATE.okr.filter(o =>
- (o.tipo==='individual' && o.colaborador_id===colab.id) ||
- (o.tipo==='equipo' && o.jefe_id !== colab.id && // exclude OKRs CREATED by colab for their team
- (!o.miembros?.length || o.miembros.includes(colab.id)))
- );
- const okrPctRev = Math.round(calcScoreOKR(colab.id) * 25);
+ const okrsMios = STATE.okr.filter(o => {
+ if (o.tipo === 'individual') return o.colaborador_id === colab.id;
+ if (o.tipo === 'equipo') {
+ if (o.jefe_id === colab.id) return false;
+ if (o.miembros && o.miembros.length > 0) return o.miembros.includes(colab.id);
+ return colab.jefe_id === o.jefe_id;
+ }
+ return false;
+ }); const okrPctRev = Math.round(calcScoreOKR(colab.id) * 25);
  const okrColor  = okrPctRev>=70?'#2e7d32':okrPctRev>=40?'#e65100':'#ba0020';
 
  // Reusar renderObjectiveCard — misma vista que "Definir OKR", solo lectura
@@ -5697,7 +5701,7 @@ function renderResultadosEquipo() {
  </div>
  </div>
  <hr style="border:none;border-top:1px solid var(--gray-light);margin:10px 0 8px">
- <div style="font-size:.72rem;font-weight:700;color:#888;text-transform:uppercase;margin-bottom:6px"> Desglose ' + (STATE.ciclos.find(c=>c.estado==="open")?.grado||360) + '°</div>
+ <div style="font-size:.72rem;font-weight:700;color:#888;text-transform:uppercase;margin-bottom:6px">Desglose ${(STATE.ciclos.find(c=>c.estado==="open")?.grado||360)}°</div>
  <div style="display:grid;grid-template-columns:1fr 1fr;gap:5px">
  ${[
  {label:'Jefe', val:evalJefe?.score_comp?.toFixed(2), ok:!!evalJefe?.score_comp},
@@ -5795,8 +5799,15 @@ function renderResultadosEquipo() {
  // OKR detalle
  const okrEl = document.getElementById('okrDetalleEquipo');
  if (okrEl) {
- const okrsMios = STATE.okr.filter(o=>(o.tipo==='individual'&&o.colaborador_id===colab.id)||(o.tipo==='equipo'&&(!o.miembros?.length||o.miembros.includes(colab.id))));
- if (!okrsMios.length) { okrEl.innerHTML='<p style="color:#aaa;font-size:.82rem">Sin OKRs definidos.</p>'; return; }
+ const okrsMios = STATE.okr.filter(o => {
+ if (o.tipo === 'individual') return o.colaborador_id === colab.id;
+ if (o.tipo === 'equipo') {
+ if (o.jefe_id === colab.id) return false;
+ if (o.miembros && o.miembros.length > 0) return o.miembros.includes(colab.id);
+ return colab.jefe_id === o.jefe_id;
+ }
+ return false;
+ }); if (!okrsMios.length) { okrEl.innerHTML='<p style="color:#aaa;font-size:.82rem">Sin OKRs definidos.</p>'; return; }
  okrEl.innerHTML = okrsMios.map(obj=>{
  const krs=obj.krs||[]; const op=krs.length?Math.round(krs.reduce((a,k)=>a+getKRProgresoReal(k),0)/krs.length):0;
  const oc=op>=70?'#43a047':op>=40?'#f57c00':'#e53935';
