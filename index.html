@@ -531,7 +531,7 @@
  </div>
  <button class="btn-login" onclick="handleLogin()">Ingresar al sistema</button>
  <p class="login-error" id="loginError">Usuario o contraseña incorrectos</p>
- <div style="text-align:center;margin-top:16px;font-size:.7rem;color:#bbb;font-family:monospace">v11.3</div>
+ <div style="text-align:center;margin-top:16px;font-size:.7rem;color:#bbb;font-family:monospace">v11.4</div>
  </div>
 
  <!-- Indicadores de impacto -->
@@ -661,7 +661,7 @@
  </svg>
  Actualizar
  </button>
- <span style="font-size:.68rem;color:#ccc;font-family:monospace;opacity:.6">v11.3</span>
+ <span style="font-size:.68rem;color:#ccc;font-family:monospace;opacity:.6">v11.4</span>
  </div>
  </div>
 
@@ -4090,13 +4090,17 @@ function renderKRRow(kr, objId, isReadOnly) {
  const hayCheckinQActivo = activeQNow && (kr.checkins||[]).some(c => c.q === activeQNow);
 
  // Opción A: solo el colaborador asignado puede registrar avance
- // El jefe puede ver pero no registrar
+  // Opción A: solo el colaborador asignado puede registrar
+ // Para OKRs de equipo: todos los miembros pueden registrar en cualquier KR
+ // a menos que el KR tenga un responsable_id específico
  const obj = STATE.okr.find(o => o.id === objId);
  const userId = STATE.user.id;
+ const esEquipo = obj?.tipo === 'equipo';
+ const miembros = obj?.miembros || [];
  const esColabAsignado =
-   kr.responsable_id === userId ||           // responsable directo del KR
-   obj?.colaborador_id === userId ||          // colaborador del OKR
-   (obj?.miembros||[]).includes(userId);      // miembro del OKR de equipo
+   kr.responsable_id === userId ||            // responsable directo del KR
+   obj?.colaborador_id === userId ||           // colaborador del OKR individual
+   (!kr.responsable_id && esEquipo && (miembros.length === 0 || miembros.includes(userId))); // OKR equipo sin responsable específico
  const canCheckin = !isReadOnly && esColabAsignado;
 
  // Display meta and last actual value
@@ -4628,10 +4632,12 @@ function openCheckinModal(objId, krId) {
 
  // Opción A: solo el colaborador asignado puede registrar
  const userId = STATE.user.id;
+ const esEquipo = obj?.tipo === 'equipo';
+ const miembros = obj?.miembros || [];
  const esColabAsignado =
    kr.responsable_id === userId ||
    obj?.colaborador_id === userId ||
-   (obj?.miembros||[]).includes(userId);
+   (!kr.responsable_id && esEquipo && (miembros.length === 0 || miembros.includes(userId)));
  if (!esColabAsignado) {
    showToast('Solo el colaborador asignado puede registrar avance en este KR.', 'error');
    return;
