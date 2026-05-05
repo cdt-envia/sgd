@@ -531,7 +531,7 @@
  </div>
  <button class="btn-login" onclick="handleLogin()">Ingresar al sistema</button>
  <p class="login-error" id="loginError">Usuario o contraseña incorrectos</p>
- <div style="text-align:center;margin-top:16px;font-size:.7rem;color:#bbb;font-family:monospace">v11.7</div>
+ <div style="text-align:center;margin-top:16px;font-size:.7rem;color:#bbb;font-family:monospace">v11.8</div>
  </div>
 
  <!-- Indicadores de impacto -->
@@ -661,7 +661,7 @@
  </svg>
  Actualizar
  </button>
- <span style="font-size:.68rem;color:#ccc;font-family:monospace;opacity:.6">v11.7</span>
+ <span style="font-size:.68rem;color:#ccc;font-family:monospace;opacity:.6">v11.8</span>
  </div>
  </div>
 
@@ -3521,20 +3521,24 @@ function renderResultados() {
  </div>
  <div id="okrQBreakdown" style="margin-top:10px"></div>
 
- <!-- Desglose 360° dentro del card OKR para llenar el espacio -->
+ <!-- Desglose ' + (STATE.ciclos.find(c=>c.estado==="open")?.grado||360) + '° dentro del card OKR para llenar el espacio -->
  <hr style="border:none;border-top:1px solid var(--gray-light);margin:14px 0 12px">
- <div style="font-size:.75rem;font-weight:700;color:#888;text-transform:uppercase;letter-spacing:.05em;margin-bottom:8px"> Desglose 360°</div>
+ <div style="font-size:.75rem;font-weight:700;color:#888;text-transform:uppercase;letter-spacing:.05em;margin-bottom:8px"> Desglose ' + (STATE.ciclos.find(c=>c.estado==="open")?.grado||360) + '°</div>
  <div style="display:grid;grid-template-columns:repeat(2,1fr);gap:6px">
- ${[
- { label:'Jefe', val:evalJefeUsed?.score_comp?.toFixed(2), ok:!!evalJefeUsed?.score_comp },
- { label:'Auto', val:evalAuto?.score_comp?.toFixed(2), ok:!!evalAuto?.score_comp },
- { label:'Pares', val:evPar.length?(evPar.reduce((a,e)=>a+(e.score_comp||0),0)/evPar.length).toFixed(2):null, ok:evPar.length>0 },
- { label:'Equipo', val:evEq.length?(evEq.reduce((a,e)=>a+(e.score_comp||0),0)/evEq.length).toFixed(2):null, ok:evEq.length>0 },
- ].map(f => `<div style="background:${f.ok?'#e8f5e9':'#f5f5f5'};border-radius:8px;padding:8px 10px;text-align:center">
- <div style="font-size:.65rem;color:#888;font-weight:700;text-transform:uppercase;margin-bottom:2px">${f.label} · 25%</div>
+ ${(() => {
+ const cicloR = STATE.ciclos.find(c => c.estado === 'open');
+ const gradoR = parseInt(cicloR?.grado || '360');
+ return [
+ { label:'Jefe', val:evalJefeUsed?.score_comp?.toFixed(2), ok:!!evalJefeUsed?.score_comp, show:true },
+ { label:'Auto', val:evalAuto?.score_comp?.toFixed(2), ok:!!evalAuto?.score_comp, show:gradoR>=180 },
+ { label:'Pares', val:evPar.length?(evPar.reduce((a,e)=>a+(e.score_comp||0),0)/evPar.length).toFixed(2):null, ok:evPar.length>0, show:gradoR>=360 },
+ { label:'Equipo', val:evEq.length?(evEq.reduce((a,e)=>a+(e.score_comp||0),0)/evEq.length).toFixed(2):null, ok:evEq.length>0, show:gradoR>=270 },
+ ].filter(f=>f.show).map(f => `<div style="background:${f.ok?'#e8f5e9':'#f5f5f5'};border-radius:8px;padding:8px 10px;text-align:center">
+ <div style="font-size:.65rem;color:#888;font-weight:700;text-transform:uppercase;margin-bottom:2px">${f.label}</div>
  <div style="font-size:1.1rem;font-weight:800;color:${f.ok?'#2e7d32':'#ccc'}">${f.val||'—'}</div>
  <div style="font-size:.62rem;color:#aaa">/ 4</div>
- </div>`).join('')}
+ </div>`).join('');
+ })()}
  </div>
  </div>
  </div>
@@ -5469,19 +5473,23 @@ function showNineBoxDetail(colabId) {
  <div style="font-size:.75rem;color:#888">Cumplimiento OKR</div>
  </div>
  </div>
- <div style="font-size:.82rem;font-weight:700;color:var(--gray);margin-bottom:8px">Desglose potencial por fuente (25% c/u)</div>
- ${[
- { label: 'Jefe → Colaborador (25%)', val: evalJefe?.score_comp?.toFixed(2), ok: !!evalJefe },
- { label: 'Autoevaluación (25%)', val: evalAuto?.score_comp?.toFixed(2), ok: !!evalAuto },
- { label: `Pares (25%) — ${evalPares.length} eval.`,
- val: evalPares.length ? (evalPares.reduce((a,e)=>a+(e.score_comp||0),0)/evalPares.length).toFixed(2) : null, ok: evalPares.length > 0 },
- { label: `Equipo → Jefe (25%) — ${evalEquipo.length} eval.`,
- val: evalEquipo.length ? (evalEquipo.reduce((a,e)=>a+(e.score_comp||0),0)/evalEquipo.length).toFixed(2) : null, ok: evalEquipo.length > 0 },
- { label: 'Desempeño OKR', val: evalJefe?.score_okr != null ? evalJefe.score_okr+'%' : null, ok: !!evalJefe },
- ].map(f => `<div style="display:flex;justify-content:space-between;padding:6px 0;border-bottom:1px solid var(--gray-light)">
- <span>${f.label}</span>
+ <div style="font-size:.82rem;font-weight:700;color:var(--gray);margin-bottom:8px">Desglose potencial por fuente</div>
+ ${(() => {
+ const ciclo = STATE.ciclos.find(c => c.estado === 'open');
+ const grado = parseInt(ciclo?.grado || '360');
+ const fuentes = [
+ { label: 'Jefe', pct: ciclo?.peso_jefe??40, val: evalJefe?.score_comp?.toFixed(2), ok: !!evalJefe, show: true },
+ { label: 'Autoevaluacion', pct: ciclo?.peso_auto??20, val: evalAuto?.score_comp?.toFixed(2), ok: !!evalAuto, show: grado >= 180 },
+ { label: 'Pares (' + evalPares.length + ' eval.)', pct: ciclo?.peso_pares??25,
+ val: evalPares.length ? (evalPares.reduce((a,e)=>a+(e.score_comp||0),0)/evalPares.length).toFixed(2) : null, ok: evalPares.length > 0, show: grado >= 360 },
+ { label: 'Colab → Jefe (' + evalEquipo.length + ' eval.)', pct: ciclo?.peso_equipo??15,
+ val: evalEquipo.length ? (evalEquipo.reduce((a,e)=>a+(e.score_comp||0),0)/evalEquipo.length).toFixed(2) : null, ok: evalEquipo.length > 0, show: grado >= 270 },
+ ].filter(f => f.show);
+ return fuentes.map(f => `<div style="display:flex;justify-content:space-between;padding:6px 0;border-bottom:1px solid var(--gray-light)">
+ <span>${f.label} (${f.pct}%)</span>
  <strong style="color:${f.ok?'var(--gray)':'#aaa'}">${f.val || '—'}</strong>
- </div>`).join('')}
+ </div>`).join('');
+ })()}
  `, [{ label:'Cerrar', cls:'btn-secondary', action:'closeModal()' }]);
 }
 
@@ -5593,7 +5601,8 @@ function renderResultadosEquipo() {
  if (esRevision && !evalJefe) {
  const okrsMios = STATE.okr.filter(o =>
  (o.tipo==='individual' && o.colaborador_id===colab.id) ||
- (o.tipo==='equipo' && (!o.miembros?.length || o.miembros.includes(colab.id)))
+ (o.tipo==='equipo' && o.jefe_id !== colab.id && // exclude OKRs CREATED by colab for their team
+ (!o.miembros?.length || o.miembros.includes(colab.id)))
  );
  const okrPctRev = Math.round(calcScoreOKR(colab.id) * 25);
  const okrColor  = okrPctRev>=70?'#2e7d32':okrPctRev>=40?'#e65100':'#ba0020';
@@ -5657,7 +5666,7 @@ function renderResultadosEquipo() {
  <div style="font-size:.82rem;color:#888">${colab.cargo||''} · ${cat?.label||'Sin categoría'}</div>
  </div>
  ${[
- { label:'Potencial 360°', val: potencial>0?potencial.toFixed(2)+' / 4':'—', color:'#1565c0' },
+ { label:'Potencial ' + (STATE.ciclos.find(x=>x.estado==='open')?.grado||360) + '°', val: potencial>0?potencial.toFixed(2)+' / 4':'—', color:'#1565c0' },
  { label:'Desempeño OKR', val: okrPct+'%', color:'#2e7d32' },
  ].map(k=>`<div style="text-align:center;padding:0 12px">
  <div style="font-size:1.2rem;font-weight:800;color:${k.color}">${k.val}</div>
@@ -5688,7 +5697,7 @@ function renderResultadosEquipo() {
  </div>
  </div>
  <hr style="border:none;border-top:1px solid var(--gray-light);margin:10px 0 8px">
- <div style="font-size:.72rem;font-weight:700;color:#888;text-transform:uppercase;margin-bottom:6px"> Desglose 360°</div>
+ <div style="font-size:.72rem;font-weight:700;color:#888;text-transform:uppercase;margin-bottom:6px"> Desglose ' + (STATE.ciclos.find(c=>c.estado==="open")?.grado||360) + '°</div>
  <div style="display:grid;grid-template-columns:1fr 1fr;gap:5px">
  ${[
  {label:'Jefe', val:evalJefe?.score_comp?.toFixed(2), ok:!!evalJefe?.score_comp},
