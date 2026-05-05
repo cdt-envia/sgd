@@ -531,7 +531,7 @@
  </div>
  <button class="btn-login" onclick="handleLogin()">Ingresar al sistema</button>
  <p class="login-error" id="loginError">Usuario o contraseña incorrectos</p>
- <div style="text-align:center;margin-top:16px;font-size:.7rem;color:#bbb;font-family:monospace">v11.2</div>
+ <div style="text-align:center;margin-top:16px;font-size:.7rem;color:#bbb;font-family:monospace">v11.3</div>
  </div>
 
  <!-- Indicadores de impacto -->
@@ -661,7 +661,7 @@
  </svg>
  Actualizar
  </button>
- <span style="font-size:.68rem;color:#ccc;font-family:monospace;opacity:.6">v11.2</span>
+ <span style="font-size:.68rem;color:#ccc;font-family:monospace;opacity:.6">v11.3</span>
  </div>
  </div>
 
@@ -1219,7 +1219,7 @@
 // ═══════════════════════════════════════════
 // CONFIG — Reemplaza con tu URL de Google Apps Script
 // ═══════════════════════════════════════════
-const SCRIPT_URL = 'https://script.google.com/macros/s/AKfycbyjKUFEuiVCJqjh-o5hoqp3sgn3Dv-rMxfzcY7b5Co7-jipSKQomfYvLfrCltZlbV0d/exec';
+const SCRIPT_URL = 'https://script.google.com/macros/s/AKfycbz0KotQhuDZm1bDJCOTL22ok1zNHihdAYDfhaputaD-ybSwwmAC7fdrIq6O-ON0ed2w/exec';
 
 // ═══════════════════════════════════════════
 // STATE
@@ -2083,11 +2083,23 @@ async function loadAllData() {
  STATE.okr = rokr.data || [];
  STATE.pares = rpares.data || [];
  STATE.potencial = rpot.data || [];
- STATE.ciclos = (rciclos.data || []).map(c => ({
+ STATE.ciclos = (rciclos.data || []).map(c => {
+ const grado = parseInt(c.grado || '360');
+ return {
  ...c,
+ grado: String(grado),
  // backward compat: old data used peso_okr, new uses peso_equipo
- peso_equipo: c.peso_equipo ?? c.peso_okr ?? 15,
- }));
+ peso_equipo: c.peso_equipo != null && c.peso_equipo !== ''
+ ? Number(c.peso_equipo)
+ : c.peso_okr != null && c.peso_okr !== ''
+ ? Number(c.peso_okr)
+ : (grado >= 270 ? 15 : 0),
+ // If pesos are all 0 (new ciclo not yet saved with pesos), apply defaults
+ peso_jefe:  Number(c.peso_jefe)  || (grado === 90 ? 100 : grado === 180 ? 60 : grado === 270 ? 50 : 40),
+ peso_auto:  Number(c.peso_auto)  || (grado >= 180 ? (grado === 180 ? 40 : 30) : 0),
+ peso_pares: Number(c.peso_pares) || (grado >= 360 ? 25 : 0),
+ };
+ });
  STATE.revisiones = rrev.data || [];
  STATE.bitacora = rbit.data || [];
  // Sync active ciclo into STATE.periodo for compatibility
@@ -7457,6 +7469,9 @@ function renderGradosPorCargo() {
 
  // Update the ciclo info display
  const infoEl = document.getElementById('asigCicloInfo');
+ // Always sync global selector to ciclo activo grado
+ const gradoEl = document.getElementById('asigGradoGlobal');
+ if (gradoEl && cicloActivo?.grado) gradoEl.value = String(cicloActivo.grado);
  if (infoEl) {
  if (cicloActivo) {
  const gradoLabel = {90:'90°',180:'180°',270:'270°',360:'360°'};
@@ -7500,14 +7515,21 @@ function renderGradosPorCargo() {
 }
 
 function getGradoForColab(colab) {
- const cargoKey = colab.cargo?.replace(/\s+/g,'_') || '';
- const el = document.getElementById('grado_cargo_' + cargoKey);
- const cargoGrado = el?.value ? parseInt(el.value) : null;
- if (cargoGrado) return cargoGrado;
- const globalEl = document.getElementById('asigGradoGlobal');
- if (globalEl?.value) return parseInt(globalEl.value);
- const cicloActivo = STATE.ciclos.find(c => c.estado === 'open');
- return parseInt(cicloActivo?.grado || '360');
+  // Priority: 1) cargo-specific override, 2) ciclo activo grado, 3) global selector
+  const cargoKey = colab.cargo?.replace(/\s+/g,'_') || '';
+  const el = document.getElementById('grado_cargo_' + cargoKey);
+  const cargoGrado = el?.value ? parseInt(el.value) : null;
+  if (cargoGrado) return cargoGrado;
+
+  // Always use ciclo activo grado as the default
+  const cicloActivo = STATE.ciclos.find(c => c.estado === 'open');
+  if (cicloActivo?.grado) return parseInt(cicloActivo.grado);
+
+  // Fallback to global selector
+  const globalEl = document.getElementById('asigGradoGlobal');
+  if (globalEl?.value) return parseInt(globalEl.value);
+
+  return 360;
 }
 
 // ═══════════════════════════════════════════
