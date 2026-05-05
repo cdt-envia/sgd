@@ -531,7 +531,7 @@
  </div>
  <button class="btn-login" onclick="handleLogin()">Ingresar al sistema</button>
  <p class="login-error" id="loginError">Usuario o contraseña incorrectos</p>
- <div style="text-align:center;margin-top:16px;font-size:.7rem;color:#bbb;font-family:monospace">v11.4</div>
+ <div style="text-align:center;margin-top:16px;font-size:.7rem;color:#bbb;font-family:monospace">v11.5</div>
  </div>
 
  <!-- Indicadores de impacto -->
@@ -661,7 +661,7 @@
  </svg>
  Actualizar
  </button>
- <span style="font-size:.68rem;color:#ccc;font-family:monospace;opacity:.6">v11.4</span>
+ <span style="font-size:.68rem;color:#ccc;font-family:monospace;opacity:.6">v11.5</span>
  </div>
  </div>
 
@@ -4104,7 +4104,11 @@ function renderKRRow(kr, objId, isReadOnly) {
  const canCheckin = !isReadOnly && esColabAsignado;
 
  // Display meta and last actual value
- const metaDisplay = kr.valor_meta || kr.meta || '—';
+ const metaVal = kr.valor_meta || kr.meta || '—';
+ const metaFmt = kr.tipo_metrica === 'porcentaje' && !isNaN(parseFloat(metaVal)) && parseFloat(metaVal) <= 1
+ ? Math.round(parseFloat(metaVal) * 100) + '%'
+ : metaVal;
+ const metaDisplay = metaFmt;
  const actualDisplay = kr.valor_actual || kr.actual || (checkinCount > 0 ? [...kr.checkins].sort((a,b)=>b.fecha.localeCompare(a.fecha))[0]?.valor_actual : null) || '—';
  const qLabel = !kr.q_asignado || kr.q_asignado === 'todos' ? ' Todo el año' : kr.q_asignado;
 
@@ -4644,7 +4648,12 @@ function openCheckinModal(objId, krId) {
  }
 
  const tipo = kr.tipo_metrica || 'numero';
- const meta = kr.valor_meta || kr.meta || '—';
+ const metaRaw = kr.valor_meta || kr.meta || '—';
+ // Display meta in human-friendly format
+ const metaDisplay_val = parseFloat(String(metaRaw).replace(/[^0-9.-]/g,''));
+ const meta = tipo === 'porcentaje' && !isNaN(metaDisplay_val)
+ ? Math.round(metaDisplay_val * 100) + '%'  // 0.9 → 90%
+ : metaRaw;
  const isBinario = tipo === 'binario';
  const isJefe = STATE.user.rol === 'jefe' || STATE.user.rol === 'admin';
  const checkins = [...(kr.checkins || [])].sort((a,b) => b.fecha.localeCompare(a.fecha));
@@ -4725,7 +4734,7 @@ function openCheckinModal(objId, krId) {
  <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:6px">
  <span style="font-size:.8rem;color:#888">
  Meta: <strong style="color:var(--gray)">${meta}</strong>
- · ${tipo}
+ · ${tipo === 'porcentaje' ? 'porcentaje' : tipo}
  · ${!kr.q_asignado||kr.q_asignado==='todos' ? 'Todo el año' : kr.q_asignado}
  </span>
  <strong style="color:${barColor}">${ponderado}% ponderado</strong>
@@ -4771,8 +4780,8 @@ function openCheckinModal(objId, krId) {
  : `<div class="form-row">
  <div class="form-field">
  <label>Valor alcanzado <small style="color:#888">(${tipo})</small></label>
- <input type="text" id="ciActual" placeholder="¿Cuánto lograste?"
- data-meta="${meta}" data-tipo="${tipo}"
+ <input type="text" id="ciActual" placeholder="${tipo === 'porcentaje' ? 'Ej: 75 (para 75%)' : '¿Cuánto lograste?'}"
+ data-meta="${metaRaw}" data-tipo="${tipo}"
  oninput="calcCheckinPct(this.value, this.dataset.meta, this.dataset.tipo)"
  style="padding:7px 10px;border:1.5px solid var(--gray-mid);border-radius:6px;font-family:Asap">
  </div>
@@ -4910,7 +4919,18 @@ function updateCiMeses(qValue, inicioOverride, finOverride) {
 }
 
 function calcCheckinPct(valorActual, meta, tipo) {
- const pct = calcKRProgreso(tipo, '0', meta, valorActual, 0);
+ // For porcentaje: user enters 0-100 (e.g. 75), meta stored as decimal (e.g. 0.75)
+ // Convert user input to decimal for comparison
+ let adjustedActual = valorActual;
+ let adjustedMeta = meta;
+ if (tipo === 'porcentaje') {
+ const v = parseFloat(valorActual);
+ const m = parseFloat(meta);
+ if (!isNaN(v) && !isNaN(m) && m <= 1) {
+ adjustedActual = String(v / 100);
+ }
+ }
+ const pct = calcKRProgreso(tipo, '0', adjustedMeta, adjustedActual, 0);
  const color = pct>=70?'#43a047':pct>=40?'#f57c00':'#e53935';
  const d = document.getElementById('ciProgresoDisplay');
  const h = document.getElementById('ciProgreso');
@@ -4934,6 +4954,15 @@ async function saveCheckin(objId, krId) {
  if (!kr) return;
 
  if (!kr.checkins) kr.checkins = [];
+ // For porcentaje: user entered 0-100, store as-is for display but calculate % correctly
+ let valorParaGuardar = valorActual;
+ if (kr.tipo_metrica === 'porcentaje') {
+ const v = parseFloat(valorActual);
+ const m = parseFloat(kr.valor_meta || kr.meta || '0');
+ if (!isNaN(v) && !isNaN(m) && m <= 1) {
+ valorParaGuardar = String(v / 100); // convert back to decimal for storage
+ }
+ }
 
  // Always append — multiple entries per Q/month are allowed
  kr.checkins.push({
@@ -4942,12 +4971,12 @@ async function saveCheckin(objId, krId) {
  q: qSeleccion,
  autor_id: STATE.user.id,
  nota,
- valor_actual: valorActual,
+ valor_actual: valorParaGuardar,
  progreso: newPct,
  });
 
- kr.valor_actual = valorActual;
- kr.actual = valorActual; // compat
+ kr.valor_actual = valorParaGuardar;
+ kr.actual = valorParaGuardar; // compat
 
  // Recalculate using getKRProgresoReal (last entry logic)
  kr.progreso = getKRProgresoReal(kr);
