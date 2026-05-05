@@ -531,7 +531,7 @@
  </div>
  <button class="btn-login" onclick="handleLogin()">Ingresar al sistema</button>
  <p class="login-error" id="loginError">Usuario o contraseña incorrectos</p>
- <div style="text-align:center;margin-top:16px;font-size:.7rem;color:#bbb;font-family:monospace">v11.5</div>
+ <div style="text-align:center;margin-top:16px;font-size:.7rem;color:#bbb;font-family:monospace">v11.7</div>
  </div>
 
  <!-- Indicadores de impacto -->
@@ -661,7 +661,7 @@
  </svg>
  Actualizar
  </button>
- <span style="font-size:.68rem;color:#ccc;font-family:monospace;opacity:.6">v11.5</span>
+ <span style="font-size:.68rem;color:#ccc;font-family:monospace;opacity:.6">v11.7</span>
  </div>
  </div>
 
@@ -2345,7 +2345,7 @@ function renderDashboard() {
  const scorePot = calcScorePotencial(u.id);
  const scoreDesemp = calcScoreOKR(u.id);
  stats = [
- { val: scorePot > 0 ? scorePot.toFixed(2)+' / 4' : '—', label: 'Mi Potencial (360°)', color: 'var(--red-light)', iconColor: 'var(--red)', icon: '<path d="M19 3H5c-1.1 0-2 .9-2 2v14c0 1.1.9 2 2 2h14c1.1 0 2-.9 2-2V5c0-1.1-.9-2-2-2zM9 17H7v-7h2v7zm4 0h-2V7h2v10zm4 0h-2v-4h2v4z"/>' },
+ { val: scorePot > 0 ? scorePot.toFixed(2)+' / 4' : '—', label: 'Mi Potencial (' + (STATE.ciclos.find(c=>c.estado==="open")?.grado||360) + '°)', color: 'var(--red-light)', iconColor: 'var(--red)', icon: '<path d="M19 3H5c-1.1 0-2 .9-2 2v14c0 1.1.9 2 2 2h14c1.1 0 2-.9 2-2V5c0-1.1-.9-2-2-2zM9 17H7v-7h2v7zm4 0h-2V7h2v10zm4 0h-2v-4h2v4z"/>' },
  { val: scoreDesemp > 0 ? (scoreDesemp*25).toFixed(0)+'%' : '—', label: 'Mi Desempeño (OKR)', color: '#e8f5e9', iconColor: '#2e7d32', icon: '<path d="M19 3H5c-1.1 0-2 .9-2 2v14c0 1.1.9 2 2 2h14c1.1 0 2-.9 2-2V5c0-1.1-.9-2-2-2zM9 17H7v-7h2v7zm4 0h-2V7h2v10zm4 0h-2v-4h2v4z"/>' },
  { val: myPDI.length, label: 'Acciones de desarrollo', color: '#e3f2fd', iconColor: 'var(--info)', icon: '<path d="M12 3L1 9l11 6 9-4.91V17h2V9M5 13.18v4L12 21l7-3.82v-4L12 17l-7-3.82z"/>' },
  { val: avgPDI + '%', label: 'Avance PDI promedio', color: '#fff3e0', iconColor: '#f57c00', icon: '<path d="M12 2C6.48 2 2 6.48 2 12s4.48 10 10 10 10-4.48 10-10S17.52 2 12 2zm-2 14.5v-9l6 4.5-6 4.5z"/>' },
@@ -3414,7 +3414,12 @@ function renderResultados() {
  const cont = document.getElementById('resultadosContent');
 
  // Check if there's ANY evaluation data to show
- const hasAnyEval = evalJefe || evalAuto || evPar.length > 0;
+ // Also search with looser status matching in case Sheets returns different values
+ const evalJefeLoose = evalJefe || STATE.evaluaciones.find(e =>
+ e.evaluado_id === u.id && e.tipo === 'jefe' &&
+ ['enviado','completado','completo','sent'].includes(String(e.estado).toLowerCase().trim())
+ );
+ const hasAnyEval = evalJefeLoose || evalAuto || evPar.length > 0;
 
  if (!hasAnyEval) {
  cont.innerHTML = `
@@ -3427,7 +3432,8 @@ function renderResultados() {
  }
 
  // Use evalJefe if available, otherwise show partial results
- const cat = evalJefe ? getCategory(evalJefe.score_final) : null;
+ const evalJefeUsed = evalJefeLoose || evalJefe;
+ const cat = evalJefeUsed ? getCategory(evalJefeUsed.score_final) : null;
  const potencial = calcScorePotencial(u.id); // uses whatever sources are available
  const okrScore = calcScoreOKR(u.id);
  const okrPct = Math.round(okrScore * 25);
@@ -3468,7 +3474,7 @@ function renderResultados() {
  <!-- ── CALIFICACIÓN FINAL MINIMALISTA ───────────────────────────── -->
  <div style="display:flex;gap:12px;align-items:center;background:white;border-radius:14px;padding:18px 24px;box-shadow:0 2px 12px rgba(0,0,0,.08);margin-bottom:16px;flex-wrap:wrap">
  <div style="flex-shrink:0;width:72px;height:72px;border-radius:50%;background:${catColor};display:flex;align-items:center;justify-content:center;box-shadow:0 4px 16px ${catColor}55">
- <span style="color:white;font-size:1.6rem;font-weight:800">${evalJefe?.score_final?.toFixed(1)||(potencial>0?potencial.toFixed(1):'—')}</span>
+ <span style="color:white;font-size:1.6rem;font-weight:800">${evalJefeUsed?.score_final?.toFixed(1)||(potencial>0?potencial.toFixed(1):'—')}</span>
  </div>
  <div style="flex:1;min-width:140px">
  <div style="font-size:1.15rem;font-weight:800;color:var(--gray)">${cat?.label||(potencial>0?'Evaluación parcial':'Pendiente')}</div>
@@ -3476,7 +3482,7 @@ function renderResultados() {
  </div>
  <div style="display:flex;gap:20px;flex-wrap:wrap">
  ${[
- { label:'Potencial 360°', val: potencial>0 ? potencial.toFixed(2)+' / 4' : '—', color:'#1565c0' },
+ { label:'Potencial ' + (STATE.ciclos.find(c=>c.estado==='open')?.grado||360) + '°', val: potencial>0 ? potencial.toFixed(2)+' / 4' : '—', color:'#1565c0' },
  { label:'Desempeño OKR', val: okrPct+'%', color:'#2e7d32' },
  ].map(k => `<div style="text-align:center">
  <div style="font-size:1.3rem;font-weight:800;color:${k.color}">${k.val}</div>
@@ -3520,7 +3526,7 @@ function renderResultados() {
  <div style="font-size:.75rem;font-weight:700;color:#888;text-transform:uppercase;letter-spacing:.05em;margin-bottom:8px"> Desglose 360°</div>
  <div style="display:grid;grid-template-columns:repeat(2,1fr);gap:6px">
  ${[
- { label:'Jefe', val:evalJefe.score_comp?.toFixed(2), ok:!!evalJefe.score_comp },
+ { label:'Jefe', val:evalJefeUsed?.score_comp?.toFixed(2), ok:!!evalJefeUsed?.score_comp },
  { label:'Auto', val:evalAuto?.score_comp?.toFixed(2), ok:!!evalAuto?.score_comp },
  { label:'Pares', val:evPar.length?(evPar.reduce((a,e)=>a+(e.score_comp||0),0)/evPar.length).toFixed(2):null, ok:evPar.length>0 },
  { label:'Equipo', val:evEq.length?(evEq.reduce((a,e)=>a+(e.score_comp||0),0)/evEq.length).toFixed(2):null, ok:evEq.length>0 },
@@ -3876,7 +3882,7 @@ function renderEvolucionHistorial(colabId) {
  data: {
  labels: histEvals.map(e => e.periodo),
  datasets: [{
- label: 'Score Final 360°',
+ label: 'Score Final ' + (STATE.ciclos.find(c=>c.estado==="open")?.grado||360) + '°',
  data: histEvals.map(e => e.score_final),
  borderColor: '#ba0020', backgroundColor: 'rgba(186,0,32,.1)',
  pointBackgroundColor: '#ba0020', tension: 0.3, fill: true,
@@ -4104,11 +4110,7 @@ function renderKRRow(kr, objId, isReadOnly) {
  const canCheckin = !isReadOnly && esColabAsignado;
 
  // Display meta and last actual value
- const metaVal = kr.valor_meta || kr.meta || '—';
- const metaFmt = kr.tipo_metrica === 'porcentaje' && !isNaN(parseFloat(metaVal)) && parseFloat(metaVal) <= 1
- ? Math.round(parseFloat(metaVal) * 100) + '%'
- : metaVal;
- const metaDisplay = metaFmt;
+ const metaDisplay = formatMetaDisplay(kr.valor_meta || kr.meta || '—', kr.tipo_metrica);
  const actualDisplay = kr.valor_actual || kr.actual || (checkinCount > 0 ? [...kr.checkins].sort((a,b)=>b.fecha.localeCompare(a.fecha))[0]?.valor_actual : null) || '—';
  const qLabel = !kr.q_asignado || kr.q_asignado === 'todos' ? ' Todo el año' : kr.q_asignado;
 
@@ -4405,6 +4407,23 @@ function buildKRRow(kr, idx, qOptions) {
  </div>`;
 }
 
+function formatMetaDisplay(metaRaw, tipo) {
+  // Formats meta value for display:
+  // porcentaje: 0.9 → "90%", 90 → "90%", "90%" → "90%", 0.75 → "75%"
+  // other types: return as-is
+  if (tipo !== 'porcentaje') return metaRaw;
+  const str = String(metaRaw || '').trim();
+  if (!str || str === '—') return str;
+  // Already has % sign → show as-is
+  if (str.includes('%')) return str;
+  const num = parseFloat(str.replace(/[^0-9.-]/g, ''));
+  if (isNaN(num)) return str;
+  // If <= 1, treat as decimal (0.9 → 90%)
+  if (num <= 1) return Math.round(num * 100) + '%';
+  // Otherwise already a percentage number (90 → 90%)
+  return Math.round(num) + '%';
+}
+
 function calcKRProgreso(tipo, inicio, meta, actual, fallback) {
  if (tipo === 'binario') return actual === 'si' ? 100 : 0;
  const i = parseFloat(String(inicio).replace(/[^0-9.-]/g,'')) || 0;
@@ -4649,11 +4668,9 @@ function openCheckinModal(objId, krId) {
 
  const tipo = kr.tipo_metrica || 'numero';
  const metaRaw = kr.valor_meta || kr.meta || '—';
- // Display meta in human-friendly format
- const metaDisplay_val = parseFloat(String(metaRaw).replace(/[^0-9.-]/g,''));
- const meta = tipo === 'porcentaje' && !isNaN(metaDisplay_val)
- ? Math.round(metaDisplay_val * 100) + '%'  // 0.9 → 90%
- : metaRaw;
+ // Display meta in human-friendly format for porcentaje type
+ // Handles: 0.9 (decimal) → 90%, 90 or 90% → 90% (already user-friendly)
+ const meta = formatMetaDisplay(metaRaw, tipo);
  const isBinario = tipo === 'binario';
  const isJefe = STATE.user.rol === 'jefe' || STATE.user.rol === 'admin';
  const checkins = [...(kr.checkins || [])].sort((a,b) => b.fecha.localeCompare(a.fecha));
@@ -4919,15 +4936,17 @@ function updateCiMeses(qValue, inicioOverride, finOverride) {
 }
 
 function calcCheckinPct(valorActual, meta, tipo) {
- // For porcentaje: user enters 0-100 (e.g. 75), meta stored as decimal (e.g. 0.75)
- // Convert user input to decimal for comparison
+ // For porcentaje: normalize both user input and meta to the same scale for comparison
  let adjustedActual = valorActual;
  let adjustedMeta = meta;
  if (tipo === 'porcentaje') {
- const v = parseFloat(valorActual);
- const m = parseFloat(meta);
- if (!isNaN(v) && !isNaN(m) && m <= 1) {
- adjustedActual = String(v / 100);
+ const v = parseFloat(String(valorActual).replace(/[^0-9.-]/g, ''));
+ const m = parseFloat(String(meta).replace(/[^0-9.-]/g, ''));
+ if (!isNaN(v) && !isNaN(m)) {
+ // Normalize meta: if decimal (≤1) convert to 0-100 scale
+ const metaNorm = m <= 1 ? m * 100 : m;
+ adjustedActual = String(v);
+ adjustedMeta = String(metaNorm);
  }
  }
  const pct = calcKRProgreso(tipo, '0', adjustedMeta, adjustedActual, 0);
@@ -4954,13 +4973,12 @@ async function saveCheckin(objId, krId) {
  if (!kr) return;
 
  if (!kr.checkins) kr.checkins = [];
- // For porcentaje: user entered 0-100, store as-is for display but calculate % correctly
+ // For porcentaje: normalize stored value to 0-1 decimal scale
  let valorParaGuardar = valorActual;
  if (kr.tipo_metrica === 'porcentaje') {
- const v = parseFloat(valorActual);
- const m = parseFloat(kr.valor_meta || kr.meta || '0');
- if (!isNaN(v) && !isNaN(m) && m <= 1) {
- valorParaGuardar = String(v / 100); // convert back to decimal for storage
+ const v = parseFloat(String(valorActual).replace(/[^0-9.-]/g, ''));
+ if (!isNaN(v) && v > 1) {
+ valorParaGuardar = String(v / 100); // 75 → 0.75
  }
  }
 
@@ -5553,7 +5571,7 @@ function renderResultadosEquipo() {
  const potencial = calcScorePotencial(colab.id);
  const okrScore = calcScoreOKR(colab.id);
  const okrPct = Math.round(okrScore * 25);
- const cat = evalJefe ? getCategory(evalJefe.score_final) : null;
+ const cat = evalJefe ? getCategory(evalJefe?.score_final) : null;
  const catColor = cat?.color || 'var(--gray-mid)';
 
  // Check if selected period is a revision cycle (Q2-Q4 = no competency eval)
@@ -5632,7 +5650,7 @@ function renderResultadosEquipo() {
  <!-- Cabecera colaborador -->
  <div style="display:flex;gap:12px;align-items:center;background:white;border-radius:14px;padding:18px 24px;box-shadow:0 2px 12px rgba(0,0,0,.08);margin-bottom:16px;flex-wrap:wrap">
  <div style="flex-shrink:0;width:64px;height:64px;border-radius:50%;background:${catColor};display:flex;align-items:center;justify-content:center">
- <span style="color:white;font-size:1.4rem;font-weight:800">${evalJefe.score_final?.toFixed(1)||'—'}</span>
+ <span style="color:white;font-size:1.4rem;font-weight:800">${evalJefe?.score_final?.toFixed(1)||'—'}</span>
  </div>
  <div style="flex:1">
  <div style="font-size:1.1rem;font-weight:800;color:var(--gray)">${colab.nombre}</div>
@@ -5703,11 +5721,11 @@ function renderResultadosEquipo() {
  <div class="form-row">
  <div class="form-field">
  <label> Fortalezas</label>
- <p style="background:var(--gray-light);padding:12px;border-radius:8px;font-size:.9rem">${evalJefe.fortalezas||'Sin comentarios'}</p>
+ <p style="background:var(--gray-light);padding:12px;border-radius:8px;font-size:.9rem">${evalJefe?.fortalezas||'Sin comentarios'}</p>
  </div>
  <div class="form-field">
  <label> Oportunidades de mejora</label>
- <p style="background:var(--gray-light);padding:12px;border-radius:8px;font-size:.9rem">${evalJefe.mejoras||'Sin comentarios'}</p>
+ <p style="background:var(--gray-light);padding:12px;border-radius:8px;font-size:.9rem">${evalJefe?.mejoras||'Sin comentarios'}</p>
  </div>
  </div>
  </div>
