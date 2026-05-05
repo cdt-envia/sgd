@@ -531,7 +531,7 @@
  </div>
  <button class="btn-login" onclick="handleLogin()">Ingresar al sistema</button>
  <p class="login-error" id="loginError">Usuario o contraseña incorrectos</p>
- <div style="text-align:center;margin-top:16px;font-size:.7rem;color:#bbb;font-family:monospace">v11.9</div>
+ <div style="text-align:center;margin-top:16px;font-size:.7rem;color:#bbb;font-family:monospace">v12.0</div>
  </div>
 
  <!-- Indicadores de impacto -->
@@ -661,7 +661,7 @@
  </svg>
  Actualizar
  </button>
- <span style="font-size:.68rem;color:#ccc;font-family:monospace;opacity:.6">v11.9</span>
+ <span style="font-size:.68rem;color:#ccc;font-family:monospace;opacity:.6">v12.0</span>
  </div>
  </div>
 
@@ -1219,7 +1219,7 @@
 // ═══════════════════════════════════════════
 // CONFIG — Reemplaza con tu URL de Google Apps Script
 // ═══════════════════════════════════════════
-const SCRIPT_URL = 'https://script.google.com/macros/s/AKfycbyRyLATZp9ENamsO67-ed5ktl_xI7AQbXzY3W-DvQld4NkITCUySPHWEd3kIkdlP5oP/exec';
+const SCRIPT_URL = 'https://script.google.com/macros/s/AKfycbzPzJiVBYlC3hYfOqhrNPCdMUkg929MK3FhkNuH8bMkO29I2TP7nk8Y231F6TIPthee/exec';
 
 // ═══════════════════════════════════════════
 // STATE
@@ -2080,7 +2080,20 @@ async function loadAllData() {
  STATE.evaluaciones = re.data || [];
  STATE.pdi = rp.data || [];
  STATE.periodo = rper.data || {};
- STATE.okr = rokr.data || [];
+ STATE.okr = (rokr.data || []).map(o => ({
+ ...o,
+ // Normalize miembros: Sheets may return comma-separated string instead of array
+ miembros: Array.isArray(o.miembros)
+ ? o.miembros.filter(Boolean)
+ : (o.miembros ? String(o.miembros).split(',').map(s=>s.trim()).filter(Boolean) : []),
+ // Normalize KR valor_meta for porcentaje type
+ krs: (o.krs||[]).map(k => ({
+ ...k,
+ valor_meta: (k.tipo_metrica === 'porcentaje' && !isNaN(parseFloat(k.valor_meta)) && parseFloat(k.valor_meta) <= 1)
+ ? String(Math.round(parseFloat(k.valor_meta) * 100))
+ : k.valor_meta,
+ })),
+ }));
  STATE.pares = rpares.data || [];
  STATE.potencial = rpot.data || [];
  STATE.ciclos = (rciclos.data || []).map(c => {
