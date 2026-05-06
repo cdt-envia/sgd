@@ -531,7 +531,7 @@
  </div>
  <button class="btn-login" onclick="handleLogin()">Ingresar al sistema</button>
  <p class="login-error" id="loginError">Usuario o contraseña incorrectos</p>
- <div style="text-align:center;margin-top:16px;font-size:.7rem;color:#bbb;font-family:monospace">v12.1</div>
+ <div style="text-align:center;margin-top:16px;font-size:.7rem;color:#bbb;font-family:monospace">v12.2</div>
  </div>
 
  <!-- Indicadores de impacto -->
@@ -661,7 +661,7 @@
  </svg>
  Actualizar
  </button>
- <span style="font-size:.68rem;color:#ccc;font-family:monospace;opacity:.6">v12.1</span>
+ <span style="font-size:.68rem;color:#ccc;font-family:monospace;opacity:.6">v12.2</span>
  </div>
  </div>
 
@@ -817,7 +817,7 @@
  <span class="status-pill" id="evalJefeStatus">Pendiente</span>
  </div>
  <p style="color:#888;font-size:.9rem;margin-bottom:16px">
- Tu evaluación a tu jefe es parte del proceso evaluativo. Responde con objetividad y constructividad.
+ Tu evaluación a tu jefe es parte del proceso de 360°. Responde con objetividad y constructividad.
  </p>
  <button class="btn btn-primary" id="btnOpenEvalJefe" onclick="openEvalJefeForm()">Iniciar evaluación</button>
  </div>
@@ -1219,7 +1219,7 @@
 // ═══════════════════════════════════════════
 // CONFIG — Reemplaza con tu URL de Google Apps Script
 // ═══════════════════════════════════════════
-const SCRIPT_URL = 'https://script.google.com/macros/s/AKfycbyNjlsBoT8Mi9uWHKAP-oitjGO2rfQT390cERJJ0dTs9VaQV_N_WzlCJFOxRSlBHYtg/exec';
+const SCRIPT_URL = 'https://script.google.com/macros/s/AKfycbzVTp8ept8rRC4Lx1lvifw3FDZAb2aegKPw-E702YTJm7lq8-8Xe11_Cq1P3Uhopn_y/exec';
 
 // ═══════════════════════════════════════════
 // STATE
@@ -3424,12 +3424,16 @@ function renderResultados() {
  const cont = document.getElementById('resultadosContent');
 
  // Check if there's ANY evaluation data to show
- // Also search with looser status matching in case Sheets returns different values
- const evalJefeLoose = evalJefe || STATE.evaluaciones.find(e =>
+ // Search with multiple status values in case Sheets returns different formats
+ const evalJefeLoose = STATE.evaluaciones.find(e =>
  e.evaluado_id === u.id && e.tipo === 'jefe' &&
- ['enviado','completado','completo','sent'].includes(String(e.estado).toLowerCase().trim())
+ ['enviado','completado','completo','sent','borrador'].includes(String(e.estado||'').toLowerCase().trim())
  );
- const hasAnyEval = evalJefeLoose || evalAuto || evPar.length > 0;
+ const evalAutoLoose = STATE.evaluaciones.find(e =>
+ e.evaluado_id === u.id && e.tipo === 'auto' &&
+ ['enviado','completado','completo','sent','borrador'].includes(String(e.estado||'').toLowerCase().trim())
+ );
+ const hasAnyEval = evalJefeLoose || evalAutoLoose || evPar.length > 0;
 
  if (!hasAnyEval) {
  cont.innerHTML = `
@@ -5247,32 +5251,25 @@ function openParEvalForm(evaluadoId, readOnly) {
 // pot = nivel del eje Y (competencias): 3=alto, 2=medio, 1=bajo
 // des = nivel del eje X (OKR): rango numérico 0-4
 const NINEBOX_CONFIG = [
- // Fila 3 — Potencial (competencias) ALTO
- { pot:3, des_min:0, des_max:1.49, label:'Enigma', color:'#5c6bc0',
- desc:'Competencias altas, bajo cumplimiento de OKR. Posible falta de recursos, claridad en objetivos o motivación.' },
- { pot:3, des_min:1.5, des_max:2.49, label:'Alto Potencial', color:'#1976d2',
- desc:'Gran potencial de competencias con desempeño en desarrollo. Acompañar en ejecución y claridad de metas.' },
- { pot:3, des_min:2.5, des_max:4, label:'Estrella', color:'#0097a7',
- desc:'Domina sus competencias Y cumple sus OKR. Top talent. Retener, reconocer y preparar para liderazgo.' },
- // Fila 2 — Potencial (competencias) MEDIO
- { pot:2, des_min:0, des_max:1.49, label:'Dilema', color:'#f57c00',
- desc:'Competencias en desarrollo y bajo desempeño OKR. Requiere intervención: plan de desarrollo + metas más claras.' },
- { pot:2, des_min:1.5, des_max:2.49, label:'Trabajador', color:'#fbc02d',
- desc:'Perfil sólido y equilibrado. Cumple sus OKR con competencias adecuadas. Clarificar próximos pasos de carrera.' },
- { pot:2, des_min:2.5, des_max:4, label:'Pilar', color:'#388e3c',
- desc:'Buen desempeño OKR con competencias suficientes. Persona confiable y productiva. Reconocer y retener.' },
- // Fila 1 — Potencial (competencias) BAJO
- { pot:1, des_min:0, des_max:1.49, label:'Bajo Rendimiento',color:'#c62828',
- desc:'Competencias bajas y bajo desempeño OKR. Riesgo crítico. Plan de mejora urgente o decisión de salida.' },
- { pot:1, des_min:1.5, des_max:2.49, label:'Recurso Limitado',color:'#e53935',
- desc:'Cumple algunos OKR pero con competencias limitadas. Revisar si el rol es el adecuado.' },
- { pot:1, des_min:2.5, des_max:4, label:'Efectivo', color:'#43a047',
- desc:'Cumple bien sus OKR pero con competencias en el límite. Ha alcanzado su techo. Reconocer y estabilizar.' },
+ // pot=3: Potencial ALTO (scoreComp > 2.66)
+ { pot:3, des_min:0,    des_max:1.33, label:'Enigma',         color:'#5c6bc0', desc:'Competencias altas, bajo cumplimiento de OKR. Posible falta de recursos o motivación.' },
+ { pot:3, des_min:1.34, des_max:2.66, label:'Alto Potencial', color:'#1976d2', desc:'Gran potencial con desempeño en desarrollo. Acompañar en ejecución y claridad de metas.' },
+ { pot:3, des_min:2.67, des_max:4,    label:'Estrella',       color:'#0097a7', desc:'Domina competencias Y cumple OKR. Top talent. Retener, reconocer y preparar para liderazgo.' },
+ // pot=2: Potencial MEDIO (scoreComp 1.34 - 2.66)
+ { pot:2, des_min:0,    des_max:1.33, label:'Dilema',         color:'#f57c00', desc:'Competencias en desarrollo y bajo desempeño. Requiere plan de desarrollo + metas más claras.' },
+ { pot:2, des_min:1.34, des_max:2.66, label:'Trabajador',     color:'#fbc02d', desc:'Perfil sólido y equilibrado. Clarificar próximos pasos de carrera.' },
+ { pot:2, des_min:2.67, des_max:4,    label:'Pilar',          color:'#388e3c', desc:'Buen desempeño con competencias suficientes. Persona confiable. Reconocer y retener.' },
+ // pot=1: Potencial BAJO (scoreComp <= 1.33)
+ { pot:1, des_min:0,    des_max:1.33, label:'Bajo Rendimiento', color:'#c62828', desc:'Competencias bajas y bajo desempeño. Riesgo crítico. Plan de mejora urgente.' },
+ { pot:1, des_min:1.34, des_max:2.66, label:'Recurso Limitado', color:'#e53935', desc:'Cumple algunos OKR pero competencias limitadas. Revisar si el rol es el adecuado.' },
+ { pot:1, des_min:2.67, des_max:4,    label:'Efectivo',          color:'#43a047', desc:'Cumple OKR pero competencias en el límite. Ha alcanzado su techo. Reconocer y estabilizar.' },
 ];
 
 function getNineBoxCell(scoreOKR, scoreComp) {
  // X = desempeño OKR (0-4), Y = competencias (0-4) → potencial nivel 1/2/3
- const potNivel = scoreComp >= 2.5 ? 3 : scoreComp >= 1.5 ? 2 : 1;
+ // Scale 0-4 divided in 3 equal zones: bajo 0-1.33, medio 1.34-2.66, alto 2.67-4
+ const potNivel = scoreComp > 2.66 ? 3 : scoreComp > 1.33 ? 2 : 1;
+ const desNivel = scoreOKR  > 2.66 ? 3 : scoreOKR  > 1.33 ? 2 : 1;
  return NINEBOX_CONFIG.find(c =>
  c.pot === potNivel && scoreOKR >= c.des_min && scoreOKR <= c.des_max
  ) || null;
@@ -5299,7 +5296,7 @@ function renderNineBox() {
  // Ponderado: 60% potencial + 40% desempeño (escala 0-4, luego a 0-100)
  const ponderado = parseFloat(((scoreComp * 0.6 + scoreOKR * 0.4) * 25).toFixed(1));
  const cell = getNineBoxCell(scoreOKR, scoreComp);
- const potNivel = scoreComp >= 2.5 ? 3 : scoreComp >= 1.5 ? 2 : 1;
+ const potNivel = scoreComp > 2.66 ? 3 : scoreComp > 1.33 ? 2 : 1;
  return { colab, scoreComp, scoreOKR, ponderado, potNivel, cell };
  });
 
