@@ -531,7 +531,7 @@
  </div>
  <button class="btn-login" onclick="handleLogin()">Ingresar al sistema</button>
  <p class="login-error" id="loginError">Usuario o contraseña incorrectos</p>
- <div style="text-align:center;margin-top:16px;font-size:.7rem;color:#bbb;font-family:monospace">v12.3</div>
+ <div style="text-align:center;margin-top:16px;font-size:.7rem;color:#bbb;font-family:monospace">v12.4</div>
  </div>
 
  <!-- Indicadores de impacto -->
@@ -661,7 +661,7 @@
  </svg>
  Actualizar
  </button>
- <span style="font-size:.68rem;color:#ccc;font-family:monospace;opacity:.6">v12.3</span>
+ <span style="font-size:.68rem;color:#ccc;font-family:monospace;opacity:.6">v12.4</span>
  </div>
  </div>
 
@@ -3420,18 +3420,28 @@ function renderResultados() {
  const u = STATE.user;
  const userId = String(u.id).trim();
  const cont = document.getElementById('resultadosContent');
- // Type-safe comparison — IDs from Sheets may come as numbers or strings
+
+ // Type-safe: IDs from Sheets may be numbers or strings
  const misEvals = STATE.evaluaciones.filter(e => String(e.evaluado_id).trim() === userId);
+
+ // Accept any status — if jefe evaluated me I should see results
  const evalJefe = misEvals.find(e => e.tipo === 'jefe' && e.estado === 'enviado')
-   || misEvals.find(e => e.tipo === 'jefe');
+ || misEvals.find(e => e.tipo === 'jefe' && e.estado === 'borrador')
+ || misEvals.find(e => e.tipo === 'jefe');
  const evalAuto = misEvals.find(e => e.tipo === 'auto' && e.estado === 'enviado')
-   || misEvals.find(e => e.tipo === 'auto');
+ || misEvals.find(e => e.tipo === 'auto');
  const evPar = misEvals.filter(e => e.tipo === 'par' && e.estado === 'enviado');
  const evEq  = misEvals.filter(e => e.tipo === 'colab_a_jefe' && e.estado === 'enviado');
+
  const hasAnyEval = evalJefe || evalAuto || evPar.length > 0;
- const evalJefeLoose = evalJefe;
 
  if (!hasAnyEval) {
+ // Debug info in console to help diagnose
+ console.warn('[MIS RESULTADOS] Sin evaluaciones. userId:', userId,
+ '| Total evals:', STATE.evaluaciones.length,
+ '| Mis evals (loose):', STATE.evaluaciones.filter(e =>
+ String(e.evaluado_id).includes(userId.slice(-4)) || userId.includes(String(e.evaluado_id).slice(-4))
+ ).length);
  cont.innerHTML = `
  <div class="empty-state"><svg viewBox="0 0 24 24" fill="currentColor"><path d="M12 2C6.48 2 2 6.48 2 12s4.48 10 10 10 10-4.48 10-10S17.52 2 12 2zm1 15h-2v-6h2v6zm0-8h-2V7h2v2z"/></svg>
  <p>Tus resultados estarán disponibles cuando tu evaluador complete y envíe tu evaluación.</p>
@@ -3441,16 +3451,18 @@ function renderResultados() {
  return;
  }
 
- // Use evalJefe if available, otherwise show partial results
- const evalJefeUsed = evalJefeLoose || evalJefe;
- const cat = evalJefeUsed ? getCategory(evalJefeUsed.score_final) : null;
- const potencial = calcScorePotencial(u.id); // uses whatever sources are available
+ const evalJefeUsed = evalJefe;
+ const cat = evalJefeUsed?.score_final ? getCategory(evalJefeUsed.score_final) : null;
+ const potencial = calcScorePotencial(u.id);
  const okrScore = calcScoreOKR(u.id);
  const okrPct = Math.round(okrScore * 25);
- // Full names for bar chart, wrapped for radar (max 2 lines of ~14 chars each)
+
+ // Define comps BEFORE using them
+ const comps = getCompsByRole(u.cargo, getNivelOcupacional(u.id));
+ const catColor = cat?.color || '#1565c0';
+
  const compLabels = comps.map(c => c.nombre);
  const compLabelsWrap = comps.map(c => {
- // Split long names into 2 lines for radar readability
  const words = c.nombre.split(' ');
  if (c.nombre.length <= 16) return c.nombre;
  // Find best split point near middle
@@ -3476,8 +3488,8 @@ function renderResultados() {
  const jefeScores = comps.map(c => getCompScore(evalJefe, c.id));
  const autoScores = evalAuto ? comps.map(c => getCompScore(evalAuto, c.id)) : [];
 
- const comps = getCompsByRole(u.cargo, getNivelOcupacional(u.id));
- const catColor = cat?.color || '#1565c0'; // blue when no jefe eval yet
+
+
 
  cont.innerHTML = `
  <!-- ── CALIFICACIÓN FINAL MINIMALISTA ───────────────────────────── -->
