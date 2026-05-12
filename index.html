@@ -531,7 +531,7 @@
  </div>
  <button class="btn-login" onclick="handleLogin()">Ingresar al sistema</button>
  <p class="login-error" id="loginError">Usuario o contraseña incorrectos</p>
- <div style="text-align:center;margin-top:16px;font-size:.7rem;color:#bbb;font-family:monospace">v12.6</div>
+ <div style="text-align:center;margin-top:16px;font-size:.7rem;color:#bbb;font-family:monospace">v12.7</div>
  </div>
 
  <!-- Indicadores de impacto -->
@@ -661,7 +661,7 @@
  </svg>
  Actualizar
  </button>
- <span style="font-size:.68rem;color:#ccc;font-family:monospace;opacity:.6">v12.6</span>
+ <span style="font-size:.68rem;color:#ccc;font-family:monospace;opacity:.6">v12.7</span>
  </div>
  </div>
 
@@ -1608,6 +1608,16 @@ const DEMO_OKR = [
 // ═══════════════════════════════════════════
 // UTILS
 // ═══════════════════════════════════════════
+function formatDateDisplay(dateStr) {
+ // Convert ISO date string to DD/MM/YYYY for display
+ if (!dateStr) return '—';
+ const s = String(dateStr).slice(0, 10); // take YYYY-MM-DD part only
+ if (!s || s === '—') return '—';
+ const parts = s.split('-');
+ if (parts.length !== 3) return s;
+ return parts[2] + '/' + parts[1] + '/' + parts[0];
+}
+
 function showToast(msg, type='') {
  const t = document.getElementById('toast');
  t.textContent = msg; t.className = 'show ' + type;
@@ -3534,7 +3544,7 @@ function renderResultados() {
  ${evPar.length > 0 ? '<span style="display:flex;align-items:center;gap:4px"><span style="width:10px;height:3px;background:#1565c0;border-radius:2px;display:inline-block"></span>Pares</span>' : ''}
  </div>
  </div>
- <div class="radar-container" style="height:360px"><canvas id="chartRadarResult"></canvas></div>
+ <div class="radar-container" id="radarResultContainer" style="height:${Math.max(360, comps.length * 38)}px"><canvas id="chartRadarResult"></canvas></div>
  </div>
 
  <!-- Dona OKR -->
@@ -3647,14 +3657,29 @@ function renderResultados() {
  pointBackgroundColor:'#1565c0', borderWidth:2, borderDash:[3,3], pointRadius:3
  });
  }
+ // Adaptive label size based on number of competencies
+ const nComps = comps.length;
+ const labelFontSize = nComps <= 5 ? 11 : nComps <= 7 ? 10 : nComps <= 10 ? 9 : 8;
+ const labelPadding = nComps <= 6 ? 10 : nComps <= 9 ? 16 : 22;
  STATE.charts['chartRadarResult'] = new Chart(ctxRadar, {
  type:'radar',
  data:{ labels:compLabelsWrap, datasets:radarDatasets },
  options:{
  responsive:true, maintainAspectRatio:false,
+ layout:{ padding:{ top:10, bottom:10 } },
  scales:{ r:{
- min:0, max:4, ticks:{ stepSize:1, font:{family:'Asap',size:10}, backdropColor:'transparent' },
- pointLabels:{ font:{family:'Asap',size:11.5, weight:'500'}, color:'#4e4e4e', padding:8 },
+ min:0, max:4,
+ ticks:{ stepSize:1, font:{family:'Asap',size:9}, backdropColor:'transparent', display: nComps <= 8 },
+ pointLabels:{
+ font:{family:'Asap', size:labelFontSize, weight:'500'},
+ color:'#4e4e4e',
+ padding:labelPadding,
+ callback: function(label) {
+ // Truncate single-string labels that are too long
+ if (typeof label === 'string' && label.length > 18) return label.slice(0,16) + '…';
+ return label;
+ }
+ },
  grid:{ color:'rgba(0,0,0,.08)' }, angleLines:{ color:'rgba(0,0,0,.08)' }
  }},
  plugins:{ legend:{ display:false } }
@@ -5784,10 +5809,19 @@ function renderResultadosEquipo() {
  const ds = [{ label:'Jefe', data:jefeScores, borderColor:'#ba0020', backgroundColor:'rgba(186,0,32,.12)', borderWidth:2.5, pointBackgroundColor:'#ba0020', pointRadius:4 }];
  if (evalAuto && autoScores.some(s=>s>0)) ds.push({ label:'Auto', data:autoScores, borderColor:'#555', backgroundColor:'rgba(85,85,85,.08)', borderWidth:1.5, borderDash:[5,4], pointRadius:3 });
  if (evPar.length && paresScores.some(s=>s>0)) ds.push({ label:'Pares', data:paresScores, borderColor:'#1565c0', backgroundColor:'rgba(21,101,192,.1)', borderWidth:2, borderDash:[3,3], pointRadius:3 });
+ const nCompsE = comps.length;
+ const lfSzE = nCompsE <= 5 ? 10 : nCompsE <= 7 ? 9 : nCompsE <= 10 ? 8 : 7;
+ const lfPdE = nCompsE <= 6 ? 8 : nCompsE <= 9 ? 14 : 20;
  STATE.charts['chartRadarEquipo'] = new Chart(ctxR, { type:'radar', data:{ labels:compLabelsWrap, datasets:ds },
  options:{ responsive:true, maintainAspectRatio:false,
- scales:{ r:{ min:0, max:4, ticks:{ stepSize:1, font:{family:'Asap',size:10}, backdropColor:'transparent' },
- pointLabels:{ font:{family:'Asap',size:10}, color:'#4e4e4e' },
+ layout:{ padding:{ top:8, bottom:8 } },
+ scales:{ r:{ min:0, max:4,
+ ticks:{ stepSize:1, font:{family:'Asap',size:9}, backdropColor:'transparent', display: nCompsE <= 8 },
+ pointLabels:{ font:{family:'Asap', size:lfSzE, weight:'500'}, color:'#4e4e4e', padding:lfPdE,
+ callback: function(label) {
+ if (typeof label === 'string' && label.length > 16) return label.slice(0,14)+'…';
+ return label;
+ }},
  grid:{ color:'rgba(0,0,0,.08)' }, angleLines:{ color:'rgba(0,0,0,.08)' } }},
  plugins:{ legend:{ display:false } } } });
  }
@@ -6070,7 +6104,7 @@ function _renderPDIContent(cont, pdiItems, viewRol) {
  <td><strong>${colab?.nombre||'—'}</strong></td>
  <td>${p.competencia}</td>
  <td style="font-size:.85rem">${p.accion}</td>
- <td style="font-size:.82rem">${p.fecha_inicio||'—'} → ${p.fecha_fin||'—'}</td>
+ <td style="font-size:.82rem">${formatDateDisplay(p.fecha_inicio)} → ${formatDateDisplay(p.fecha_fin)}</td>
  <td style="display:flex;gap:6px">
  <button class="btn btn-success btn-sm" onclick="approvePDI('${p.id}')"> Aprobar</button>
  <button class="btn btn-secondary btn-sm" onclick="editPDI('${p.id}')">Editar</button>
@@ -6156,7 +6190,7 @@ function _renderPDIContent(cont, pdiItems, viewRol) {
  </div>
  <div class="pdi-fields">
  <div class="pdi-field"><label>Recursos</label><p style="font-size:.85rem">${p.recursos||'—'}</p></div>
- <div class="pdi-field"><label>Fechas</label><p style="font-size:.85rem">${p.fecha_inicio||'—'} → ${p.fecha_fin||'—'}</p></div>
+ <div class="pdi-field"><label>Fechas</label><p style="font-size:.85rem">${formatDateDisplay(p.fecha_inicio)} → ${formatDateDisplay(p.fecha_fin)}</p></div>
  ${p.indicador_exito ? `<div class="pdi-field"><label>Indicador de éxito</label><p style="font-size:.85rem">${p.indicador_exito}</p></div>` : ''}
  ${p.observaciones ? `<div class="pdi-field" style="${!p.indicador_exito?'grid-column:1/-1':''}"><label>Seguimiento / Observaciones</label><p style="font-size:.85rem">${p.observaciones}</p></div>` : ''}
  </div>
