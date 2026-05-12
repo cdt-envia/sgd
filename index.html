@@ -531,7 +531,7 @@
  </div>
  <button class="btn-login" onclick="handleLogin()">Ingresar al sistema</button>
  <p class="login-error" id="loginError">Usuario o contraseña incorrectos</p>
- <div style="text-align:center;margin-top:16px;font-size:.7rem;color:#bbb;font-family:monospace">v12.7</div>
+ <div style="text-align:center;margin-top:16px;font-size:.7rem;color:#bbb;font-family:monospace">v12.8</div>
  </div>
 
  <!-- Indicadores de impacto -->
@@ -661,7 +661,7 @@
  </svg>
  Actualizar
  </button>
- <span style="font-size:.68rem;color:#ccc;font-family:monospace;opacity:.6">v12.7</span>
+ <span style="font-size:.68rem;color:#ccc;font-family:monospace;opacity:.6">v12.8</span>
  </div>
  </div>
 
@@ -5693,20 +5693,31 @@ function renderResultadosEquipo() {
  return;
  }
 
- const comps = STATE.competencias;
+ const comps = getCompsByRole(colab.cargo, getNivelOcupacional(colab.id));
  const getScore = (ev, cid) => {
  if (!ev) return 0;
  const j = ev.comp_scores?.[cid]; if (j>0) return j;
  return Number(ev['comp_'+cid]) || 0;
  };
- const jefeScores = comps.map(c => getScore(evalJefe, c.id));
- const autoScores = comps.map(c => getScore(evalAuto, c.id));
- const paresScores = comps.map(c => {
+ const jefeScores = compsToShow.map(c => getScore(evalJefe, c.id));
+ const autoScores = compsToShow.map(c => getScore(evalAuto, c.id));
+ const paresScores = compsToShow.map(c => {
  if (!evPar.length) return 0;
  const vals = evPar.map(e => getScore(e,c.id)).filter(v=>v>0);
  return vals.length ? parseFloat((vals.reduce((a,b)=>a+b,0)/vals.length).toFixed(2)) : 0;
  });
  const compLabelsWrap = comps.map(c => {
+ const words = c.nombre.split(' ');
+ if (c.nombre.length <= 16) return c.nombre;
+ let best=0, bestDiff=Infinity, acc=0;
+ words.forEach((w,i)=>{ acc+=w.length+(i>0?1:0); const d=Math.abs(acc-c.nombre.length/2); if(d<bestDiff){bestDiff=d;best=i;} });
+ const l1=words.slice(0,best+1).join(' '), l2=words.slice(best+1).join(' ');
+ return l2?[l1,l2]:l1;
+ });
+
+ // If no competencias match this cargo, fall back to all comps
+ const compsToShow = comps.length ? comps : STATE.competencias;
+ const compLabelsWrapFinal = compsToShow.map(c => {
  const words = c.nombre.split(' ');
  if (c.nombre.length <= 16) return c.nombre;
  let best=0, bestDiff=Infinity, acc=0;
@@ -5809,10 +5820,10 @@ function renderResultadosEquipo() {
  const ds = [{ label:'Jefe', data:jefeScores, borderColor:'#ba0020', backgroundColor:'rgba(186,0,32,.12)', borderWidth:2.5, pointBackgroundColor:'#ba0020', pointRadius:4 }];
  if (evalAuto && autoScores.some(s=>s>0)) ds.push({ label:'Auto', data:autoScores, borderColor:'#555', backgroundColor:'rgba(85,85,85,.08)', borderWidth:1.5, borderDash:[5,4], pointRadius:3 });
  if (evPar.length && paresScores.some(s=>s>0)) ds.push({ label:'Pares', data:paresScores, borderColor:'#1565c0', backgroundColor:'rgba(21,101,192,.1)', borderWidth:2, borderDash:[3,3], pointRadius:3 });
- const nCompsE = comps.length;
+ const nCompsE = compsToShow.length;
  const lfSzE = nCompsE <= 5 ? 10 : nCompsE <= 7 ? 9 : nCompsE <= 10 ? 8 : 7;
  const lfPdE = nCompsE <= 6 ? 8 : nCompsE <= 9 ? 14 : 20;
- STATE.charts['chartRadarEquipo'] = new Chart(ctxR, { type:'radar', data:{ labels:compLabelsWrap, datasets:ds },
+ STATE.charts['chartRadarEquipo'] = new Chart(ctxR, { type:'radar', data:{ labels:compLabelsWrapFinal, datasets:ds },
  options:{ responsive:true, maintainAspectRatio:false,
  layout:{ padding:{ top:8, bottom:8 } },
  scales:{ r:{ min:0, max:4,
@@ -5835,7 +5846,7 @@ function renderResultadosEquipo() {
  if (STATE.charts['chartBarEquipo']) STATE.charts['chartBarEquipo'].destroy();
  const ctxB = document.getElementById('chartBarEquipo')?.getContext('2d');
  if (ctxB) {
- const order = comps
+ const order = compsToShow
  .map((c,i) => ({ c, i, s: jefeScores[i]||0 }))
  .filter(x => x.s > 0) // ocultar competencias sin calificar
  .sort((a,b) => b.s - a.s);
@@ -7721,7 +7732,7 @@ function renderBitacora() {
  <div style="display:flex;align-items:center;gap:10px;margin-bottom:6px;flex-wrap:wrap">
  <span style="background:${color};color:white;border-radius:8px;padding:2px 10px;font-size:.75rem;font-weight:700">${TIPOS[e.tipo]||e.tipo}</span>
  <strong style="font-size:.88rem;color:var(--gray)">${colab?.nombre||'—'}</strong>
- <span style="font-size:.78rem;color:#aaa">${e.fecha}</span>
+ <span style="font-size:.78rem;color:#aaa">${formatDateDisplay(e.fecha)}</span>
  ${e.visible_colab ? '<span style="font-size:.72rem;color:#43a047;border:1px solid #43a047;border-radius:6px;padding:1px 6px">Visible al colaborador</span>' : '<span style="font-size:.72rem;color:#aaa;border:1px solid #ddd;border-radius:6px;padding:1px 6px">Solo jefe</span>'}
  </div>
  <p style="font-size:.88rem;color:var(--gray);margin:0;line-height:1.5">${e.nota}</p>
@@ -7751,7 +7762,7 @@ function renderBitacora() {
  return `<div style="border-left:4px solid ${color};background:var(--gray-light);border-radius:0 8px 8px 0;padding:12px 16px">
  <div style="display:flex;align-items:center;gap:10px;margin-bottom:6px">
  <span style="background:${color};color:white;border-radius:8px;padding:2px 10px;font-size:.75rem;font-weight:700">${TIPOS[e.tipo]||e.tipo}</span>
- <span style="font-size:.78rem;color:#aaa">${e.fecha}</span>
+ <span style="font-size:.78rem;color:#aaa">${formatDateDisplay(e.fecha)}</span>
  </div>
  <p style="font-size:.88rem;color:var(--gray);margin:0;line-height:1.5">${e.nota}</p>
  </div>`;
@@ -7786,7 +7797,7 @@ function renderMiBitacora() {
  return `<div style="border-left:4px solid ${color};background:var(--gray-light);border-radius:0 8px 8px 0;padding:12px 16px">
  <div style="display:flex;align-items:center;gap:10px;margin-bottom:6px;flex-wrap:wrap">
  <span style="background:${color};color:white;border-radius:8px;padding:2px 10px;font-size:.75rem;font-weight:700">${TIPOS[e.tipo]||e.tipo}</span>
- <span style="font-size:.78rem;color:#aaa">${e.fecha||''}</span>
+ <span style="font-size:.78rem;color:#aaa">${formatDateDisplay(e.fecha)}</span>
  </div>
  <p style="font-size:.88rem;color:var(--gray);margin:0;line-height:1.5">${e.nota}</p>
  </div>`;
