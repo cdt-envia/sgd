@@ -531,7 +531,7 @@
  </div>
  <button class="btn-login" onclick="handleLogin()">Ingresar al sistema</button>
  <p class="login-error" id="loginError">Usuario o contraseña incorrectos</p>
- <div style="text-align:center;margin-top:16px;font-size:.7rem;color:#bbb;font-family:monospace">v12.8</div>
+ <div style="text-align:center;margin-top:16px;font-size:.7rem;color:#bbb;font-family:monospace">v12.9</div>
  </div>
 
  <!-- Indicadores de impacto -->
@@ -661,7 +661,7 @@
  </svg>
  Actualizar
  </button>
- <span style="font-size:.68rem;color:#ccc;font-family:monospace;opacity:.6">v12.8</span>
+ <span style="font-size:.68rem;color:#ccc;font-family:monospace;opacity:.6">v12.9</span>
  </div>
  </div>
 
@@ -5694,6 +5694,8 @@ function renderResultadosEquipo() {
  }
 
  const comps = getCompsByRole(colab.cargo, getNivelOcupacional(colab.id));
+ // If no competencias match this cargo, fall back to all comps
+ const compsToShow = comps.length ? comps : STATE.competencias;
  const getScore = (ev, cid) => {
  if (!ev) return 0;
  const j = ev.comp_scores?.[cid]; if (j>0) return j;
@@ -5706,17 +5708,6 @@ function renderResultadosEquipo() {
  const vals = evPar.map(e => getScore(e,c.id)).filter(v=>v>0);
  return vals.length ? parseFloat((vals.reduce((a,b)=>a+b,0)/vals.length).toFixed(2)) : 0;
  });
- const compLabelsWrap = comps.map(c => {
- const words = c.nombre.split(' ');
- if (c.nombre.length <= 16) return c.nombre;
- let best=0, bestDiff=Infinity, acc=0;
- words.forEach((w,i)=>{ acc+=w.length+(i>0?1:0); const d=Math.abs(acc-c.nombre.length/2); if(d<bestDiff){bestDiff=d;best=i;} });
- const l1=words.slice(0,best+1).join(' '), l2=words.slice(best+1).join(' ');
- return l2?[l1,l2]:l1;
- });
-
- // If no competencias match this cargo, fall back to all comps
- const compsToShow = comps.length ? comps : STATE.competencias;
  const compLabelsWrapFinal = compsToShow.map(c => {
  const words = c.nombre.split(' ');
  if (c.nombre.length <= 16) return c.nombre;
