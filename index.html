@@ -531,7 +531,7 @@
  </div>
  <button class="btn-login" onclick="handleLogin()">Ingresar al sistema</button>
  <p class="login-error" id="loginError">Usuario o contraseña incorrectos</p>
- <div style="text-align:center;margin-top:16px;font-size:.7rem;color:#bbb;font-family:monospace">v12.5</div>
+ <div style="text-align:center;margin-top:16px;font-size:.7rem;color:#bbb;font-family:monospace">v12.6</div>
  </div>
 
  <!-- Indicadores de impacto -->
@@ -661,7 +661,7 @@
  </svg>
  Actualizar
  </button>
- <span style="font-size:.68rem;color:#ccc;font-family:monospace;opacity:.6">v12.5</span>
+ <span style="font-size:.68rem;color:#ccc;font-family:monospace;opacity:.6">v12.6</span>
  </div>
  </div>
 
@@ -1219,7 +1219,7 @@
 // ═══════════════════════════════════════════
 // CONFIG — Reemplaza con tu URL de Google Apps Script
 // ═══════════════════════════════════════════
-const SCRIPT_URL = 'https://script.google.com/macros/s/AKfycbzrag5rJEfsjgbrgLWhXYpInkdyioO8rI-3ZxYYEAYzg57nseNrHMxIE7UtdZQ8y15G/exec';
+const SCRIPT_URL = 'https://script.google.com/macros/s/AKfycbzVIB77_dxalO6iHbe36y_6ogDbeEvh7O_R3nWW8f3-pyPyaIM_9sPHxTfx-rl6hz7c/exec';
 
 // ═══════════════════════════════════════════
 // STATE
@@ -2078,7 +2078,14 @@ async function loadAllData() {
  STATE.users = ru.data || [];
  STATE.competencias = rc.data || [];
  STATE.evaluaciones = re.data || [];
- STATE.pdi = rp.data || [];
+ STATE.pdi = (rp.data || []).map(p => ({
+ ...p,
+ // Normalize tipo_70_20_10 — Sheets may return with spaces or different case
+ tipo_70_20_10: (p.tipo_70_20_10 || '').toString().trim().toLowerCase()
+ .replace('20_social', '20_social')
+ .replace('10_formal', '10_formal')
+ || '20_social', // default to social if empty
+ }));
  STATE.periodo = rper.data || {};
  STATE.okr = (rokr.data || []).map(o => ({
  ...o,
@@ -6010,8 +6017,8 @@ function _renderPDIContent(cont, pdiItems, viewRol) {
  // ─── BANNER: BALANCE 20-10 ───
  if (pdiItems.filter(p=>p.estado!=='propuesta' && p.estado!=='cancelado').length > 0) {
  const activItems = pdiItems.filter(p=>p.estado!=='propuesta' && p.estado!=='cancelado');
- const social = activItems.filter(p=>p.tipo_70_20_10==='20_social').length;
- const formal = activItems.filter(p=>p.tipo_70_20_10==='10_formal').length;
+ const social = activItems.filter(p=>(p.tipo_70_20_10||'').includes('20') || (p.tipo_70_20_10||'').includes('social')).length;
+ const formal = activItems.filter(p=>(p.tipo_70_20_10||'').includes('10') || (p.tipo_70_20_10||'').includes('formal')).length;
  const total = activItems.length;
  const pctSoc = total ? Math.round((social/total)*100) : 0;
  const pctFor = total ? Math.round((formal/total)*100) : 0;
@@ -6126,7 +6133,7 @@ function _renderPDIContent(cont, pdiItems, viewRol) {
  <div class="pdi-item-title">
  ${p.tipo_70_20_10 === '20_social'
  ? '<span style="background:#f3e5f5;color:#6a1b9a;font-size:.7rem;font-weight:700;padding:1px 7px;border-radius:6px;margin-right:6px"> 20% Social</span>'
- : p.tipo_70_20_10 === '10_formal'
+ : (p.tipo_70_20_10||'').includes('10') || (p.tipo_70_20_10||'').includes('formal')
  ? '<span style="background:#fff3e0;color:#e65100;font-size:.7rem;font-weight:700;padding:1px 7px;border-radius:6px;margin-right:6px"> 10% Formal</span>'
  : ''}
  ${p.competencia}${propBadge}
